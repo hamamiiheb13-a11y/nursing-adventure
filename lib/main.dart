@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/intro_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,16 +10,16 @@ void main() {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  runApp(const NursingAdventureApp());
+  runApp(const GastroQuestApp());
 }
 
-class NursingAdventureApp extends StatelessWidget {
-  const NursingAdventureApp({super.key});
+class GastroQuestApp extends StatelessWidget {
+  const GastroQuestApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nursing Adventure – Educational Game',
+      title: 'GASTRO QUEST – Le Jeu Éducatif MICI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -28,13 +28,13 @@ class NursingAdventureApp extends StatelessWidget {
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF00E5FF),
           secondary: Color(0xFFFFD166),
-          surface: Color(0xFF0A1F38),
-          error: Color(0xFFEF233C),
+          surface: Color(0xFF08172D),
+          error: Color(0xFFEF4444),
         ),
         fontFamily: 'Segoe UI',
         useMaterial3: true,
       ),
-      home: const IntroScreen(),
+      home: const HomeScreen(),
     );
   }
 }

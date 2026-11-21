@@ -23,6 +23,18 @@ class AudioPlatformService implements AudioServiceInterface {
   void playVictory() {}
 
   @override
+  void playCorrect() {}
+
+  @override
+  void playWrong() {}
+
+  @override
+  void playStar() {}
+
+  @override
+  void playWorldUnlock() {}
+
+  @override
   void startBgm() {}
 
   @override

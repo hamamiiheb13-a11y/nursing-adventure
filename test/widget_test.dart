@@ -1,14 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nursing_adventure/main.dart';
 
 void main() {
-  testWidgets('Nursing Adventure smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const NursingAdventureApp());
-    // Pump frames to let initial layout render
-    await tester.pump(const Duration(milliseconds: 500));
+  testWidgets('Gastro Quest smoke test', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const GastroQuestApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify title and PLAY NOW button appear
-    expect(find.text('NURSING ADVENTURE'), findsOneWidget);
-    expect(find.text('PLAY NOW'), findsOneWidget);
+    expect(find.text('GASTRO QUEST'), findsOneWidget);
+    expect(find.text('CARTE D\'AVENTURE (30 NIVEAUX)'), findsOneWidget);
   });
 }

@@ -187,6 +187,98 @@
         osc.start(time);
         osc.stop(time + note.d);
       });
+    },
+
+    playCorrect: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // Sparkling medical chord: C5, E5, G5, C6 with harmonics
+      const notes = [
+        { f: 523.25, t: 0.00, d: 0.18 },
+        { f: 659.25, t: 0.08, d: 0.20 },
+        { f: 783.99, t: 0.16, d: 0.24 },
+        { f: 1046.50, t: 0.24, d: 0.45 },
+      ];
+      notes.forEach(note => {
+        const time = ctx.currentTime + note.t;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(note.f, time);
+        gain.gain.setValueAtTime(0.35, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + note.d);
+      });
+    },
+
+    playWrong: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // Gentle learning chime (soft low bell, encouraging)
+      const notes = [
+        { f: 349.23, t: 0.00, d: 0.22 }, // F4
+        { f: 293.66, t: 0.12, d: 0.35 }, // D4
+      ];
+      notes.forEach(note => {
+        const time = ctx.currentTime + note.t;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(note.f, time);
+        gain.gain.setValueAtTime(0.28, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + note.d);
+      });
+    },
+
+    playStar: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // High twinkling star sound
+      const notes = [1318.51, 1567.98, 2093.00];
+      notes.forEach((freq, idx) => {
+        const time = ctx.currentTime + idx * 0.06;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.25, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + 0.18);
+      });
+    },
+
+    playWorldUnlock: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // Majestic 4-note unlock: D4 -> G4 -> B4 -> D5
+      const notes = [293.66, 392.00, 493.88, 587.33];
+      notes.forEach((freq, idx) => {
+        const time = ctx.currentTime + idx * 0.10;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.4, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + 0.35);
+      });
     }
   };
 
@@ -285,6 +377,10 @@
     playLadder: SFX.playLadder,
     playSnake: SFX.playSnake,
     playVictory: SFX.playVictory,
+    playCorrect: SFX.playCorrect,
+    playWrong: SFX.playWrong,
+    playStar: SFX.playStar,
+    playWorldUnlock: SFX.playWorldUnlock,
 
     startBgm: function () {
       if (!bgmEnabled) return;
@@ -324,4 +420,5 @@
       return sfxEnabled;
     }
   };
+  window.GastroAudio = window.NursingAudio;
 })();

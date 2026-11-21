@@ -54,6 +54,30 @@ class AudioService {
     }
   }
 
+  void playCorrect() {
+    if (_sfxEnabled) {
+      _platform.playCorrect();
+    }
+  }
+
+  void playWrong() {
+    if (_sfxEnabled) {
+      _platform.playWrong();
+    }
+  }
+
+  void playStar() {
+    if (_sfxEnabled) {
+      _platform.playStar();
+    }
+  }
+
+  void playWorldUnlock() {
+    if (_sfxEnabled) {
+      _platform.playWorldUnlock();
+    }
+  }
+
   void startBgm() {
     if (_bgmEnabled) {
       _platform.startBgm();

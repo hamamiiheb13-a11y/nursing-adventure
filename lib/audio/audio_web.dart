@@ -22,6 +22,18 @@ external void _nursingAudioPlaySnake();
 @JS('NursingAudio.playVictory')
 external void _nursingAudioPlayVictory();
 
+@JS('NursingAudio.playCorrect')
+external void _nursingAudioPlayCorrect();
+
+@JS('NursingAudio.playWrong')
+external void _nursingAudioPlayWrong();
+
+@JS('NursingAudio.playStar')
+external void _nursingAudioPlayStar();
+
+@JS('NursingAudio.playWorldUnlock')
+external void _nursingAudioPlayWorldUnlock();
+
 @JS('NursingAudio.startBgm')
 external void _nursingAudioStartBgm();
 
@@ -81,6 +93,34 @@ class AudioPlatformService implements AudioServiceInterface {
   void playVictory() {
     try {
       _nursingAudioPlayVictory();
+    } catch (_) {}
+  }
+
+  @override
+  void playCorrect() {
+    try {
+      _nursingAudioPlayCorrect();
+    } catch (_) {}
+  }
+
+  @override
+  void playWrong() {
+    try {
+      _nursingAudioPlayWrong();
+    } catch (_) {}
+  }
+
+  @override
+  void playStar() {
+    try {
+      _nursingAudioPlayStar();
+    } catch (_) {}
+  }
+
+  @override
+  void playWorldUnlock() {
+    try {
+      _nursingAudioPlayWorldUnlock();
     } catch (_) {}
   }
 

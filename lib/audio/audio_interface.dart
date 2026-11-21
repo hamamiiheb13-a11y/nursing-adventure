@@ -6,6 +6,10 @@ abstract class AudioServiceInterface {
   void playLadder();
   void playSnake();
   void playVictory();
+  void playCorrect();
+  void playWrong();
+  void playStar();
+  void playWorldUnlock();
   void startBgm();
   void stopBgm();
   void setBgmEnabled(bool enabled);

@@ -2,7 +2,7 @@
 # Cloudflare Pages Build Script for Flutter Web
 set -e
 
-echo "=== Nursing Adventure - Cloudflare Pages Automated Build ==="
+echo "=== Gastro Quest - Cloudflare Pages Automated Build ==="
 
 # 1. Ensure git safe directory on CI environments
 git config --global --add safe.directory "*"

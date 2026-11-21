@@ -1,4 +1,4 @@
-name: Deploy Nursing Adventure Game
+name: Deploy Gastro Quest Game
 
 on:
   push:
