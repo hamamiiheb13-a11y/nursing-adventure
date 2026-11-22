@@ -34,6 +34,27 @@ external void _nursingAudioPlayStar();
 @JS('NursingAudio.playWorldUnlock')
 external void _nursingAudioPlayWorldUnlock();
 
+@JS('NursingAudio.playPagerBeep')
+external void _nursingAudioPlayPagerBeep();
+
+@JS('NursingAudio.playTargetLock')
+external void _nursingAudioPlayTargetLock();
+
+@JS('NursingAudio.playCrystal')
+external void _nursingAudioPlayCrystal();
+
+@JS('NursingAudio.playThruster')
+external void _nursingAudioPlayThruster();
+
+@JS('NursingAudio.playHit')
+external void _nursingAudioPlayHit();
+
+@JS('NursingAudio.playBossLaser')
+external void _nursingAudioPlayBossLaser();
+
+@JS('NursingAudio.playCombo')
+external void _nursingAudioPlayCombo();
+
 @JS('NursingAudio.startBgm')
 external void _nursingAudioStartBgm();
 
@@ -121,6 +142,55 @@ class AudioPlatformService implements AudioServiceInterface {
   void playWorldUnlock() {
     try {
       _nursingAudioPlayWorldUnlock();
+    } catch (_) {}
+  }
+
+  @override
+  void playPagerBeep() {
+    try {
+      _nursingAudioPlayPagerBeep();
+    } catch (_) {}
+  }
+
+  @override
+  void playTargetLock() {
+    try {
+      _nursingAudioPlayTargetLock();
+    } catch (_) {}
+  }
+
+  @override
+  void playCrystal() {
+    try {
+      _nursingAudioPlayCrystal();
+    } catch (_) {}
+  }
+
+  @override
+  void playThruster() {
+    try {
+      _nursingAudioPlayThruster();
+    } catch (_) {}
+  }
+
+  @override
+  void playHit() {
+    try {
+      _nursingAudioPlayHit();
+    } catch (_) {}
+  }
+
+  @override
+  void playBossLaser() {
+    try {
+      _nursingAudioPlayBossLaser();
+    } catch (_) {}
+  }
+
+  @override
+  void playCombo() {
+    try {
+      _nursingAudioPlayCombo();
     } catch (_) {}
   }
 

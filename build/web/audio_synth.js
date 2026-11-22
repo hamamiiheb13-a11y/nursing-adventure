@@ -279,6 +279,151 @@
         osc.start(time);
         osc.stop(time + 0.35);
       });
+    },
+
+    playPagerBeep: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // High-pitched hospital pager double beep: 880Hz then 1175Hz
+      [
+        { f: 880, t: 0, d: 0.08 },
+        { f: 1175, t: 0.12, d: 0.10 }
+      ].forEach(b => {
+        const time = ctx.currentTime + b.t;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(b.f, time);
+        gain.gain.setValueAtTime(0.35, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + b.d);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + b.d);
+      });
+    },
+
+    playTargetLock: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // High-tech medical targeting lock sweep + confirmation ping
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(700, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+      osc.connect(gain);
+      gain.connect(sfxGainNode);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.14);
+
+      // Lock confirmation tone
+      const lockOsc = ctx.createOscillator();
+      const lockGain = ctx.createGain();
+      const lockTime = ctx.currentTime + 0.14;
+      lockOsc.type = 'triangle';
+      lockOsc.frequency.setValueAtTime(1760, lockTime);
+      lockGain.gain.setValueAtTime(0.4, lockTime);
+      lockGain.gain.exponentialRampToValueAtTime(0.001, lockTime + 0.22);
+      lockOsc.connect(lockGain);
+      lockGain.connect(sfxGainNode);
+      lockOsc.start(lockTime);
+      lockOsc.stop(lockTime + 0.22);
+    },
+
+    playCrystal: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1567.98, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+      osc.connect(gain);
+      gain.connect(sfxGainNode);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.14);
+    },
+
+    playThruster: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(140, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.10);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.10);
+      osc.connect(gain);
+      gain.connect(sfxGainNode);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.10);
+    },
+
+    playHit: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.22);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(sfxGainNode);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    },
+
+    playBossLaser: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.28);
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+      osc.connect(gain);
+      gain.connect(sfxGainNode);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.28);
+    },
+
+    playCombo: function () {
+      if (!sfxEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      [
+        { f: 659.25, t: 0.00, d: 0.1 },
+        { f: 830.61, t: 0.06, d: 0.1 },
+        { f: 987.77, t: 0.12, d: 0.18 }
+      ].forEach(n => {
+        const time = ctx.currentTime + n.t;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.f, time);
+        gain.gain.setValueAtTime(0.3, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + n.d);
+        osc.connect(gain);
+        gain.connect(sfxGainNode);
+        osc.start(time);
+        osc.stop(time + n.d);
+      });
     }
   };
 
@@ -381,6 +526,13 @@
     playWrong: SFX.playWrong,
     playStar: SFX.playStar,
     playWorldUnlock: SFX.playWorldUnlock,
+    playPagerBeep: SFX.playPagerBeep,
+    playTargetLock: SFX.playTargetLock,
+    playCrystal: SFX.playCrystal,
+    playThruster: SFX.playThruster,
+    playHit: SFX.playHit,
+    playBossLaser: SFX.playBossLaser,
+    playCombo: SFX.playCombo,
 
     startBgm: function () {
       if (!bgmEnabled) return;

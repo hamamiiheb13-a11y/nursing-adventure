@@ -78,6 +78,48 @@ class AudioService {
     }
   }
 
+  void playPagerBeep() {
+    if (_sfxEnabled) {
+      _platform.playPagerBeep();
+    }
+  }
+
+  void playTargetLock() {
+    if (_sfxEnabled) {
+      _platform.playTargetLock();
+    }
+  }
+
+  void playCrystal() {
+    if (_sfxEnabled) {
+      _platform.playCrystal();
+    }
+  }
+
+  void playThruster() {
+    if (_sfxEnabled) {
+      _platform.playThruster();
+    }
+  }
+
+  void playHit() {
+    if (_sfxEnabled) {
+      _platform.playHit();
+    }
+  }
+
+  void playBossLaser() {
+    if (_sfxEnabled) {
+      _platform.playBossLaser();
+    }
+  }
+
+  void playCombo() {
+    if (_sfxEnabled) {
+      _platform.playCombo();
+    }
+  }
+
   void startBgm() {
     if (_bgmEnabled) {
       _platform.startBgm();

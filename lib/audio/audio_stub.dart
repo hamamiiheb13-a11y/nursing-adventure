@@ -35,6 +35,27 @@ class AudioPlatformService implements AudioServiceInterface {
   void playWorldUnlock() {}
 
   @override
+  void playPagerBeep() {}
+
+  @override
+  void playTargetLock() {}
+
+  @override
+  void playCrystal() {}
+
+  @override
+  void playThruster() {}
+
+  @override
+  void playHit() {}
+
+  @override
+  void playBossLaser() {}
+
+  @override
+  void playCombo() {}
+
+  @override
   void startBgm() {}
 
   @override

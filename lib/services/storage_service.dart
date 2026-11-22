@@ -42,4 +42,6 @@ class StorageService {
       await prefs.remove(_kProgressKey);
     } catch (_) {}
   }
+
+  Future<void> clearProgress() => resetProgress();
 }

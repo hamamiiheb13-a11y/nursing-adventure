@@ -3,13 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nursing_adventure/main.dart';
 
 void main() {
-  testWidgets('Gastro Quest smoke test', (WidgetTester tester) async {
+  testWidgets('Capsule Warriors smoke test', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const GastroQuestApp());
+    await tester.pumpWidget(const CapsuleWarriorsApp());
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('GASTRO QUEST'), findsOneWidget);
-    expect(find.text('CARTE D\'AVENTURE (30 NIVEAUX)'), findsOneWidget);
+    expect(find.text('CAPSULE WARRIORS'), findsOneWidget);
+    expect(find.text('THE STOMACH MISSION'), findsOneWidget);
+    expect(find.text('Commencer la Mission'), findsOneWidget);
   });
 }

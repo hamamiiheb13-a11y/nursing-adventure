@@ -10,6 +10,13 @@ abstract class AudioServiceInterface {
   void playWrong();
   void playStar();
   void playWorldUnlock();
+  void playPagerBeep();
+  void playTargetLock();
+  void playCrystal();
+  void playThruster();
+  void playHit();
+  void playBossLaser();
+  void playCombo();
   void startBgm();
   void stopBgm();
   void setBgmEnabled(bool enabled);

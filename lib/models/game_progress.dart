@@ -11,6 +11,23 @@ class GameProgress {
   Set<String> unlockedBadges;
   DateTime? lastPlayed;
 
+  // Spaced Repetition & Revision Queue
+  List<int> revisionQueue; // Question IDs requiring revision
+  Set<int> masteredQuestions; // Question IDs mastered after revision
+  Map<int, int> questionAttempts; // questionId -> total attempts
+  Map<int, int> questionCorrectCount; // questionId -> correct count
+  Map<int, int> questionIncorrectCount; // questionId -> incorrect count
+
+  // Arcade & Weapons specific stats
+  int arcadeHighScore;
+  int maxCombo;
+  int totalCrystals;
+  Set<String> unlockedWeapons;
+  String equippedWeapon;
+
+  int get totalScore => arcadeHighScore;
+  set totalScore(int val) => arcadeHighScore = val;
+
   GameProgress({
     this.currentUnlockedLevel = 1,
     Set<int>? completedLevels,
@@ -20,11 +37,27 @@ class GameProgress {
     this.totalXp = 0,
     Set<String>? unlockedBadges,
     this.lastPlayed,
+    List<int>? revisionQueue,
+    Set<int>? masteredQuestions,
+    Map<int, int>? questionAttempts,
+    Map<int, int>? questionCorrectCount,
+    Map<int, int>? questionIncorrectCount,
+    this.arcadeHighScore = 0,
+    this.maxCombo = 0,
+    this.totalCrystals = 0,
+    Set<String>? unlockedWeapons,
+    this.equippedWeapon = 'Laser Médical MK-I',
   })  : completedLevels = completedLevels ?? <int>{},
         levelStars = levelStars ?? <int, int>{},
         userAnswers = userAnswers ?? <int, int>{},
         isCorrectMap = isCorrectMap ?? <int, bool>{},
-        unlockedBadges = unlockedBadges ?? <String>{};
+        unlockedBadges = unlockedBadges ?? <String>{},
+        revisionQueue = revisionQueue ?? <int>[],
+        masteredQuestions = masteredQuestions ?? <int>{},
+        questionAttempts = questionAttempts ?? <int, int>{},
+        questionCorrectCount = questionCorrectCount ?? <int, int>{},
+        questionIncorrectCount = questionIncorrectCount ?? <int, int>{},
+        unlockedWeapons = unlockedWeapons ?? <String>{'Laser Médical MK-I'};
 
   bool isLevelUnlocked(int level) {
     if (level <= 1) return true;
@@ -45,7 +78,7 @@ class GameProgress {
 
   int get completedCount => completedLevels.length;
 
-  double get completionPercentage => (completedCount / 30.0).clamp(0.0, 1.0);
+  double get completionPercentage => (completedCount / 33.0).clamp(0.0, 1.0);
 
   int get correctCount {
     return isCorrectMap.values.where((c) => c == true).length;
@@ -83,10 +116,58 @@ class GameProgress {
     return count;
   }
 
+  int get questionsInRevisionCount => revisionQueue.length;
+  int get questionsMasteredCount => masteredQuestions.length;
+  int get totalAttemptsCount => questionAttempts.values.fold(0, (sum, val) => sum + val);
+  int get totalCorrectAnswersCount => questionCorrectCount.values.fold(0, (sum, val) => sum + val);
+  int get totalIncorrectAnswersCount => questionIncorrectCount.values.fold(0, (sum, val) => sum + val);
+
+  void recordQuestionAnswer({
+    required int questionId,
+    required int selectedOptionIndex,
+    required bool isCorrect,
+    int earnedXp = 0,
+  }) {
+    // Record attempts
+    questionAttempts[questionId] = (questionAttempts[questionId] ?? 0) + 1;
+    userAnswers[questionId] = selectedOptionIndex;
+    isCorrectMap[questionId] = isCorrect;
+
+    if (isCorrect) {
+      questionCorrectCount[questionId] = (questionCorrectCount[questionId] ?? 0) + 1;
+      // If it was in the revision queue, remove it and mark as mastered!
+      if (revisionQueue.contains(questionId)) {
+        revisionQueue.remove(questionId);
+        masteredQuestions.add(questionId);
+      } else if (!masteredQuestions.contains(questionId)) {
+        masteredQuestions.add(questionId);
+      }
+    } else {
+      questionIncorrectCount[questionId] = (questionIncorrectCount[questionId] ?? 0) + 1;
+      // Add to revision queue if not present, and unmark from mastered
+      if (!revisionQueue.contains(questionId)) {
+        revisionQueue.add(questionId);
+      }
+      masteredQuestions.remove(questionId);
+    }
+
+    if (earnedXp > 0) {
+      totalXp += earnedXp;
+    }
+
+    lastPlayed = DateTime.now();
+    _evaluateBadges();
+  }
+
   void completeLevel(int level, int selectedOptionIndex, bool isCorrect) {
     completedLevels.add(level);
-    userAnswers[level] = selectedOptionIndex;
-    isCorrectMap[level] = isCorrect;
+
+    // Integrate with question repetition tracking
+    recordQuestionAnswer(
+      questionId: level,
+      selectedOptionIndex: selectedOptionIndex,
+      isCorrect: isCorrect,
+    );
 
     // Stars: 3 stars if correct, 1 star if incorrect (completed for learning)
     final earnedStars = isCorrect ? 3 : 1;
@@ -100,13 +181,44 @@ class GameProgress {
     totalXp += addedXp;
 
     // Unlock next level if not already unlocked
-    if (level == currentUnlockedLevel && currentUnlockedLevel < 30) {
+    if (level == currentUnlockedLevel && currentUnlockedLevel < 33) {
       currentUnlockedLevel = level + 1;
+    }
+
+    // Unlock weapon for this world if world is completed
+    for (final world in GastroWorld.worlds) {
+      if (isWorldCompleted(world.id)) {
+        unlockedWeapons.add(world.unlockedWeaponName);
+      }
     }
 
     // Check badges
     _evaluateBadges();
     lastPlayed = DateTime.now();
+  }
+
+  void equipWeapon(String weaponName) {
+    if (unlockedWeapons.contains(weaponName)) {
+      equippedWeapon = weaponName;
+    }
+  }
+
+  void updateArcadeStats({int? score, int? combo, int? crystals}) {
+    if (score != null && score > arcadeHighScore) {
+      arcadeHighScore = score;
+    }
+    if (combo != null && combo > maxCombo) {
+      maxCombo = combo;
+    }
+    if (crystals != null) {
+      totalCrystals += crystals;
+    }
+    if (totalCrystals >= 100) {
+      unlockedBadges.add('badge_collector');
+    }
+    if (arcadeHighScore >= 2000) {
+      unlockedBadges.add('badge_arcade_pro');
+    }
   }
 
   void _evaluateBadges() {
@@ -117,17 +229,25 @@ class GameProgress {
       }
     }
 
+    // Revision mastery badges
+    if (masteredQuestions.length >= 10) {
+      unlockedBadges.add('badge_revision_apprentice');
+    }
+    if (masteredQuestions.length >= 33) {
+      unlockedBadges.add('badge_revision_master');
+    }
+
     // Global achievements
     if (completedLevels.isNotEmpty) {
       unlockedBadges.add('badge_first_step');
     }
-    if (completedCount >= 15) {
+    if (completedCount >= 16) {
       unlockedBadges.add('badge_halfway');
     }
-    if (completedCount >= 30) {
+    if (completedCount >= 33) {
       unlockedBadges.add('badge_master_gastro');
     }
-    if (completedCount >= 30 && correctCount == 30) {
+    if (completedCount >= 33 && correctCount == 33) {
       unlockedBadges.add('badge_perfection');
     }
     if (totalXp >= 1500) {
@@ -145,6 +265,16 @@ class GameProgress {
       'totalXp': totalXp,
       'unlockedBadges': unlockedBadges.toList(),
       'lastPlayed': lastPlayed?.toIso8601String(),
+      'revisionQueue': revisionQueue,
+      'masteredQuestions': masteredQuestions.toList(),
+      'questionAttempts': questionAttempts.map((k, v) => MapEntry(k.toString(), v)),
+      'questionCorrectCount': questionCorrectCount.map((k, v) => MapEntry(k.toString(), v)),
+      'questionIncorrectCount': questionIncorrectCount.map((k, v) => MapEntry(k.toString(), v)),
+      'arcadeHighScore': arcadeHighScore,
+      'maxCombo': maxCombo,
+      'totalCrystals': totalCrystals,
+      'unlockedWeapons': unlockedWeapons.toList(),
+      'equippedWeapon': equippedWeapon,
     };
   }
 
@@ -183,6 +313,45 @@ class GameProgress {
             .toSet() ??
         <String>{};
 
+    final revQueue = (json['revisionQueue'] as List<dynamic>?)
+            ?.map((e) => (e as num).toInt())
+            .toList() ??
+        <int>[];
+
+    final mastered = (json['masteredQuestions'] as List<dynamic>?)
+            ?.map((e) => (e as num).toInt())
+            .toSet() ??
+        <int>{};
+
+    final Map<int, int> attempts = {};
+    if (json['questionAttempts'] != null) {
+      (json['questionAttempts'] as Map<String, dynamic>).forEach((k, v) {
+        final key = int.tryParse(k);
+        if (key != null && v is int) attempts[key] = v;
+      });
+    }
+
+    final Map<int, int> correctCountMap = {};
+    if (json['questionCorrectCount'] != null) {
+      (json['questionCorrectCount'] as Map<String, dynamic>).forEach((k, v) {
+        final key = int.tryParse(k);
+        if (key != null && v is int) correctCountMap[key] = v;
+      });
+    }
+
+    final Map<int, int> incorrectCountMap = {};
+    if (json['questionIncorrectCount'] != null) {
+      (json['questionIncorrectCount'] as Map<String, dynamic>).forEach((k, v) {
+        final key = int.tryParse(k);
+        if (key != null && v is int) incorrectCountMap[key] = v;
+      });
+    }
+
+    final weapons = (json['unlockedWeapons'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toSet() ??
+        <String>{'Laser Médical MK-I'};
+
     return GameProgress(
       currentUnlockedLevel: (json['currentUnlockedLevel'] as num?)?.toInt() ?? 1,
       completedLevels: completed,
@@ -194,6 +363,16 @@ class GameProgress {
       lastPlayed: json['lastPlayed'] != null
           ? DateTime.tryParse(json['lastPlayed'] as String)
           : null,
+      revisionQueue: revQueue,
+      masteredQuestions: mastered,
+      questionAttempts: attempts,
+      questionCorrectCount: correctCountMap,
+      questionIncorrectCount: incorrectCountMap,
+      arcadeHighScore: (json['arcadeHighScore'] as num?)?.toInt() ?? 0,
+      maxCombo: (json['maxCombo'] as num?)?.toInt() ?? 0,
+      totalCrystals: (json['totalCrystals'] as num?)?.toInt() ?? 0,
+      unlockedWeapons: weapons,
+      equippedWeapon: (json['equippedWeapon'] as String?) ?? 'Laser Médical MK-I',
     );
   }
 
@@ -217,5 +396,15 @@ class GameProgress {
     totalXp = 0;
     unlockedBadges.clear();
     lastPlayed = null;
+    revisionQueue.clear();
+    masteredQuestions.clear();
+    questionAttempts.clear();
+    questionCorrectCount.clear();
+    questionIncorrectCount.clear();
+    arcadeHighScore = 0;
+    maxCombo = 0;
+    totalCrystals = 0;
+    unlockedWeapons = {'Laser Médical MK-I'};
+    equippedWeapon = 'Laser Médical MK-I';
   }
 }

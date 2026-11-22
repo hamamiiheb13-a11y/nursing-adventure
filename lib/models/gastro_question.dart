@@ -1,26 +1,29 @@
 class GastroQuestion {
-  final int id; // 1 to 30
-  final int originalNumber; // Numéro d'origine dans le PDF (ex: 31, 32, 42, etc.)
-  final int worldId; // 1 to 6
+  final int id; // 1 to 33
+  final int worldId; // 1 to 7
   final String questionText;
   final List<String> options;
-  final int correctOptionIndex; // 0 for A, 1 for B, 2 for C, etc.
+  final int correctOptionIndex; // 0 for a, 1 for b, 2 for c, etc.
   final String explanation;
   final String anatomicalTheme;
+  final bool validated;
 
   const GastroQuestion({
     required this.id,
-    required this.originalNumber,
     required this.worldId,
     required this.questionText,
     required this.options,
     required this.correctOptionIndex,
     required this.explanation,
     required this.anatomicalTheme,
+    this.validated = true,
   });
 
+  // Getter compatibility
+  int get originalNumber => id;
+
   String get correctLetter {
-    const letters = ['A', 'B', 'C', 'D', 'E'];
+    const letters = ['a', 'b', 'c', 'd', 'e'];
     if (correctOptionIndex >= 0 && correctOptionIndex < letters.length) {
       return letters[correctOptionIndex];
     }
@@ -35,514 +38,593 @@ class GastroQuestion {
   }
 }
 
-/// Les 30 questions du PDF intégrées strictement au mot près, sans aucune modification de texte.
+/// Les 33 questions exactes du PDF ISSIT - Projet de Fin d'Études (PFE)
+/// Réparties dans les 7 mondes thématiques.
 final List<GastroQuestion> allGastroQuestions = [
   // ==========================================
-  // MONDE 1 : Anatomie, Physiologie et Lésions Intestinales (4 questions)
+  // MONDE 1 : Anatomie, Physiologie et Lésions Intestinales (Q1 à Q4)
   // ==========================================
   const GastroQuestion(
     id: 1,
-    originalNumber: 31,
     worldId: 1,
-    questionText: 'Question 31 : Une fistule :',
+    questionText: 'Q1 Une fistule :',
     options: [
-      'A) Est un trajet anormal entre deux parties d\'intestin ou entre l\'intestin et la peau',
-      'B) Est un rétrécissement de l\'intestin qui peut obstruer le passage de son contenu',
+      'a. Est un trajet anormal entre deux parties d\'intestin ou entre l\'intestin et la peau',
+      'b. Est un rétrécissement de l\'intestin qui peut obstruer le passage de son contenu',
+      'c. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
         'Une fistule est un conduit ou trajet anormal faisant communiquer deux cavités ou viscères creux entre eux (fistule entéro-entérique, entéro-colique, entéro-vésicale) ou reliant un segment intestinal à la surface cutanée (fistule entéro-cutanée ou ano-périnéale, fréquente dans la maladie de Crohn). À l\'inverse, un rétrécissement de la lumière intestinale correspond à une sténose.',
-    anatomicalTheme: 'Lésions transmurales de la Maladie de Crohn',
+    anatomicalTheme: 'Anatomie, Physiologie et Lésions Intestinales',
+    validated: true,
   ),
   const GastroQuestion(
     id: 2,
-    originalNumber: 32,
-    worldId: 1,
-    questionText: 'Question 32 : L\'iléon terminal :',
-    options: [
-      'A) Est la section d\'intestin juste avant l\'anus',
-      'B) Est la section d\'intestin juste avant le colon',
-    ],
-    correctOptionIndex: 1,
-    explanation:
-        'L\'iléon terminal représente la dernière portion anatomique de l\'intestin grêle. Il s\'abouche dans le cæcum (première partie du côlon) au niveau de la valvule iléo-cæcale de Bauhin. C\'est le siège électif de l\'atteinte inflammatoire de la maladie de Crohn (iléite terminale). La section située juste avant l\'anus est le rectum.',
-    anatomicalTheme: 'Intestin Grêle & Jonction Iléo-Cæcale',
-  ),
-  const GastroQuestion(
-    id: 3,
-    originalNumber: 42,
-    worldId: 1,
-    questionText: 'Question 42 : La fonction du colon est d\'absorber :',
-    options: [
-      'A) Des vitamines',
-      'B) Des nutriments (sucres, graisses, protéines)',
-      'C) De l\'eau',
-    ],
-    correctOptionIndex: 2,
-    explanation:
-        'La fonction physiologique prépondérante du côlon (gros intestin) est la réabsorption de l\'eau (environ 1,5 litre par 24 heures) et des électrolytes (sodium, chlore), permettant de concentrer et compacter le bol fécal. La quasi-totalité des nutriments (glucides, protides, lipides) et de la majorité des vitamines est absorbée en amont, au niveau de l\'intestin grêle.',
-    anatomicalTheme: 'Physiologie de la Réabsorption Colique',
-  ),
-  const GastroQuestion(
-    id: 4,
-    originalNumber: 46,
     worldId: 1,
     questionText:
-        'Question 46 : Il y a des millions de petits « replis » dans l\'intestin grêle qui augmentent la surface d\'absorption. Ils sont appelés :',
+        'Q2 Il y a des millions de petits « replis » dans l\'intestin grêle qui augmentent la surface d\'absorption. Ils sont appelés :',
     options: [
-      'A) Les villosités',
-      'B) Les enzymes',
-      'C) Les sels biliaires',
-      'D) Les cryptes',
+      'a. Les villosités',
+      'b. Les enzymes',
+      'c. Les sels biliaires',
+      'd. Les cryptes',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
         'Les villosités intestinales sont de minuscules digitations de la muqueuse tapissant la paroi interne de l\'intestin grêle. Associées aux microvillosités des entérocytes, elles démultiplient la surface d\'échange jusqu\'à environ 250 m², optimisant le passage des nutriments vers la circulation sanguine et lymphatique.',
-    anatomicalTheme: 'Architecture Muqueuse & Villosités',
+    anatomicalTheme: 'Anatomie, Physiologie et Lésions Intestinales',
+    validated: true,
+  ),
+  const GastroQuestion(
+    id: 3,
+    worldId: 1,
+    questionText: 'Q3 La fonction du colon est d\'absorber :',
+    options: [
+      'a. Des vitamines',
+      'b. Des nutriments (sucres, graisses, protéines)',
+      'c. De l\'eau',
+      'd. Je ne sais pas',
+    ],
+    correctOptionIndex: 2,
+    explanation:
+        'La fonction physiologique prépondérante du côlon (gros intestin) est la réabsorption de l\'eau (environ 1,5 litre par 24 heures) et des électrolytes (sodium, chlore), permettant de compacter le bol fécal. La quasi-totalité des nutriments (glucides, protides, lipides) est absorbée en amont dans l\'intestin grêle.',
+    anatomicalTheme: 'Anatomie, Physiologie et Lésions Intestinales',
+    validated: true,
+  ),
+  const GastroQuestion(
+    id: 4,
+    worldId: 1,
+    questionText: 'Q4 L\'iléon terminal :',
+    options: [
+      'a. Est la section d\'intestin juste avant l\'anus',
+      'b. Est la section d\'intestin juste avant le colon',
+      'c. Je ne sais pas',
+    ],
+    correctOptionIndex: 1,
+    explanation:
+        'L\'iléon terminal représente la dernière portion anatomique de l\'intestin grêle. Il s\'abouche dans le cæcum (première partie du côlon) au niveau de la valvule iléo-cæcale de Bauhin. C\'est le siège électif de l\'atteinte inflammatoire de la maladie de Crohn (iléite terminale). La section située juste avant l\'anus est le rectum.',
+    anatomicalTheme: 'Anatomie, Physiologie et Lésions Intestinales',
+    validated: true,
   ),
 
   // ==========================================
-  // MONDE 2 : Généralités, Symptômes et Manifestations de la Maladie (5 questions)
+  // MONDE 2 : Généralités, Symptômes et Manifestations de la Maladie (Q5 à Q9)
   // ==========================================
   const GastroQuestion(
     id: 5,
-    originalNumber: 18,
     worldId: 2,
-    questionText: 'Question 18 : La rémission clinique :',
+    questionText: 'Q5 Si un enfant est atteint de MICI, il ou elle ne pourra pas :',
     options: [
-      'A) Signifie que le patient est guéri de sa MICI',
-      'B) Signifie qu\'il n\'a plus de symptômes de sa maladie (ni diarrhées, ni sang dans les selles, ni douleurs abdominales...)',
-      'C) Signifie que la coloscopie ne retrouve pas de lésions dans l\'intestin',
-      'D) Signifie que le traitement doit être arrêté',
+      'a. Vivre au-delà de 45 ans',
+      'b. Être aussi grand que ses amis',
+      'c. Suivre des études supérieures',
+      'd. Toutes les réponses sont fausses',
+      'e. Je ne sais pas',
     ],
-    correctOptionIndex: 1,
+    correctOptionIndex: 3,
     explanation:
-        'La rémission clinique correspond à la disparition complète des signes fonctionnels et symptômes digestifs ressentis par le patient (normalisation du transit, arrêt des saignements et des douleurs abdominales). Elle se distingue de la rémission biologique et endoscopique. Les MICI étant des maladies chroniques, la rémission clinique ne signifie ni guérison définitive ni interruption du traitement de fond.',
-    anatomicalTheme: 'Évaluation Clinique & Objectifs de Rémission',
+        'Toutes ces affirmations sont fausses : avec une prise en charge médicale contemporaine adaptée, l\'espérance de vie des enfants atteints de MICI est similaire à celle de la population générale. Un contrôle rapide de l\'inflammation permet de préserver la croissance staturo-pondérale et de poursuivre normalement des études supérieures.',
+    anatomicalTheme: 'Généralités, Symptômes et Manifestations de la Maladie',
+    validated: true,
   ),
   const GastroQuestion(
     id: 6,
-    originalNumber: 20,
     worldId: 2,
     questionText:
-        'Question 20 : Un patient atteint de MICI a plus de risque d\'avoir, par rapport à la population générale :',
+        'Q6 Un patient atteint de MICI a plus de risque d\'avoir, par rapport à la population générale :',
     options: [
-      'A) Des douleurs articulaires',
-      'B) Des maladies du cœur',
-      'C) Des maladies des poumons',
-      'D) Des maladies des reins',
+      'a. Des douleurs articulaires',
+      'b. Des maladies du cœur',
+      'c. Des maladies des poumons',
+      'd. Des maladies des reins',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
-        'Les atteintes ostéo-articulaires (rhumatismes périphériques, spondylarthrite ankylosante, sacro-iliites, enthésites) sont les manifestations extra-intestinales les plus fréquentes des MICI, touchant 20 % à 30 % des patients atteints de maladie de Crohn ou de rectocolite hémorragique.',
-    anatomicalTheme: 'Manifestations Rhumatologiques & Extra-Digestives',
+        'Les manifestations extra-digestives les plus fréquentes au cours des MICI sont d\'ordre rhumatologique (touchant 20 à 30 % des patients) : arthralgies périphériques inflammatoires, enthésites et spondylarthropathies axiales associées au terrain génétique HLA-B27.',
+    anatomicalTheme: 'Généralités, Symptômes et Manifestations de la Maladie',
+    validated: true,
   ),
   const GastroQuestion(
     id: 7,
-    originalNumber: 30,
     worldId: 2,
-    questionText:
-        'Question 30 : Les patients atteints de MICI peuvent développer de l\'inflammation dans d\'autres parties du corps autant que dans l\'intestin :',
+    questionText: 'Q7 La rémission clinique :',
     options: [
-      'A) Vrai',
-      'B) Faux',
+      'a. Signifie que le patient est guéri de sa MICI',
+      'b. Signifie qu\'il n\'a plus de symptômes de sa maladie (ni diarrhées, ni sang dans les selles, ni douleurs abdominales...)',
+      'c. Signifie que la coloscopie ne retrouve pas de lésions dans l\'intestin',
+      'd. Signifie que le traitement doit être arrêté',
+      'e. Je ne sais pas',
     ],
-    correctOptionIndex: 0,
+    correctOptionIndex: 1,
     explanation:
-        'Vrai. Les MICI sont des affections inflammatoires chroniques systémiques à médiation dysimmunitaire. L\'inflammation peut ainsi s\'exprimer au niveau des articulations, de la peau (érythème noueux, pyoderma gangrenosum), des yeux (uvéite, épisclérite) ou encore des voies biliaires (cholangite sclérosante primitive).',
-    anatomicalTheme: 'Dimension Systémique des Pathologies Inflammatoires',
+        'La rémission clinique correspond à la disparition complète des signes fonctionnels et symptômes digestifs ressentis par le patient. Les MICI étant des affections inflammatoires chroniques, la rémission clinique ne signifie ni guérison définitive ni interruption du traitement de fond.',
+    anatomicalTheme: 'Généralités, Symptômes et Manifestations de la Maladie',
+    validated: true,
   ),
   const GastroQuestion(
     id: 8,
-    originalNumber: 47,
     worldId: 2,
     questionText:
-        'Question 47 : Parmi les propositions suivantes, laquelle n\'est pas un symptôme habituel des MICI :',
+        'Q8 Parmi les propositions suivantes, laquelle n\'est pas un symptôme habituel des MICI :',
     options: [
-      'A) Douleur abdominale',
-      'B) Trouble du transit',
-      'C) Céphalées',
-      'D) Fièvre',
+      'a. Douleur abdominale',
+      'b. Trouble du transit',
+      'c. Céphalées',
+      'd. Fièvre',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'Les céphalées (maux de tête) ne constituent pas un signe clinique habituel ni un symptôme d\'alerte direct d\'une poussée de MICI. Les signes cardinaux associent les douleurs abdominales récurrentes, les troubles chroniques du transit (diarrhée glairo-sanglante), le syndrome rectal et, lors des poussées aiguës, un état fébrile ou un amaigrissement.',
-    anatomicalTheme: 'Sémiologie Médicale des Poussées Aiguës',
+        'Les céphalées isolées ne constituent pas un symptôme habituel des MICI. Le tableau clinique classique est dominé par des douleurs abdominales récurrentes, des troubles du transit (diarrhée glairo-sanglante chronique), une altération de l\'état général et parfois un fébricule lors des poussées aiguës.',
+    anatomicalTheme: 'Généralités, Symptômes et Manifestations de la Maladie',
+    validated: true,
   ),
   const GastroQuestion(
     id: 9,
-    originalNumber: 48,
     worldId: 2,
     questionText:
-        'Question 48 : Si un enfant est atteint de MICI, il ou elle ne pourra pas :',
+        'Q9 Les patients atteints de MICI peuvent développer de l\'inflammation dans d\'autres parties du corps autant que dans l\'intestin :',
     options: [
-      'A) Vivre au-delà de 45 ans',
-      'B) Être aussi grand que ses amis',
-      'C) Suivre des études supérieures',
-      'D) Toutes les réponses sont fausses',
+      'a. Vrai',
+      'b. Faux',
     ],
-    correctOptionIndex: 3,
+    correctOptionIndex: 0,
     explanation:
-        'Toutes les propositions A, B et C sont fausses. Grâce aux biothérapies précoces et à un accompagnement médical et nutritionnel adapté, un enfant atteint de MICI peut maîtriser l\'inflammation intestinale, préserver sa croissance staturale normale, accomplir des études supérieures sans entrave et bénéficier d\'une espérance de vie similaire à la population générale.',
-    anatomicalTheme: 'MICI Pédiatriques & Pronostic Global',
+        'Vrai : Les MICI sont des maladies inflammatoires dysimmunitaires systémiques. L\'inflammation peut toucher les articulations (arthrites, spondylarthrite), la peau (érythème noueux, pyoderma gangrenosum), les yeux (uvéite, épisclérite) et les voies biliaires (cholangite sclérosante primitive).',
+    anatomicalTheme: 'Généralités, Symptômes et Manifestations de la Maladie',
+    validated: true,
   ),
 
   // ==========================================
-  // MONDE 3 : Traitements Médicamenteux et Observance (5 questions)
+  // MONDE 3 : Traitements Médicamenteux et Observance (Q10 à Q14)
   // ==========================================
   const GastroQuestion(
     id: 10,
-    originalNumber: 5,
     worldId: 3,
-    questionText: 'Question 5 : Les biothérapies anti-TNF :',
+    questionText: 'Q10 Les biothérapies anti-TNF :',
     options: [
-      'A) Favorisent la survenue d\'un cancer du colon',
-      'B) Ne favorisent pas la survenue des cancers « solides » (exemples : cancer du sein, de la prostate, du poumon...)',
-      'C) Augmentent la survenue des cancers du sang ou des ganglions',
-      'D) Sont systématiquement contre-indiquées chez les patients ayant déjà eu un cancer',
+      'a. Favorisent la survenue d\'un cancer du colon',
+      'b. Ne favorisent pas la survenue des cancers « solides » (ex : cancer du sein, de la prostate, du poumon...)',
+      'c. Augmentent la survenue des cancers du sang ou des ganglions',
+      'd. Sont systématiquement contre-indiquées chez les patients ayant déjà eu un cancer',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 1,
     explanation:
-        'Les larges études de pharmacovigilance et les registres prospectifs démontrent que les anti-TNF en monothérapie ne majorent pas l\'incidence des cancers solides (sein, prostate, poumon). De surcroît, en cicatrisant la muqueuse et en éteignant l\'inflammation chronique colique, ils contribuent à réduire le risque de cancer colorectal lié à l\'inflammation.',
-    anatomicalTheme: 'Sécurité Oncologique des Anti-TNF',
+        'Les données pharmaco-épidémiologiques de grande ampleur démontrent que les anti-TNF n\'augmentent pas l\'incidence des tumeurs d\'organes solides (sein, prostate, poumon...). Au contraire, en éteignant l\'inflammation chronique colique, ils contribuent à réduire le risque de cancer colorectal dysplasique.',
+    anatomicalTheme: 'Traitements Médicamenteux et Observance',
+    validated: true,
   ),
   const GastroQuestion(
     id: 11,
-    originalNumber: 6,
     worldId: 3,
-    questionText: 'Question 6 : Concernant les biothérapies anti-TNF :',
+    questionText: 'Q11 Concernant les biothérapies anti-TNF :',
     options: [
-      'A) L\'efficacité du traitement ne diminue jamais avec le temps',
-      'B) Si l\'efficacité du traitement n\'est pas visible au bout d\'un mois, cela veut dire que le traitement ne fonctionne pas',
-      'C) L\'efficacité du traitement peut être modulée par la prise simultanée d\'immunosuppresseurs',
-      'D) Si l\'efficacité du traitement diminue, il faut nécessairement changer de traitement',
+      'a. L\'efficacité du traitement ne diminue jamais avec le temps',
+      'b. Si l\'efficacité du traitement n\'est pas visible au bout d\'un mois, cela veut dire que le traitement ne fonctionne pas',
+      'c. L\'efficacité du traitement peut être modulée par la prise simultanée d\'immunosuppresseurs',
+      'd. Si l\'efficacité du traitement diminue, il faut nécessairement changer de traitement',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'L\'association concomitante d\'un immunosuppresseur (tel que l\'azathioprine ou le méthotrexate) à une biothérapie anti-TNF (combothérapie) permet de prévenir l\'apparition d\'anticorps anti-médicaments (réduction de l\'immunogénicité) et améliore les concentrations sériques résiduelles, optimisant ainsi l\'efficacité thérapeutique.',
-    anatomicalTheme: 'Combothérapie & Pharmacocinétique',
+        'L\'association thérapeutique synergique d\'un anti-TNF avec un immunosuppresseur (comme l\'azathioprine en combo-thérapie) réduit la formation d\'anticorps anti-médicament (immunisation) et majore les concentrations circulantes de l\'anticorps monoclonal, optimisant son efficacité au long cours.',
+    anatomicalTheme: 'Traitements Médicamenteux et Observance',
+    validated: true,
   ),
   const GastroQuestion(
     id: 12,
-    originalNumber: 8,
     worldId: 3,
-    questionText:
-        'Question 8 : Les patients avec une MICI sous immunosuppresseurs :',
+    questionText: 'Q12 Les patients avec une MICI sous immunosuppresseurs :',
     options: [
-      'A) Doivent éviter les lieux publics (transports en commun, supermarchés...) du fait du risque de développer une infection',
-      'B) Doivent consulter régulièrement un dermatologue',
-      'C) Ne doivent jamais s\'exposer au soleil (plage, montagne) y compris en cas d\'utilisation d\'un écran total',
-      'D) Ne doivent plus réaliser de prise de sang de surveillance lorsque le traitement est poursuivi au-delà d\'un an',
+      'a. Doivent éviter les lieux publics (transports en commun, supermarchés...) du fait du risque de développer une infection',
+      'b. Doivent consulter régulièrement un dermatologue',
+      'c. Ne doivent jamais s\'exposer au soleil (plage, montagne) y compris en cas d\'utilisation d\'un écran total',
+      'd. Ne doivent plus réaliser de prise de sang de surveillance lorsque le traitement est poursuivi au-delà d\'un an',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 1,
     explanation:
-        'Les immunosuppresseurs (notamment les thiopurines) augmentent modérément le risque de survenue de cancers cutanés non mélanomes (carcinomes épidermoïdes). Une consultation dermatologique annuelle systématique avec examen complet du tégument ainsi qu\'une photoprotection vigilante (écran total indice 50+, port de chapeau) sont formellement requises tout au long du traitement.',
-    anatomicalTheme: 'Surveillance Dermatologique & Photoprotection',
+        'Les patients sous immunosuppresseurs (en particulier les thiopurines comme l\'azathioprine) présentent un sur-risque modéré de carcinomes cutanés non-mélanocytaires. Un dépistage dermatologique annuel régulier avec photoprotection rigoureuse est donc formellement recommandé.',
+    anatomicalTheme: 'Traitements Médicamenteux et Observance',
+    validated: true,
   ),
   const GastroQuestion(
     id: 13,
-    originalNumber: 10,
     worldId: 3,
     questionText:
-        'Question 10 : Chez un patient atteint de MICI prenant un traitement au long cours :',
+        'Q13 Chez un patient atteint de MICI prenant un traitement au long cours :',
     options: [
-      'A) La prise régulière du traitement n\'a pas de réelle influence sur son efficacité',
-      'B) Il est possible d\'arrêter soi-même le médicament si les symptômes disparaissent et de le reprendre quand ils réapparaissent',
-      'C) La prise irrégulière d\'un traitement anti-TNF peut entraîner une perte d\'efficacité de celui-ci',
-      'D) La prise irrégulière du traitement par anti-TNF n\'accroît pas le risque de réactions allergiques',
+      'a. La prise régulière du traitement n\'a pas de réelle influence sur son efficacité',
+      'b. Il est possible d\'arrêter soi-même le médicament si les symptômes disparaissent et de le reprendre quand ils réapparaissent',
+      'c. La prise irrégulière d\'un traitement anti-TNF peut entraîner une perte d\'efficacité de celui-ci',
+      'd. La prise irrégulière du traitement par anti-TNF n\'accroît pas le risque de réactions allergiques',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'L\'observance rigoureuse d\'un traitement anti-TNF est capitale. Les interruptions involontaires ou les prises décalées créent des creux pharmacologiques qui déclenchent la formation d\'anticorps neutralisants (immunisation). Ces anticorps entraînent une perte secondaire d\'efficacité et augmentent le risque d\'effets indésirables d\'hypersensibilité lors des réinjections.',
-    anatomicalTheme: 'Observance & Prévention de l\'Immunisation',
+        'Une mauvaise observance thérapeutique ou l\'espacement irrégulier des injections anti-TNF induit des creux sériques favorisant la synthèse d\'anticorps neutralisants anti-médicaments (ADA), entraînant une perte d\'efficacité secondaire et un sur-risque d\'accidents d\'hypersensibilité.',
+    anatomicalTheme: 'Traitements Médicamenteux et Observance',
+    validated: true,
   ),
   const GastroQuestion(
     id: 14,
-    originalNumber: 11,
     worldId: 3,
     questionText:
-        'Question 11 : Chez un patient avec une MICI traitée par immunosuppresseurs ou anti-TNF, et qui n\'a plus de symptômes (douleur, diarrhée, fatigue...) :',
+        'Q14 Chez un patient avec une MICI traitée par immunosuppresseurs ou anti-TNF, et qui n\'a plus de symptômes (douleur, diarrhée, fatigue...) :',
     options: [
-      'A) Il faut rapidement arrêter le traitement pour éviter les effets secondaires',
-      'B) Le dosage des marqueurs inflammatoires (CRP, calprotectine, VS...) n\'intervient pas dans la décision d\'arrêter le traitement',
-      'C) Une surveillance médicale régulière n\'est plus nécessaire',
-      'D) La réalisation d\'une endoscopie (coloscopie...) ou d\'un examen d\'imagerie (entéro-IRM) est importante pour décider de l\'arrêt du traitement',
+      'a. Il faut rapidement arrêter le traitement pour éviter les effets secondaires',
+      'b. Le dosage des marqueurs inflammatoires (CRP, calprotectine, VS...) n\'intervient pas dans la décision d\'arrêter le traitement',
+      'c. Une surveillance médicale régulière n\'est plus nécessaire',
+      'd. La réalisation d\'une endoscopie (coloscopie...) ou d\'un examen d\'imagerie (entéro-IRM) est importante pour décider de l\'arrêt du traitement',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 3,
     explanation:
-        'La disparition des plaintes fonctionnelles (rémission clinique) ne garantit pas la cicatrisation profonde de la muqueuse intestinale. Avant d\'envisager une éventuelle suspension ou désescalade thérapeutique, il est indispensable de confirmer la rémission endoscopique (ou par entéro-IRM) et la normalisation stricte des biomarqueurs (calprotectine, CRP) selon la stratégie "Treat to Target" afin d\'écarter tout risque de rechute précoce.',
-    anatomicalTheme: 'Stratégie Treat-to-Target & Rémission Profonde',
+        'La cicatrisation muqueuse objective (attestée par la coloscopie ou l\'entéro-IRM) et la normalisation des biomarqueurs sont indispensables avant d\'envisager une désescalade thérapeutique encadrée. Une rémission purement clinique sans cicatrisation muqueuse expose à une récidive précoce.',
+    anatomicalTheme: 'Traitements Médicamenteux et Observance',
+    validated: true,
   ),
 
   // ==========================================
-  // MONDE 4 : Examens, Marqueurs Biologiques et Dépistage (4 questions)
+  // MONDE 4 : Examens, Marqueurs Biologiques et Dépistage (Q15 à Q18)
   // ==========================================
   const GastroQuestion(
     id: 15,
-    originalNumber: 14,
     worldId: 4,
-    questionText:
-        'Question 14 : Concernant le dosage de la CRP (Protéine C-réactive) :',
+    questionText: 'Q15 Au cours d\'une poussée de MICI :',
     options: [
-      'A) Une CRP augmentée reflète toujours une MICI en poussée',
-      'B) La CRP n\'est pas utile pour le suivi des MICI',
-      'C) En l\'absence de symptôme, une CRP élevée sur plusieurs prises de sang consécutives doit faire réaliser d\'autres examens',
-      'D) La CRP est plus fiable que la calprotectine fécale dans le cadre des MICI',
+      'a. Le taux de plaquettes dans le sang augmente',
+      'b. Le taux d\'albumine dans le sang augmente',
+      'c. Le taux de globules blancs diminue',
+      'd. Je ne sais pas',
     ],
-    correctOptionIndex: 2,
+    correctOptionIndex: 0,
     explanation:
-        'La CRP est un marqueur sensible d\'inflammation systémique. Une élévation persistante de la CRP chez un patient asymptomatique peut traduire une réactivation infraclinique de l\'inflammation intestinale (récidive biologique précédant la récidive symptomatique) ou une affection intercurrente, ce qui motive la réalisation d\'investigations complémentaires (calprotectine fécale, imagerie ou endoscopie).',
-    anatomicalTheme: 'Protéine C-Réactive & Biologie Inflammatoire',
+        'Au cours d\'une poussée inflammatoire, la sécrétion hépatique de thrombopoïétine et de cytokines pro-inflammatoires (IL-6) entraîne une thrombocytose réactionnelle (augmentation des plaquettes) et une hyperleucocytose. L\'albumine sérique tend au contraire à baisser par fuite entérique et hypercatabolisme.',
+    anatomicalTheme: 'Examens, Marqueurs Biologiques et Dépistage',
+    validated: true,
   ),
   const GastroQuestion(
     id: 16,
-    originalNumber: 16,
     worldId: 4,
     questionText:
-        'Question 16 : Chez un patient souffrant d\'une MICI touchant le colon, en l\'absence de symptôme (diarrhée, douleur, fatigue...), une coloscopie :',
+        'Q16 Chez un patient souffrant d\'une MICI touchant le colon, en l\'absence de symptôme (diarrhée, douleur, fatigue...), une coloscopie :',
     options: [
-      'A) Devrait être toujours réalisée une fois par an',
-      'B) N\'est jamais nécessaire sauf en cas de récidive des symptômes',
-      'C) Permet de dépister des lésions précancéreuses dans le colon',
-      'D) Ne doit être réalisée qu\'après 50 ans',
+      'a. Devrait être toujours réalisée une fois par an',
+      'b. N\'est jamais nécessaire sauf en cas de récidive des symptômes',
+      'c. Permet de dépister des lésions précancéreuses dans le colon',
+      'd. Ne doit être réalisée qu\'après 50 ans',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'L\'inflammation muqueuse chronique au cours d\'une colite inflammatoire majore le risque de dysplasie et de cancer colorectal. Même en l\'absence totale de symptômes, des coloscopies de surveillance programmées (avec chromoendoscopie et biopsies ciblées) sont indispensables pour détecter et réséquer précocement d\'éventuelles lésions précancéreuses.',
-    anatomicalTheme: 'Endoscopie Digestive & Dépistage de Dysplasie',
+        'L\'inflammation colique prolongée sur plus de 8 à 10 ans augmente le risque de dysplasie et de cancer colorectal. Même en l\'absence totale de symptômes cliniques, une coloscopie régulière de dépistage avec chromoendoscopie et biopsies étagées est indispensable pour détecter précocement les lésions précancéreuses.',
+    anatomicalTheme: 'Examens, Marqueurs Biologiques et Dépistage',
+    validated: true,
   ),
   const GastroQuestion(
     id: 17,
-    originalNumber: 33,
     worldId: 4,
-    questionText: 'Question 33 : Au cours d\'une poussée de MICI :',
+    questionText: 'Q17 Concernant le dosage de la CRP (Protéine C-réactive) :',
     options: [
-      'A) Le taux de plaquettes dans le sang augmente',
-      'B) Le taux d\'albumine dans le sang augmente',
-      'C) Le taux de globules blancs diminue',
+      'a. Une CRP augmentée reflète toujours une MICI en poussée',
+      'b. La CRP n\'est pas utile pour le suivi des MICI',
+      'c. En l\'absence de symptôme, une CRP élevée sur plusieurs prises de sang consécutives doit faire réaliser d\'autres examens',
+      'd. La CRP est plus fiable que la calprotectine fécale dans le cadre des MICI',
+      'e. Je ne sais pas',
     ],
-    correctOptionIndex: 0,
+    correctOptionIndex: 2,
     explanation:
-        'Lors d\'une poussée active de MICI, la libération de cytokines pro-inflammatoires (telles que l\'IL-6) stimule la mégacaryopoïèse médullaire, provoquant une thrombocytose réactionnelle (augmentation du taux de plaquettes). Parallèlement, l\'albumine sérique a tendance à chuter (hypoalbuminémie) du fait du catabolisme accru et de la fuite entérique.',
-    anatomicalTheme: 'Hématologie & Syndrome Inflammatoire Biologique',
+        'Une élévation réitérée de la CRP en l\'absence de signes fonctionnels ressentis peut révéler une poussée infraclinique débutante ou une complication septique, justifiant la réalisation d\'examens complémentaires (calprotectine fécale, imagerie ou endoscopie).',
+    anatomicalTheme: 'Examens, Marqueurs Biologiques et Dépistage',
+    validated: true,
   ),
   const GastroQuestion(
     id: 18,
-    originalNumber: 45,
     worldId: 4,
     questionText:
-        'Question 45 : Laquelle parmi les propositions suivantes est fausse concernant le dépistage du cancer du colon ? Un dépistage devrait être proposé à tous les patients atteints de rectocolite hémorragique :',
+        'Q18 Laquelle parmi les propositions suivantes est fausse concernant le dépistage du cancer du colon ? Un dépistage devrait être proposé à tous les patients atteints de rectocolite hémorragique :',
     options: [
-      'A) Qui n\'affecte que le rectum',
-      'B) Qui évolue depuis 8 - 10 ans',
-      'C) Qui a débuté avant l\'âge de 50 ans',
+      'a. Qui n\'affecte que le rectum',
+      'b. Qui évolue depuis 8 - 10 ans',
+      'c. Qui a débuté avant l\'âge de 50 ans',
+      'd. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
-        'La proposition A est fausse (et constitue donc la réponse exacte demandée) : une rectite ulcéreuse isolée (atteinte limitée au rectum) n\'augmente pas significativement le risque de cancer colorectal par rapport à la population générale et ne justifie pas de surveillance coloscopique dédiée. En revanche, les atteintes coliques étendues évoluant depuis 8 à 10 ans requièrent une surveillance systématique par chromoendoscopie.',
-    anatomicalTheme: 'Recommandations Internationales de Dépistage',
+        'La proposition fausse est la a : les rectites pures (atteinte limitée au rectum) n\'augmentent pas le risque de cancer colorectal par rapport à la population générale. Le dépistage systématique par chromoendoscopie s\'adresse aux colites gauches et pancolites évoluant depuis au moins 8 à 10 ans.',
+    anatomicalTheme: 'Examens, Marqueurs Biologiques et Dépistage',
+    validated: true,
   ),
 
   // ==========================================
-  // MONDE 5 : Mode de vie, Alimentation et Voyages (4 questions)
+  // MONDE 5 : Mode de vie, Alimentation et Voyages (Q19 à Q22)
   // ==========================================
   const GastroQuestion(
     id: 19,
-    originalNumber: 3,
     worldId: 5,
     questionText:
-        'Question 3 : Un patient souffrant de MICI, sous immunosuppresseurs ou sous biothérapie anti-TNF souhaite partir plusieurs semaines à l\'étranger :',
+        'Q19 Un patient souffrant de MICI, sous immunosuppresseurs ou sous biothérapie anti-TNF souhaite partir plusieurs semaines à l\'étranger :',
     options: [
-      'A) Il est préférable de ne pas faire de voyage sous traitement',
-      'B) Il faut arrêter le traitement pendant la durée du voyage et le reprendre au retour',
-      'C) L\'accès à ces médicaments est assez facile à l\'étranger',
-      'D) Un voyage est possible si celui-ci est anticipé et préparé en collaboration avec le médecin',
+      'a. Il est préférable de ne pas faire de voyage sous traitement',
+      'b. pendant la durée du voyage et le reprendre au retour',
+      'c. L\'accès à ces médicaments est assez facile à l\'étranger',
+      'd. Un voyage est possible si celui-ci est anticipé et préparé en collaboration avec le médecin',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 3,
     explanation:
-        'Voyager avec une MICI sous biothérapie ou immunosuppresseur est parfaitement réalisable moyennant une préparation rigoureuse : consultation pré-voyage, certificats médicaux bilingues pour le transport aérien, maintien de la chaîne du froid (2-8°C dans une sacoche isotherme), carnet vaccinal à jour (attention aux vaccins vivants atténués contre-indiqués) et ordonnance de secours.',
-    anatomicalTheme: 'Médecine des Voyages & Chaîne du Froid',
+        'Voyager est tout à fait compatible avec une MICI bien contrôlée. Le voyage doit être anticipé : vérification des vaccinations (contre-indication stricte des vaccins vivants atténués sous biothérapie/immunosuppresseurs), chaîne du froid pour les biomédicaments, ordonnances bilingues et trousse médicale de secours.',
+    anatomicalTheme: 'Mode de vie, Alimentation et Voyages',
+    validated: true,
   ),
   const GastroQuestion(
     id: 20,
-    originalNumber: 12,
     worldId: 5,
-    questionText: 'Question 12 : Chez un patient atteint de MICI :',
+    questionText: 'Q20 Chez un patient atteint de MICI :',
     options: [
-      'A) L\'arrêt du tabac ne favorise pas la survenue d\'une poussée de RCH',
-      'B) L\'arrêt du tabac peut favoriser la survenue d\'une poussée de maladie de Crohn',
-      'C) Il est recommandé d\'arrêter de fumer chez tous les patients atteints de MICI',
-      'D) Le tabac n\'augmente pas le risque d\'être opéré chez les patients souffrants de maladie de Crohn',
+      'a. L\'arrêt du tabac ne favorise pas la survenue d\'une poussée de RCH',
+      'b. L\'arrêt du tabac peut favoriser la survenue d\'une poussée de maladie de Crohn',
+      'c. Il est recommandé d\'arrêter de fumer chez tous les patients atteints de MICI',
+      'd. Le tabac n\'augmente pas le risque d\'être opéré chez les patients souffrants de maladie de Crohn',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'Le sevrage tabagique complet est universellement recommandé pour l\'ensemble des patients atteints de MICI en raison de ses bénéfices majeurs sur les plans cardiovasculaire, respiratoire et carcinologique. Dans la maladie de Crohn en particulier, le tabac est le facteur d\'aggravation principal, multipliant le risque de poussées, de rechutes et de résections chirurgicales.',
-    anatomicalTheme: 'Tabacologie & Impact sur l\'Évolution des MICI',
+        'Le sevrage tabagique absolu est recommandé pour tous les patients atteints de MICI. Dans la maladie de Crohn, le tabac est un facteur aggravant majeur multipliant les poussées, les fistules et les résections chirurgicales. Même si l\'arrêt peut parfois démasquer une poussée de RCH, le bénéfice cardiovasculaire et carcinologique reste prioritaire.',
+    anatomicalTheme: 'Mode de vie, Alimentation et Voyages',
+    validated: true,
   ),
   const GastroQuestion(
     id: 21,
-    originalNumber: 23,
     worldId: 5,
-    questionText: 'Question 23 : Les patients atteints de MICI :',
+    questionText: 'Q21 Les patients atteints de MICI :',
     options: [
-      'A) Doivent éliminer le gluten de leur alimentation',
-      'B) Doivent avoir une alimentation riche en sucres',
-      'C) Doivent éliminer le lactose de leur alimentation',
-      'D) Doivent avoir une alimentation la plus variée possible',
+      'a. Doivent éliminer le gluten de leur alimentation',
+      'b. Doivent avoir une alimentation riche en sucres',
+      'c. Doivent éliminer le lactose de leur alimentation',
+      'd. Doivent avoir une alimentation la plus variée possible',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 3,
     explanation:
-        'En période de rémission, les sociétés savantes (ECCO, ESPEN) recommandent une alimentation saine, diversifiée et équilibrée. Les régimes d\'exclusion systématique (sans gluten, sans produits laitiers) sans intolérance clinico-biologique démontrée ne sont pas justifiés et exposent inutilement les patients à des carences et à la dénutrition.',
-    anatomicalTheme: 'Nutrition Clinique & Diversification Alimentaire',
+        'Hors période de poussée aiguë où un régime d\'épargne digestive peut être transitoirement indiqué, il est recommandé de maintenir une alimentation variée et équilibrée afin de prévenir les carences en micronutriments et la dénutrition. Aucun régime d\'exclusion systématique (sans gluten, sans lactose) n\'est justifié sans intolérance avérée.',
+    anatomicalTheme: 'Mode de vie, Alimentation et Voyages',
+    validated: true,
   ),
   const GastroQuestion(
     id: 22,
-    originalNumber: 26,
     worldId: 5,
     questionText:
-        'Question 26 : Les produits alimentaires de nutrition artificielle entérale sont parfois utilisés pour traiter la maladie de Crohn ou la RCH. Ils :',
+        'Q22 Les produits alimentaires de nutrition artificielle entérale sont parfois utilisés pour traiter la maladie de Crohn ou la RCH. Ils :',
     options: [
-      'A) Contiennent toujours beaucoup de fibres',
-      'B) Sont très faciles à digérer',
-      'C) Sont présentés sous formes de comprimés',
+      'a. Contiennent toujours beaucoup de fibres',
+      'b. Sont très faciles à digérer',
+      'c. Sont présentés sous formes de comprimés',
+      'd. Je ne sais pas',
     ],
     correctOptionIndex: 1,
     explanation:
-        'Les solutions nutritives entérales (formules liquides polymériques ou semi-élémentaires) sont dépourvues de fibres irritantes, hautement digestibles et rapidement absorbées au niveau de l\'intestin grêle proximal. La nutrition entérale exclusive constitue un traitement de première intention remarquable chez l\'enfant atteint de maladie de Crohn pour induire la rémission et relancer la croissance.',
-    anatomicalTheme: 'Nutrition Entérale Thérapeutique',
+        'Les solutés de nutrition entérale sont des formules nutritives liquides polymériques ou semi-élémentaires spécialement équilibrées et conçues pour être très digestes et rapidement résorbées dans le grêle, permettant de mettre l\'intestin au repos tout en restaurant l\'état nutritionnel.',
+    anatomicalTheme: 'Mode de vie, Alimentation et Voyages',
+    validated: true,
   ),
 
   // ==========================================
-  // MONDE 6 : Hérédité, Fertilité, Grossesse et Allaitement (8 questions)
+  // MONDE 6 : Hérédité, Fertilité, Grossesse et Allaitement (Q23 à Q30)
   // ==========================================
   const GastroQuestion(
     id: 23,
-    originalNumber: 29,
     worldId: 6,
-    questionText: 'Question 29 : Les MICI peuvent être héréditaires :',
+    questionText: 'Q23 Les MICI peuvent être héréditaires :',
     options: [
-      'A) Vrai',
-      'B) Faux',
+      'a. Vrai',
+      'b. Faux',
     ],
     correctOptionIndex: 0,
     explanation:
-        'Vrai. Bien que les MICI ne soient pas des maladies monogéniques à transmission mendélienne simple, leur composante génétique et héréditaire est clairement établie : plus de 200 gènes de prédisposition ont été mis au jour (notamment NOD2/CARD15), et le risque d\'atteinte chez un apparenté au premier degré est multiplié par 5 à 10 par rapport à la population générale.',
-    anatomicalTheme: 'Génétique & Prédisposition Familiale',
+        'Vrai : Il existe une prédisposition génétique bien démontrée (plus de 200 gènes de susceptibilité identifiés, comme NOD2/CARD15 pour la maladie de Crohn). Cependant, il ne s\'agit pas d\'une transmission mendélienne directe : les facteurs environnementaux et le microbiote sont indispensables au déclenchement.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 24,
-    originalNumber: 38,
     worldId: 6,
-    questionText:
-        'Question 38 : Si une femme est atteinte d\'une maladie de Crohn :',
+    questionText: 'Q24 Si une femme est atteinte d\'une maladie de Crohn :',
     options: [
-      'A) Elle peut avoir plus de difficultés pour être enceinte',
-      'B) Elle ne devrait pas avoir d\'enfant',
-      'C) Sa grossesse aura forcément des complications',
+      'a. Elle peut avoir plus de difficultés pour être enceinte',
+      'b. Elle ne devrait pas avoir d\'enfant',
+      'c. Sa grossesse aura forcément des complications',
+      'd. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
-        'Une patiente atteinte de maladie de Crohn peut rencontrer plus de difficultés pour concevoir lorsque la maladie est en poussée active (altération de l\'axe gonadotrope par les cytokines) ou en cas d\'antécédents chirurgicaux abdomino-pelviens ayant provoqué des adhérences tubaires. En période de rémission stable sans séquelles chirurgicales, la fertilité est en revanche normale.',
-    anatomicalTheme: 'Fertilité Féminine & Facteurs d\'Impact',
+        'La fertilité féminine est strictement normale lorsque la maladie de Crohn est en rémission. En revanche, la fertilité peut être temporairement diminuée en période de poussée inflammatoire active ou à la suite de chirurgies abdomino-pelviennes compliquées d\'adhérences tubaires.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 25,
-    originalNumber: 51,
     worldId: 6,
-    questionText: 'Question 51 : Les hommes atteints de MICI :',
+    questionText: 'Q25 Les hommes atteints de MICI :',
     options: [
-      'A) N\'ont habituellement pas de problème d\'infertilité',
-      'B) Devraient éviter tout médicament lorsqu\'ils essayent de concevoir un enfant',
-      'C) Ne devraient pas avoir d\'enfant avec une femme atteinte de MICI',
-      'D) Ne devraient pas avoir d\'enfant après 40 ans',
+      'a. N\'ont habituellement pas de problème d\'infertilité',
+      'b. Devraient éviter tout médicament lorsqu\'ils essayent de concevoir un enfant',
+      'c. Ne devraient pas avoir d\'enfant avec une femme atteinte de MICI',
+      'd. Ne devraient pas avoir d\'enfant après 40 ans',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 0,
     explanation:
-        'Chez l\'homme atteint de MICI, la fertilité est en règle générale conservée et comparable à celle de la population générale. Une exception notable concerne la sulfasalazine (Salazopyrine), pouvant engendrer une oligospermie réversible à l\'arrêt du produit. Les anti-TNF et la plupart des immunosuppresseurs n\'altèrent pas la fertilité masculine.',
-    anatomicalTheme: 'Fertilité Masculine & Médicaments',
+        'La fertilité masculine n\'est généralement pas altérée par la maladie en période de rémission. Seule la sulfasalazine (Salazopyrine) peut entraîner une altération réversible de la spermatogenèse qui régresse 2 à 3 mois après arrêt ou relais par un dérivé 5-ASA pur.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 26,
-    originalNumber: 52,
     worldId: 6,
     questionText:
-        'Question 52 : Qu\'est-ce qui est le plus important lorsqu\'on essaye d\'avoir un bébé ?',
+        'Q26 Qu\'est-ce qui est le plus important lorsqu\'on essaye d\'avoir un bébé ?',
     options: [
-      'A) La femme doit arrêter tout traitement avant d\'être enceinte',
-      'B) La MICI doit être contrôlée',
-      'C) Les femmes n\'ont pas besoin de discuter avec leur médecin avant de tomber enceinte',
-      'D) Les femmes atteintes de MICI ne doivent pas arrêter de fumer',
+      'a. La femme doit arrêter tout traitement avant d\'être enceinte',
+      'b. La MICI doit être contrôlée',
+      'c. Les femmes n\'ont pas besoin de discuter avec leur médecin avant de tomber enceinte',
+      'd. Les femmes atteintes de MICI ne doivent pas arrêter de fumer',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 1,
     explanation:
-        'Le facteur déterminant majeur pour une gestation harmonieuse est d\'obtenir et de maintenir un contrôle parfait de la maladie : être en rémission clinique et biologique depuis au moins 3 à 6 mois au moment de la conception. Une poussée pendant la grossesse multiplie le risque de prématurité et de fausse couche spontanée. Le traitement compatible doit être impérativement poursuivi sous contrôle médical.',
-    anatomicalTheme: 'Programmation de la Grossesse & Rémission Préconceptionnelle',
+        'Le facteur prépondérant conditionnant le déroulement favorable de la grossesse est la conception en période de rémission clinique et biologique stable depuis au moins 3 à 6 mois. La poursuite du traitement de fond d\'entretien est indispensable pour éviter une rechute gravidique.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 27,
-    originalNumber: 60,
     worldId: 6,
-    questionText: 'Question 60 : Les femmes atteintes de MICI :',
+    questionText: 'Q27 Les femmes atteintes de MICI :',
     options: [
-      'A) Ne doivent jamais accoucher par césarienne',
-      'B) Doivent accoucher par césarienne',
-      'C) Peuvent accoucher par voie basse y compris en cas de lésions périnéales (fistule ou abcès anal)',
-      'D) Peuvent accoucher par voie basse dans la plupart des cas',
+      'a. Ne doivent jamais accoucher par césarienne',
+      'b. Doivent accoucher par césarienne',
+      'c. Peuvent accoucher par voie basse y compris en cas de lésions périnéales (fistule ou abcès anal)',
+      'd. Peuvent accoucher par voie basse dans la plupart des cas',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 3,
     explanation:
-        'L\'accouchement par voie basse constitue la règle générale chez la patiente atteinte de MICI. La césarienne programmée n\'est indiquée que dans des situations très ciblées : présence de lésions anopérinéales actives (fistules, abcès) pour prémunir le sphincter anal contre toute déchirure obstétricale, ou antécédent d\'anastomose iléo-anale avec réservoir.',
-    anatomicalTheme: 'Voie d\'Accouchement & Préservation Périnéale',
+        'L\'accouchement par voie basse naturelle est possible et recommandé pour la très grande majorité des patientes. La césarienne élective n\'est formellement indiquée qu\'en cas de lésions anopérinéales actives ou antécédents d\'anastomose iléo-anale, afin d\'éviter un traumatisme sphinctérien.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 28,
-    originalNumber: 62,
     worldId: 6,
     questionText:
-        'Question 62 : Une femme atteinte de MICI en poussée pendant la grossesse :',
+        'Q28 Une femme atteinte de MICI en poussée pendant la grossesse :',
     options: [
-      'A) A habituellement un bébé plus grand et plus lourd que les autres femmes',
-      'B) Accouche souvent un peu plus tôt',
-      'C) Accouche souvent un peu plus tard',
-      'D) Accouche toujours à terme même en cas de poussée de maladie de Crohn',
+      'a. A habituellement un bébé plus grand et plus lourd que les autres femmes',
+      'b. Accouche souvent un peu plus tôt',
+      'c. Accouche souvent un peu plus tard',
+      'd. Accouche toujours à terme même en cas de poussée de maladie de Crohn',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 1,
     explanation:
-        'L\'activité inflammatoire non contrôlée au cours de la grossesse est le principal pourvoyeur de complications obstétricales, notamment de menace d\'accouchement prématuré (naissance avant 37 semaines d\'aménorrhée) et de retard de croissance intra-utérin. C\'est pourquoi il est fondamental de traiter efficacement toute poussée gravidique.',
-    anatomicalTheme: 'Complications Obstétricales & Prématurité',
+        'L\'activité inflammatoire non contrôlée au cours de la grossesse est le principal pourvoyeur de complications obstétricales, notamment de menace d\'accouchement prématuré (naissance avant 37 semaines d\'aménorrhée) et de retard de croissance intra-utérin.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 29,
-    originalNumber: 63,
     worldId: 6,
     questionText:
-        'Question 63 : Les malformations des nouveau-nés issus de patientes atteintes de MICI :',
+        'Q29 Les malformations des nouveau-nés issus de patientes atteintes de MICI :',
     options: [
-      'A) Sont fréquentes',
-      'B) Sont plus fréquentes que dans la population générale',
-      'C) Sont souvent dues aux effets secondaires des médicaments',
-      'D) Peuvent être prévenues par la vaccination',
-      'E) Aucune des réponses n\'est vraie',
+      'a. Sont fréquentes',
+      'b. Sont plus fréquentes que dans la population générale',
+      'c. Sont souvent dues aux effets secondaires des médicaments',
+      'd. Peuvent être prévenues par la vaccination',
+      'e. Aucune des réponses n\'est vraie',
     ],
     correctOptionIndex: 4,
     explanation:
-        'Le taux de malformations congénitales chez les enfants de patientes atteintes de MICI est strictement semblable à celui de la population générale (environ 2 à 3 %). Les thérapeutiques habituelles autorisées pendant la grossesse (anti-TNF, thiopurines, dérivés 5-ASA) ne sont pas tératogènes. Aucune des propositions A à D n\'étant exacte, la réponse correcte est bien E.',
-    anatomicalTheme: 'Tératogénicité & Santé Périnatale',
+        'Le taux de malformations congénitales chez les enfants de patientes atteintes de MICI est strictement semblable à celui de la population générale (environ 2 à 3 %). Les thérapeutiques habituelles autorisées pendant la grossesse (anti-TNF, thiopurines, dérivés 5-ASA) ne sont pas tératogènes. Aucune des propositions a à d n\'étant exacte, la réponse est e.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
   ),
   const GastroQuestion(
     id: 30,
-    originalNumber: 65,
     worldId: 6,
-    questionText: 'Question 65 : Les mamans atteintes de MICI :',
+    questionText: 'Q30 Les mamans atteintes de MICI :',
     options: [
-      'A) Ne doivent pas allaiter pour ne pas transmettre la maladie à leur enfant',
-      'B) N\'ont jamais de poussée pendant l\'allaitement',
-      'C) Peuvent avoir des petites quantités de médicaments dans leur lait maternel',
-      'D) N\'ont pas besoin de discuter de l\'allaitement avec leur sage-femme ou leur médecin',
+      'a. Ne doivent pas allaiter pour ne pas transmettre la maladie à leur enfant',
+      'b. N\'ont jamais de poussée pendant l\'allaitement',
+      'c. Peuvent avoir des petites quantités de médicaments dans leur lait maternel',
+      'd. N\'ont pas besoin de discuter de l\'allaitement avec leur sage-femme ou leur médecin',
+      'e. Je ne sais pas',
     ],
     correctOptionIndex: 2,
     explanation:
-        'D\'infimes concentrations de molécules thérapeutiques (tels les anticorps monoclonaux anti-TNF ou les dérivés de l\'azathioprine) peuvent passer dans le lait maternel. Toutefois, leur absorption digestive par le nourrisson est quasi-nulle et sans danger toxique documenté. L\'allaitement maternel est donc vivement recommandé et tout à fait compatible pour la majorité des patientes, sous suivi médical partagé.',
-    anatomicalTheme: 'Allaitement Maternel & Passage Lacté',
+        'D\'infimes concentrations de molécules thérapeutiques (comme les anticorps monoclonaux anti-TNF ou les métabolites de l\'azathioprine) peuvent passer dans le lait maternel. Toutefois, leur absorption digestive par le nourrisson est négligeable et sans danger toxique documenté. L\'allaitement maternel est donc tout à fait compatible et encouragé.',
+    anatomicalTheme: 'Hérédité, Fertilité, Grossesse et Allaitement',
+    validated: true,
+  ),
+
+  // ==========================================
+  // MONDE 7 : Rôle infirmière (Q31 à Q33)
+  // ==========================================
+  const GastroQuestion(
+    id: 31,
+    worldId: 7,
+    questionText:
+        'Q31 Lors de la surveillance d\'un patient hospitalisé pour une poussée de rectocolite hémorragique (RCH), quel tableau clinique doit alerter l\'infirmier sur le risque d\'une colite aiguë grave nécessitant une prise en charge médico-chirurgicale urgente ?',
+    options: [
+      'a. Une diarrhée glairo-sanglante associée a une fiévre et une tachycardie',
+      'b. Une douleur épigastrique soulagée par la prise d’aliments alcalins',
+      'c. Une constipation opiniâtre associé à des ballonnement post prandiaux',
+      'd. Une asthénie modérée associée à une sécheresse des muqueuses buccales',
+    ],
+    correctOptionIndex: 0,
+    explanation:
+        'Les critères de Truelove et Witts définissant la colite aiguë grave (CAG) associent au moins 6 émissions sanglantes quotidiennes avec des signes d\'altération systémique : fièvre > 37,8°C, tachycardie > 90 bpm, anémie (hémoglobine < 10,5 g/dL) et syndrome inflammatoire (VS > 30 mm ou CRP > 45 mg/L). C\'est une urgence médico-chirurgicale absolue imposant un monitorage rapproché du risque de mégacôlon toxique et de perforation.',
+    anatomicalTheme: 'Rôle infirmière & Urgences MICI',
+    validated: true,
+  ),
+  const GastroQuestion(
+    id: 32,
+    worldId: 7,
+    questionText:
+        'Q32 Un patient est traité au long cours par azathioprine (Imurel) pour maintenir la rémission de sa MICI. Quelle surveillance biologique régulière l\'infirmier doit-il particulièrement contrôler pour dépister une toxicité médicamenteuse fréquente ?',
+    options: [
+      'a. La numération formule sanguin et le bilan hépatique',
+      'b. La calcémie ionisée et le dosage de la TSH',
+      'c. l’uricémie et le bilan lipidique complet a jeun',
+      'd. La calcémie et la clairance de la créatinine plasmatique',
+    ],
+    correctOptionIndex: 0,
+    explanation:
+        'L\'azathioprine (thiopurine) expose à deux risques majeurs de toxicité précoce et tardive : la myélosuppression (neutropénie, anémie, thrombopénie par aplasie médullaire) et l\'hépatotoxicité (cytolyse ou cholestase hépatique). L\'infirmier doit donc s\'assurer du contrôle régulier de la NFS (hémogramme) et des enzymes hépatiques (ALAT/ASAT, bilirubine, phosphatases alcalines).',
+    anatomicalTheme: 'Rôle infirmière & Toxicité Médicamenteuse',
+    validated: true,
+  ),
+  const GastroQuestion(
+    id: 33,
+    worldId: 7,
+    questionText:
+        'Q33 Un patient est admis en hospitalisation pour une poussée sévère de rectocolite hémorragique avec émissions glairo-sanglantes fréquentes. La prescription médicale comporte une injection sous-cutanée quotidienne d\'énoxaparine (HBPM) à dose préventive. Quelle conduite l\'infirmier doit-il adopter ?',
+    options: [
+      'a. Diviser la dose prescrite par deux jusqu\'à la normalisation de la CRP',
+      'b. Suspendre systématiquement l\'injection tant que persistent des rectorragies',
+      'c. Remplacer l\'injection sous-cutanée par le port isolé de bas de contention',
+      'd. Administrer l\'anticoagulant préventif tout en surveillant l\'abondance des saignements',
+    ],
+    correctOptionIndex: 3,
+    explanation:
+        'Toute poussée sévère de MICI constitue un puissant état pro-thrombotique (multipliant par 3 à 4 le risque de thrombose veineuse profonde et d\'embolie pulmonaire). Les recommandations internationales et françaises stipulent formellement que l\'anticoagulation préventive par HBPM doit être maintenue systématiquement malgré les rectorragies actives, tout en surveillant la tolérance hémodynamique.',
+    anatomicalTheme: 'Rôle infirmière & Thromboembolisme en Poussée',
+    validated: true,
   ),
 ];
