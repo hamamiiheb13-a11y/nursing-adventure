@@ -395,7 +395,7 @@ class ArcadeGameController extends ChangeNotifier {
     player.isMovingDown = value;
   }
 
-  void shoot() {
+  void shoot([Offset? targetScreenPos]) {
     if (state != GameState.playing && state != GameState.bossFight) return;
     if (player.shootCooldownTimer > 0) return;
 
@@ -406,11 +406,22 @@ class ArcadeGameController extends ChangeNotifier {
     final bulletDamage = config.damage;
     final color = config.glowColor;
 
+    Offset shotDir = const Offset(1.0, 0.0);
+    if (targetScreenPos != null) {
+      final playerScreenPos = Offset(player.position.dx - cameraX, player.position.dy);
+      final delta = targetScreenPos - playerScreenPos;
+      if (delta.distance > 8.0) {
+        shotDir = delta / delta.distance;
+      }
+    }
+
+    final normalDir = Offset(-shotDir.dy, shotDir.dx);
+
     if (config.type == WeaponType.doubleLaser || player.hasDoubleShot) {
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(24, -8),
-          velocity: Offset(baseSpeed, 0),
+          position: player.position + normalDir * -8.0 + shotDir * 24.0,
+          velocity: shotDir * baseSpeed,
           damage: bulletDamage,
           color: color,
           radius: 5.5,
@@ -419,8 +430,8 @@ class ArcadeGameController extends ChangeNotifier {
       );
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(24, 8),
-          velocity: Offset(baseSpeed, 0),
+          position: player.position + normalDir * 8.0 + shotDir * 24.0,
+          velocity: shotDir * baseSpeed,
           damage: bulletDamage,
           color: color,
           radius: 5.5,
@@ -430,8 +441,8 @@ class ArcadeGameController extends ChangeNotifier {
     } else if (config.type == WeaponType.plasmaShot) {
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(26, 0),
-          velocity: Offset(baseSpeed, 0),
+          position: player.position + shotDir * 26.0,
+          velocity: shotDir * baseSpeed,
           damage: bulletDamage,
           color: color,
           radius: 9.0,
@@ -441,8 +452,8 @@ class ArcadeGameController extends ChangeNotifier {
     } else if (config.type == WeaponType.electricWave) {
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(24, 0),
-          velocity: Offset(baseSpeed, 0),
+          position: player.position + shotDir * 24.0,
+          velocity: shotDir * baseSpeed,
           damage: bulletDamage,
           color: color,
           radius: 6.5,
@@ -452,8 +463,8 @@ class ArcadeGameController extends ChangeNotifier {
     } else if (config.type == WeaponType.ultimatePulse) {
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(26, 0),
-          velocity: Offset(baseSpeed, -60),
+          position: player.position + shotDir * 26.0,
+          velocity: (shotDir * baseSpeed) + (normalDir * -60.0),
           damage: bulletDamage,
           color: color,
           radius: 8.0,
@@ -462,8 +473,8 @@ class ArcadeGameController extends ChangeNotifier {
       );
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(28, 0),
-          velocity: Offset(baseSpeed + 40, 0),
+          position: player.position + shotDir * 28.0,
+          velocity: shotDir * (baseSpeed + 40.0),
           damage: bulletDamage,
           color: color,
           radius: 8.5,
@@ -472,8 +483,8 @@ class ArcadeGameController extends ChangeNotifier {
       );
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(26, 0),
-          velocity: Offset(baseSpeed, 60),
+          position: player.position + shotDir * 26.0,
+          velocity: (shotDir * baseSpeed) + (normalDir * 60.0),
           damage: bulletDamage,
           color: color,
           radius: 8.0,
@@ -484,8 +495,8 @@ class ArcadeGameController extends ChangeNotifier {
       // medicalLaser
       playerProjectiles.add(
         CapsuleProjectile(
-          position: player.position + const Offset(24, 0),
-          velocity: Offset(baseSpeed, 0),
+          position: player.position + shotDir * 24.0,
+          velocity: shotDir * baseSpeed,
           damage: bulletDamage,
           color: color,
           radius: 5.0,
@@ -495,7 +506,7 @@ class ArcadeGameController extends ChangeNotifier {
     }
 
     audio.playBossLaser();
-    _emitMuzzleParticles(player.position + const Offset(24, 0), color);
+    _emitMuzzleParticles(player.position + shotDir * 24.0, color);
   }
 
   void activateShield() {

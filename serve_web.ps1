@@ -30,6 +30,11 @@ try {
             $response = $context.Response
 
             $path = $request.Url.LocalPath.TrimStart('/')
+            if ($path -like "nursing-adventure/*") {
+                $path = $path.Substring(18)
+            } elseif ($path -eq "nursing-adventure") {
+                $path = "index.html"
+            }
             if ([string]::IsNullOrWhiteSpace($path) -or $path -eq '/') {
                 $path = "index.html"
             }

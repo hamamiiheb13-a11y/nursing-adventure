@@ -1,17 +1,21 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../audio/audio_service.dart';
 import '../models/game_progress.dart';
-import '../widgets/tactile_button.dart';
+import '../theme/capsule_theme.dart';
+import 'capsule_warriors_world_select_screen.dart';
 
 class CapsuleWarriorsIntroScreen extends StatefulWidget {
-  final GameProgress progress;
-  final VoidCallback onContinue;
+  final GameProgress? progress;
+  final VoidCallback? onContinue;
 
   const CapsuleWarriorsIntroScreen({
     super.key,
-    required this.progress,
-    required this.onContinue,
+    this.progress,
+    this.onContinue,
   });
 
   @override
@@ -20,265 +24,105 @@ class CapsuleWarriorsIntroScreen extends StatefulWidget {
 
 class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
     with SingleTickerProviderStateMixin {
-  late final PageController _pageController;
-  late final AnimationController _anim;
-  int _currentPage = 0;
-
-  final List<Map<String, dynamic>> _scenes = [
-    {
-      'badge': 'PHASE 1 : INJECTION DE LA NANO-CAPSULE',
-      'title': 'Descente dans l\'Estomac',
-      'desc':
-          'Une capsule médicale de nanorobotique avancée est ingérée par le patient. '
-          'Sa mission : cartographier le tractus digestif et prodiguer des soins ciblés.',
-      'icon': Icons.medication_liquid_rounded,
-      'color': Color(0xFF00E5FF),
-    },
-    {
-      'badge': 'PHASE 2 : ALERTE PATHOLOGIQUE (MICI)',
-      'title': 'Muqueuse Gastrique Menacée',
-      'desc':
-          'Les parois de l\'estomac et du duodénum subissent de violentes poussées inflammatoires : '
-          'bactéries pathogènes (Helicobacter), cytokines pro-inflammatoires et ulcérations tissulaires sévères.',
-      'icon': Icons.coronavirus_rounded,
-      'color': Color(0xFFEF4444),
-    },
-    {
-      'badge': 'PHASE 3 : PROTOCOLE CLINIQUE DU PFE',
-      'title': '33 Défis Médicaux Validés',
-      'desc':
-          'Pour restaurer l\'intégrité de la muqueuse et débloquer vos armes de pointe, '
-          'vous devez diagnostiquer chaque lésion en validant les 33 questions cliniques officielles de l\'ISSIT Tunis.',
-      'icon': Icons.menu_book_rounded,
-      'color': Color(0xFF10B981),
-    },
-    {
-      'badge': 'PHASE 4 : ARSENAL & COMBAT DES 7 BOSS',
-      'title': 'Neutralisez les Menaces !',
-      'desc':
-          'Pilotez la capsule avec les flèches du clavier ou les boutons tactiles, '
-          'tirez au laser (Espace), activez votre bouclier énergétique et terrassez les 7 Boss pour obtenir votre diplôme !',
-      'icon': Icons.military_tech_rounded,
-      'color': Color(0xFFFFD166),
-    },
-  ];
+  late final AnimationController _animController;
+  final AudioService _audio = AudioService();
+  bool _finished = false;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
-    _anim = AnimationController(
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    // Total sequence duration: 6.1 seconds
+    _animController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat();
+      duration: const Duration(milliseconds: 6100),
+    );
+
+    _animController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _finishIntro();
+      }
+    });
+
+    _animController.forward();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
-    _anim.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
-  void _nextPage() {
-    if (_currentPage < _scenes.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+  void _finishIntro() {
+    if (_finished) return;
+    _finished = true;
+    _audio.playClick();
+
+    if (widget.onContinue != null) {
+      widget.onContinue!();
     } else {
-      widget.onContinue();
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => CapsuleWarriorsWorldSelectScreen(
+            progress: widget.progress ?? GameProgress(),
+          ),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 750;
-
     return Scaffold(
-      backgroundColor: const Color(0xFF030712),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 2D animated stomach background
+          // 1. Cinematic 2D Canvas Scene (7 Animated Steps)
           Positioned.fill(
             child: AnimatedBuilder(
-              animation: _anim,
+              animation: _animController,
               builder: (context, _) {
                 return CustomPaint(
-                  painter: _IntroBgPainter(progress: _anim.value),
+                  painter: _CinematicIntroPainter(progress: _animController.value),
                 );
               },
             ),
           ),
 
-          // Content
+          // 2. Skip Button (Top Right, Always Visible)
           SafeArea(
-            child: Column(
-              children: [
-                // Top Bar with Skip Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'BRIEFING NARRATIF',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFF00E5FF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      TextButton.icon(
-                        icon: const Icon(Icons.fast_forward_rounded, color: Color(0xFF94A3B8), size: 18),
-                        label: Text(
-                          'Passer l\'intro',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF94A3B8),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        onPressed: widget.onContinue,
-                      ),
-                    ],
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A).withValues(alpha: 0.75),
+                    foregroundColor: CapsuleColors.cyanGlow,
+                    side: BorderSide(
+                      color: CapsuleColors.cyanGlow.withValues(alpha: 0.5),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                ),
-
-                // PageView with Narrative Slides
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: (idx) => setState(() => _currentPage = idx),
-                    itemCount: _scenes.length,
-                    itemBuilder: (context, index) {
-                      final scene = _scenes[index];
-                      return Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 620),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Container(
-                              padding: EdgeInsets.all(isMobile ? 22 : 36),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(28),
-                                border: Border.all(
-                                  color: (scene['color'] as Color).withValues(alpha: 0.6),
-                                  width: 1.8,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (scene['color'] as Color).withValues(alpha: 0.2),
-                                    blurRadius: 28,
-                                  ),
-                                  const BoxShadow(color: Colors.black, blurRadius: 20),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: (scene['color'] as Color).withValues(alpha: 0.18),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: (scene['color'] as Color),
-                                        width: 2.2,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      scene['icon'] as IconData,
-                                      color: (scene['color'] as Color),
-                                      size: 38,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: (scene['color'] as Color).withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      scene['badge'] as String,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: (scene['color'] as Color),
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    scene['title'] as String,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: Colors.white,
-                                      fontSize: isMobile ? 20 : 26,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    scene['desc'] as String,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      color: const Color(0xFF94A3B8),
-                                      fontSize: isMobile ? 13 : 15,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Bottom Navigation Dots & Next Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 620),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: List.generate(_scenes.length, (i) {
-                            final isActive = i == _currentPage;
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: isActive ? 24 : 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: isActive ? const Color(0xFF00E5FF) : const Color(0xFF334155),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            );
-                          }),
-                        ),
-                        TactileButton(
-                          label: _currentPage == _scenes.length - 1 ? 'Commencer l\'Aventure' : 'Suivant',
-                          icon: Icons.arrow_forward_rounded,
-                          style: TactileButtonStyle.primary,
-                          height: 48,
-                          onPressed: _nextPage,
-                        ),
-                      ],
+                  icon: const Icon(Icons.fast_forward_rounded, size: 16),
+                  label: Text(
+                    'PASSER',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
                     ),
                   ),
+                  onPressed: _finishIntro,
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -287,37 +131,392 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
   }
 }
 
-class _IntroBgPainter extends CustomPainter {
-  final double progress;
+class _CinematicIntroPainter extends CustomPainter {
+  final double progress; // 0.0 to 1.0 (over 6.1s)
 
-  _IntroBgPainter({required this.progress});
+  _CinematicIntroPainter({required this.progress});
+
+  // Step ranges:
+  // 1: 0.000 -> 0.246 (1.5s): Black screen -> Logo fades in with particle burst
+  // 2: 0.246 -> 0.377 (0.8s): Logo fades out -> Capsule appears powered down
+  // 3: 0.377 -> 0.459 (0.5s): Propulsion lights up: orange glow trail
+  // 4: 0.459 -> 0.623 (1.0s): Capsule moves right, stomach walls slide in
+  // 5: 0.623 -> 0.787 (1.0s): Enemy appears, capsule fires, enemy explodes
+  // 6: 0.787 -> 0.918 (0.8s): "LA MISSION COMMENCE..." slides in
+  // 7: 0.918 -> 1.000 (0.5s): Transition wipe
 
   @override
   void paint(Canvas canvas, Size size) {
-    final t = progress * math.pi * 2;
-    final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final bgPaint = Paint()
+    // Background space/stomach
+    final bgPaint = Paint()..color = CapsuleColors.darkNavy;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    final t = progress * 6.1; // Elapsed seconds
+
+    if (t < 2.3) {
+      _paintStep1And2(canvas, size, t);
+    } else if (t < 2.8) {
+      _paintStep3(canvas, size, t);
+    } else if (t < 3.8) {
+      _paintStep4(canvas, size, t);
+    } else if (t < 4.8) {
+      _paintStep5(canvas, size, t);
+    } else if (t < 5.6) {
+      _paintStep6(canvas, size, t);
+    } else {
+      _paintStep7(canvas, size, t);
+    }
+  }
+
+  void _paintStep1And2(Canvas canvas, Size size, double t) {
+    // 0.0s to 1.5s: Logo fades in with particle burst.
+    // 1.5s to 2.3s: Logo fades out, capsule appears at left powered down.
+    double logoAlpha = 0.0;
+    if (t <= 1.2) {
+      logoAlpha = (t / 1.0).clamp(0.0, 1.0);
+    } else if (t <= 1.5) {
+      logoAlpha = 1.0;
+    } else {
+      logoAlpha = (1.0 - (t - 1.5) / 0.8).clamp(0.0, 1.0);
+    }
+
+    if (logoAlpha > 0.01) {
+      // Particle burst behind logo
+      final pProgress = (t / 1.8).clamp(0.0, 1.0);
+      final rand = math.Random(101);
+      final burstPaint = Paint()..style = PaintingStyle.fill;
+      for (int i = 0; i < 40; i++) {
+        final angle = rand.nextDouble() * math.pi * 2;
+        final speed = 80.0 + rand.nextDouble() * 180.0;
+        final dist = pProgress * speed;
+        final px = size.width / 2 + math.cos(angle) * dist;
+        final py = size.height / 2 + math.sin(angle) * dist;
+        final r = (3.5 - pProgress * 2.0).clamp(1.0, 4.0);
+
+        final pAlpha = (logoAlpha * (1.0 - pProgress * 0.7)).clamp(0.0, 1.0);
+        burstPaint.color = (i % 2 == 0 ? CapsuleColors.cyanGlow : CapsuleColors.turquoise)
+            .withValues(alpha: pAlpha);
+        canvas.drawCircle(Offset(px, py), r, burstPaint);
+      }
+
+      // Draw "CAPSULE WARRIORS" Title
+      final titleSpan = TextSpan(
+        text: 'CAPSULE WARRIORS',
+        style: GoogleFonts.orbitron(
+          fontSize: (size.width < 600 ? 28.0 : 44.0),
+          fontWeight: FontWeight.w900,
+          letterSpacing: 4.0,
+          color: Colors.white.withValues(alpha: logoAlpha),
+          shadows: [
+            Shadow(
+              color: CapsuleColors.cyanGlow.withValues(alpha: logoAlpha),
+              blurRadius: 24,
+            ),
+          ],
+        ),
+      );
+      final tp = TextPainter(
+        text: titleSpan,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2));
+    }
+
+    // Logo fading out, capsule appears at left powered down (t in 1.5 -> 2.3)
+    if (t > 1.5) {
+      final capAlpha = ((t - 1.5) / 0.8).clamp(0.0, 1.0);
+      final capPos = Offset(size.width * 0.2, size.height * 0.5);
+      _drawCapsuleBody(canvas, capPos, poweredOn: false, alpha: capAlpha);
+    }
+  }
+
+  void _paintStep3(Canvas canvas, Size size, double t) {
+    // 2.3s -> 2.8s: Propulsion lights up: orange glow trail appears
+    final stepProgress = ((t - 2.3) / 0.5).clamp(0.0, 1.0);
+    final capPos = Offset(size.width * 0.2, size.height * 0.5);
+
+    // Thruster ignition flash
+    _drawCapsuleBody(canvas, capPos, poweredOn: true, thrusterIntensity: stepProgress, alpha: 1.0);
+
+    // Flash glow
+    canvas.drawCircle(
+      Offset(capPos.dx - 30, capPos.dy),
+      35 * stepProgress,
+      Paint()
+        ..color = CapsuleColors.dangerOrange.withValues(alpha: 0.4 * stepProgress)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+    );
+  }
+
+  void _paintStep4(Canvas canvas, Size size, double t) {
+    // 2.8s -> 3.8s: Capsule starts moving right, stomach walls slide in from edges
+    final stepProgress = ((t - 2.8) / 1.0).clamp(0.0, 1.0);
+
+    // Stomach walls slide in from top and bottom
+    _drawSlidingStomachWalls(canvas, size, stepProgress);
+
+    // Capsule moves from 0.2 to 0.45 width
+    final curX = size.width * (0.2 + 0.25 * Curves.easeInOut.transform(stepProgress));
+    final curY = size.height * 0.5 + math.sin(stepProgress * math.pi * 3) * 8.0;
+    _drawCapsuleBody(canvas, Offset(curX, curY), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
+  }
+
+  void _paintStep5(Canvas canvas, Size size, double t) {
+    // 3.8s -> 4.8s: First enemy appears on right, capsule fires, enemy explodes
+    final stepProgress = ((t - 3.8) / 1.0).clamp(0.0, 1.0);
+
+    // Stomach walls visible
+    _drawSlidingStomachWalls(canvas, size, 1.0);
+
+    final capPos = Offset(size.width * 0.45, size.height * 0.5);
+    _drawCapsuleBody(canvas, capPos, poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
+
+    final enemyPos = Offset(size.width * 0.78, size.height * 0.5);
+
+    // Sub-phases:
+    // 0.0 -> 0.35: Enemy enters from right
+    // 0.35 -> 0.55: Laser shoots from capsule to enemy
+    // 0.55 -> 1.00: Enemy explodes into shockwave and sparks!
+    if (stepProgress < 0.55) {
+      final enemyAlpha = (stepProgress / 0.2).clamp(0.0, 1.0);
+      _drawEnemy(canvas, enemyPos, enemyAlpha);
+    }
+
+    if (stepProgress >= 0.30 && stepProgress <= 0.60) {
+      // Laser beam flying
+      final laserP = ((stepProgress - 0.30) / 0.25).clamp(0.0, 1.0);
+      final lx1 = capPos.dx + 30;
+      final lx2 = lx1 + (enemyPos.dx - lx1) * laserP;
+      final laserPaint = Paint()
+        ..color = CapsuleColors.cyanGlow
+        ..strokeWidth = 4.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(lx1, capPos.dy), Offset(lx2, capPos.dy), laserPaint);
+
+      // Glow around beam
+      canvas.drawLine(
+        Offset(lx1, capPos.dy),
+        Offset(lx2, capPos.dy),
+        Paint()
+          ..color = CapsuleColors.electricBlue.withValues(alpha: 0.6)
+          ..strokeWidth = 8.0
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+    }
+
+    if (stepProgress > 0.55) {
+      // Enemy explosion
+      final expProgress = ((stepProgress - 0.55) / 0.45).clamp(0.0, 1.0);
+      _drawExplosion(canvas, enemyPos, expProgress);
+    }
+  }
+
+  void _paintStep6(Canvas canvas, Size size, double t) {
+    // 4.8s -> 5.6s: Text: "LA MISSION COMMENCE..." slides in
+    final stepProgress = ((t - 4.8) / 0.8).clamp(0.0, 1.0);
+
+    _drawSlidingStomachWalls(canvas, size, 1.0);
+
+    // Capsule continues gliding
+    final capX = size.width * (0.45 + 0.15 * stepProgress);
+    _drawCapsuleBody(canvas, Offset(capX, size.height * 0.5), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
+
+    // Text slides in with glow
+    final textAlpha = Curves.easeOut.transform(stepProgress);
+    final textOffset = (1.0 - textAlpha) * 40.0;
+
+    final missionSpan = TextSpan(
+      text: 'LA MISSION COMMENCE...',
+      style: GoogleFonts.orbitron(
+        fontSize: size.width < 600 ? 22.0 : 36.0,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 3.5,
+        color: CapsuleColors.turquoise.withValues(alpha: textAlpha),
+        shadows: [
+          Shadow(
+            color: CapsuleColors.cyanGlow.withValues(alpha: textAlpha),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+    );
+    final tp = TextPainter(
+      text: missionSpan,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset((size.width - tp.width) / 2, size.height * 0.7 - textOffset),
+    );
+  }
+
+  void _paintStep7(Canvas canvas, Size size, double t) {
+    // 5.6s -> 6.1s: Transition wipe (iris wipe / cyan curtain)
+    final stepProgress = ((t - 5.6) / 0.5).clamp(0.0, 1.0);
+
+    _drawSlidingStomachWalls(canvas, size, 1.0);
+    _drawCapsuleBody(canvas, Offset(size.width * 0.65, size.height * 0.5), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
+
+    // Fullscreen Wipe Overlay
+    final wipePaint = Paint()..color = CapsuleColors.darkNavy.withValues(alpha: stepProgress);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), wipePaint);
+
+    // Cyan wipe scanline
+    final lineX = size.width * stepProgress;
+    canvas.drawLine(
+      Offset(lineX, 0),
+      Offset(lineX, size.height),
+      Paint()
+        ..color = CapsuleColors.cyanGlow.withValues(alpha: (1.0 - stepProgress) * 0.8)
+        ..strokeWidth = 6.0
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
+  }
+
+  void _drawSlidingStomachWalls(Canvas canvas, Size size, double progress) {
+    final topY = size.height * 0.16 * progress;
+    final botY = size.height - (size.height * 0.16 * progress);
+
+    final topPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(0, topY)
+      ..quadraticBezierTo(size.width * 0.5, topY + 15 * math.sin(progress * 3), size.width, topY)
+      ..lineTo(size.width, 0)
+      ..close();
+
+    final botPath = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, botY)
+      ..quadraticBezierTo(size.width * 0.5, botY - 15 * math.sin(progress * 3), size.width, botY)
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final wallPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF030712), Color(0xFF3B0764), Color(0xFF030712)],
-      ).createShader(bgRect);
-    canvas.drawRect(bgRect, bgPaint);
+        colors: [Color(0xFF881337), Color(0xFF4C0519)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    final linePaint = Paint()
-      ..color = const Color(0xFF881337).withValues(alpha: 0.25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    canvas.drawPath(topPath, wallPaint);
+    canvas.drawPath(botPath, wallPaint);
+  }
 
-    for (int i = 0; i < 5; i++) {
-      final y = size.height * (0.2 + i * 0.15) + math.sin(t + i) * 20.0;
-      final path = Path()
-        ..moveTo(0, y)
-        ..quadraticBezierTo(size.width * 0.5, y + math.cos(t + i) * 30.0, size.width, y);
-      canvas.drawPath(path, linePaint);
+  void _drawCapsuleBody(
+    Canvas canvas,
+    Offset pos, {
+    required bool poweredOn,
+    double thrusterIntensity = 0.0,
+    required double alpha,
+  }) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+
+    // Propulsion Trail
+    if (poweredOn && thrusterIntensity > 0) {
+      final trailLength = 55.0 * thrusterIntensity;
+      final trailPath = Path()
+        ..moveTo(-26, -8)
+        ..lineTo(-26 - trailLength, 0)
+        ..lineTo(-26, 8)
+        ..close();
+      canvas.drawPath(
+        trailPath,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              CapsuleColors.dangerOrange.withValues(alpha: alpha * thrusterIntensity),
+              CapsuleColors.cyanGlow.withValues(alpha: alpha * thrusterIntensity * 0.6),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromLTWH(-26 - trailLength, -8, trailLength, 16)),
+      );
+    }
+
+    // Pill Body
+    const bodyRect = Rect.fromLTWH(-26, -16, 52, 32);
+    final rrect = RRect.fromRectAndRadius(bodyRect, const Radius.circular(16));
+
+    final basePaint = Paint()
+      ..color = (poweredOn ? const Color(0xFFCBD5E1) : const Color(0xFF475569))
+          .withValues(alpha: alpha);
+    canvas.drawRRect(rrect, basePaint);
+
+    if (poweredOn) {
+      // Front half cyan
+      canvas.save();
+      canvas.clipRect(const Rect.fromLTWH(0, -16, 26, 32));
+      canvas.drawRRect(
+        rrect,
+        Paint()..color = CapsuleColors.cyanGlow.withValues(alpha: alpha),
+      );
+      canvas.restore();
+    }
+
+    // Visor
+    final visorPaint = Paint()
+      ..color = (poweredOn ? CapsuleColors.electricBlue : const Color(0xFF334155))
+          .withValues(alpha: alpha);
+    canvas.drawOval(const Rect.fromLTWH(4, -8, 14, 16), visorPaint);
+
+    canvas.restore();
+  }
+
+  void _drawEnemy(Canvas canvas, Offset pos, double alpha) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+
+    final enemyPaint = Paint()..color = CapsuleColors.dangerRed.withValues(alpha: alpha);
+    canvas.drawCircle(Offset.zero, 20, enemyPaint);
+
+    // Spikes
+    final spikePaint = Paint()
+      ..color = CapsuleColors.dangerOrange.withValues(alpha: alpha)
+      ..strokeWidth = 2.5;
+    for (int i = 0; i < 6; i++) {
+      final angle = i * math.pi / 3;
+      canvas.drawLine(
+        Offset(math.cos(angle) * 20, math.sin(angle) * 20),
+        Offset(math.cos(angle) * 28, math.sin(angle) * 28),
+        spikePaint,
+      );
+    }
+    canvas.restore();
+  }
+
+  void _drawExplosion(Canvas canvas, Offset pos, double expProgress) {
+    // Expanding blast shockwave
+    final radius = expProgress * 65.0;
+    final expAlpha = (1.0 - expProgress).clamp(0.0, 1.0);
+
+    canvas.drawCircle(
+      pos,
+      radius,
+      Paint()
+        ..color = CapsuleColors.dangerOrange.withValues(alpha: expAlpha * 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0,
+    );
+
+    // Particle debris
+    final rand = math.Random(77);
+    final sparkPaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 24; i++) {
+      final angle = rand.nextDouble() * math.pi * 2;
+      final speed = 40.0 + rand.nextDouble() * 90.0;
+      final dist = expProgress * speed;
+      final px = pos.dx + math.cos(angle) * dist;
+      final py = pos.dy + math.sin(angle) * dist;
+
+      sparkPaint.color = (i % 2 == 0 ? CapsuleColors.gold : CapsuleColors.dangerRed)
+          .withValues(alpha: expAlpha);
+      canvas.drawCircle(Offset(px, py), 2.5 * (1.0 - expProgress * 0.5), sparkPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _IntroBgPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _CinematicIntroPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

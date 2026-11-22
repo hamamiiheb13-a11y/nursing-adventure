@@ -5,8 +5,14 @@ import 'package:nursing_adventure/models/game_progress.dart';
 
 void main() {
   group('Gastro Quest 33 Questions & 7 Worlds Validation', () {
-    test('Must contain exactly 33 questions', () {
+    test('Must contain exactly 33 questions and 7 worlds', () {
       expect(allGastroQuestions.length, 33);
+      expect(GastroWorld.worlds.length, 7);
+      for (int i = 0; i < 7; i++) {
+        expect(GastroWorld.worlds[i].id, i + 1);
+        expect(GastroWorld.worlds[i].questionIds.isNotEmpty, true);
+        expect(GastroWorld.worlds[i].bossName.isNotEmpty, true);
+      }
     });
 
     test('Questions distribution across 7 worlds must be 4, 5, 5, 4, 4, 8, 3', () {
@@ -55,70 +61,71 @@ void main() {
   });
 
   group('GameProgress Logic & Persistence', () {
-    test('Initial progress starts at Level 1 unlocked', () {
+    test('Initial progress starts at Stage 1 unlocked', () {
       final progress = GameProgress();
-      expect(progress.currentUnlockedLevel, 1);
-      expect(progress.isLevelUnlocked(1), true);
-      expect(progress.isLevelUnlocked(2), false);
+      expect(progress.currentStage, 1);
+      expect(progress.isWorldUnlocked(1), true);
+      expect(progress.isWorldUnlocked(2), false);
       expect(progress.completedCount, 0);
-      expect(progress.totalXp, 0);
+      expect(progress.totalXP, 0);
     });
 
-    test('Completing a level unlocks next level and updates stats', () {
+    test('Completing Stage 1 unlocks Stage 2 and updates stats', () {
       final progress = GameProgress();
-      progress.completeLevel(1, 0, true);
+      progress.answerQuestion(1, true);
+      progress.completeStage(1, 3, 500);
 
-      expect(progress.isLevelCompleted(1), true);
-      expect(progress.currentUnlockedLevel, 2);
-      expect(progress.isLevelUnlocked(2), true);
-      expect(progress.isLevelUnlocked(3), false);
-      expect(progress.totalXp, 100);
+      expect(progress.isWorldCompleted(1), true);
+      expect(progress.currentStage, 2);
+      expect(progress.isWorldUnlocked(2), true);
+      expect(progress.isWorldUnlocked(3), false);
+      expect(progress.totalXP, 350); // 50 for question + 3*100 for stage
       expect(progress.getStars(1), 3);
       expect(progress.correctCount, 1);
-      expect(progress.wrongCount, 0);
     });
 
-    test('Incorrect answer still unlocks next level for pedagogical progression', () {
+    test('Incorrect answer adds question to revision queue', () {
       final progress = GameProgress();
-      progress.completeLevel(1, 1, false);
+      progress.answerQuestion(1, false);
 
-      expect(progress.isLevelCompleted(1), true);
-      expect(progress.currentUnlockedLevel, 2);
-      expect(progress.totalXp, 30);
-      expect(progress.getStars(1), 1);
-      expect(progress.correctCount, 0);
-      expect(progress.wrongCount, 1);
+      expect(progress.revisionQueue.contains(1), true);
+      expect(progress.masteredQuestions.contains(1), false);
+      expect(progress.questionsInRevisionCount, 1);
+
+      // Answering correctly later removes it from revision and masters it
+      progress.answerQuestion(1, true);
+      expect(progress.revisionQueue.contains(1), false);
+      expect(progress.masteredQuestions.contains(1), true);
     });
 
     test('Serialization and deserialization preserve full state', () {
       final progress = GameProgress();
-      progress.completeLevel(1, 0, true);
-      progress.completeLevel(2, 1, true);
-      progress.completeLevel(3, 0, false);
+      progress.answerQuestion(1, true, selectedOptionIndex: 0);
+      progress.answerQuestion(2, false, selectedOptionIndex: 1);
+      progress.completeStage(1, 3, 1000);
 
       final jsonString = progress.serialize();
       final restored = GameProgress.deserialize(jsonString);
 
-      expect(restored.currentUnlockedLevel, 4);
-      expect(restored.completedCount, 3);
-      expect(restored.totalXp, 230); // 100 + 100 + 30
+      expect(restored.currentStage, 2);
+      expect(restored.completedCount, 1);
       expect(restored.getStars(1), 3);
-      expect(restored.getStars(3), 1);
+      expect(restored.userAnswers[1], 0);
       expect(restored.userAnswers[2], 1);
-      expect(restored.isCorrectMap[2], true);
-      expect(restored.isCorrectMap[3], false);
+      expect(restored.questionsAnswered[1], true);
+      expect(restored.questionsAnswered[2], false);
+      expect(restored.revisionQueue.contains(2), true);
     });
 
-    test('Completing all levels in World 1 unlocks World 1 badge', () {
+    test('Completing all 7 stages unlocks final state', () {
       final progress = GameProgress();
-      progress.completeLevel(1, 0, true);
-      progress.completeLevel(2, 1, true);
-      progress.completeLevel(3, 2, true);
-      progress.completeLevel(4, 0, true);
-
-      expect(progress.isWorldCompleted(1), true);
-      expect(progress.unlockedBadges.contains('badge_world_1'), true);
-      expect(progress.isWorldUnlocked(2), true);
+      for (int i = 1; i <= 7; i++) {
+        progress.completeStage(i, 3, 1000);
+      }
+      expect(progress.completedCount, 7);
+      for (int i = 1; i <= 7; i++) {
+        expect(progress.isWorldCompleted(i), true);
+      }
     });
   });
 }

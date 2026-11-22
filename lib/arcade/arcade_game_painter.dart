@@ -4,11 +4,15 @@ import 'arcade_models.dart';
 import 'arcade_game_controller.dart';
 import 'weapon_system.dart';
 import 'enemy_system.dart';
+import 'parallax_background_system.dart';
 
 class ArcadeGamePainter extends CustomPainter {
   final ArcadeGameController controller;
+  late final ParallaxBackgroundSystem _parallax;
 
-  ArcadeGamePainter({required this.controller}) : super(repaint: controller);
+  ArcadeGamePainter({required this.controller}) : super(repaint: controller) {
+    _parallax = ParallaxBackgroundSystem(stageId: controller.level);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -70,40 +74,10 @@ class ArcadeGamePainter extends CustomPainter {
   }
 
   // ==========================================================================
-  // 1. PARALLAX VASCULAR BACKGROUND
+  // 1. 3-LAYER PARALLAX BIOLOGICAL BACKGROUND (SPEED x0.2, x0.5, x1.0)
   // ==========================================================================
   void _drawParallaxBackground(Canvas canvas, Size size) {
-    final world = controller.world;
-
-    // Deep organic red/burgundy gradient
-    final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final bgPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          world.tunnelDeepColor,
-          world.tunnelWallColor.withValues(alpha: 0.35),
-          world.tunnelDeepColor,
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(bgRect);
-    canvas.drawRect(bgRect, bgPaint);
-
-    // Vascular tissue texture (soft organic arches)
-    final tissuePaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.22)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 38.0;
-
-    final parallaxOffset = controller.cameraX * 0.15;
-    for (int i = 0; i < 4; i++) {
-      final archX = (i * 320.0 - (parallaxOffset % 320.0));
-      final path = Path()
-        ..moveTo(archX, -20)
-        ..quadraticBezierTo(archX + 160.0, size.height * 0.45, archX + 320.0, -20);
-      canvas.drawPath(path, tissuePaint);
-    }
+    _parallax.render(canvas, size, controller.cameraX, controller.gameTime);
   }
 
   // ==========================================================================

@@ -35,7 +35,7 @@ class StorageService {
     } catch (_) {}
   }
 
-  Future<void> resetProgress() async {
+  Future<void> clearProgress() async {
     _cachedProgress = GameProgress();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -43,5 +43,15 @@ class StorageService {
     } catch (_) {}
   }
 
-  Future<void> clearProgress() => resetProgress();
+  Future<void> resetProgress() => clearProgress();
+
+  Future<bool> hasExistingProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_kProgressKey);
+      return data != null && data.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
 }

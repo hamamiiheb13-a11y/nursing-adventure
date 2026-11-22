@@ -1,126 +1,146 @@
 import 'dart:convert';
 import 'gastro_world.dart';
 
+class StageResult {
+  final int stageId;
+  final int score;
+  final int stars; // 0-3
+  final bool completed;
+  final DateTime? completedAt;
+
+  const StageResult({
+    required this.stageId,
+    required this.score,
+    required this.stars,
+    this.completed = true,
+    this.completedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'stageId': stageId,
+        'score': score,
+        'stars': stars,
+        'completed': completed,
+        'completedAt': completedAt?.toIso8601String(),
+      };
+
+  factory StageResult.fromJson(Map<String, dynamic> json) {
+    return StageResult(
+      stageId: json['stageId'] as int? ?? 1,
+      score: json['score'] as int? ?? 0,
+      stars: json['stars'] as int? ?? 0,
+      completed: json['completed'] as bool? ?? false,
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'] as String)
+          : null,
+    );
+  }
+}
+
 class GameProgress {
-  int currentUnlockedLevel;
-  Set<int> completedLevels;
-  Map<int, int> levelStars; // level -> stars (1, 2, 3)
-  Map<int, int> userAnswers; // level -> selectedOptionIndex
-  Map<int, bool> isCorrectMap; // level -> boolean
-  int totalXp;
+  int currentStage; // 1-7
+  Map<int, bool> questionsAnswered; // questionId -> isCorrect
+  Map<int, StageResult> stageResults; // stageId -> StageResult
+  int totalScore;
+  int totalXP;
+  List<String> unlockedWeapons;
+  List<int> revisionQueue; // questionIds to repeat
+  Set<int> masteredQuestions;
+
+  // Additional backward-compatible stats
   Set<String> unlockedBadges;
   DateTime? lastPlayed;
-
-  // Spaced Repetition & Revision Queue
-  List<int> revisionQueue; // Question IDs requiring revision
-  Set<int> masteredQuestions; // Question IDs mastered after revision
-  Map<int, int> questionAttempts; // questionId -> total attempts
-  Map<int, int> questionCorrectCount; // questionId -> correct count
-  Map<int, int> questionIncorrectCount; // questionId -> incorrect count
-
-  // Arcade & Weapons specific stats
-  int arcadeHighScore;
+  Map<int, int> userAnswers; // questionId -> selectedOptionIndex
+  Map<int, int> questionAttempts; // questionId -> attempts
+  Map<int, int> questionCorrectCount;
+  Map<int, int> questionIncorrectCount;
   int maxCombo;
   int totalCrystals;
-  Set<String> unlockedWeapons;
   String equippedWeapon;
 
-  int get totalScore => arcadeHighScore;
-  set totalScore(int val) => arcadeHighScore = val;
-
   GameProgress({
-    this.currentUnlockedLevel = 1,
-    Set<int>? completedLevels,
-    Map<int, int>? levelStars,
-    Map<int, int>? userAnswers,
-    Map<int, bool>? isCorrectMap,
-    this.totalXp = 0,
-    Set<String>? unlockedBadges,
-    this.lastPlayed,
+    this.currentStage = 1,
+    Map<int, bool>? questionsAnswered,
+    Map<int, StageResult>? stageResults,
+    this.totalScore = 0,
+    this.totalXP = 0,
+    List<String>? unlockedWeapons,
     List<int>? revisionQueue,
     Set<int>? masteredQuestions,
+    Set<String>? unlockedBadges,
+    this.lastPlayed,
+    Map<int, int>? userAnswers,
     Map<int, int>? questionAttempts,
     Map<int, int>? questionCorrectCount,
     Map<int, int>? questionIncorrectCount,
-    this.arcadeHighScore = 0,
     this.maxCombo = 0,
     this.totalCrystals = 0,
-    Set<String>? unlockedWeapons,
     this.equippedWeapon = 'Laser Médical MK-I',
-  })  : completedLevels = completedLevels ?? <int>{},
-        levelStars = levelStars ?? <int, int>{},
-        userAnswers = userAnswers ?? <int, int>{},
-        isCorrectMap = isCorrectMap ?? <int, bool>{},
-        unlockedBadges = unlockedBadges ?? <String>{},
+  })  : questionsAnswered = questionsAnswered ?? <int, bool>{},
+        stageResults = stageResults ?? <int, StageResult>{},
+        unlockedWeapons = unlockedWeapons ?? <String>['Laser Médical MK-I'],
         revisionQueue = revisionQueue ?? <int>[],
         masteredQuestions = masteredQuestions ?? <int>{},
+        unlockedBadges = unlockedBadges ?? <String>{},
+        userAnswers = userAnswers ?? <int, int>{},
         questionAttempts = questionAttempts ?? <int, int>{},
         questionCorrectCount = questionCorrectCount ?? <int, int>{},
-        questionIncorrectCount = questionIncorrectCount ?? <int, int>{},
-        unlockedWeapons = unlockedWeapons ?? <String>{'Laser Médical MK-I'};
+        questionIncorrectCount = questionIncorrectCount ?? <int, int>{};
+
+  // Backward compatibility getters & setters
+  int get currentUnlockedLevel => currentStage;
+  set currentUnlockedLevel(int val) {
+    currentStage = val.clamp(1, 7);
+  }
+
+  int get totalXp => totalXP;
+  set totalXp(int val) => totalXP = val;
+
+  int get arcadeHighScore => totalScore;
+  set arcadeHighScore(int val) => totalScore = val;
+
+  Map<int, bool> get isCorrectMap => questionsAnswered;
+
+  Set<int> get completedLevels => stageResults.entries
+      .where((e) => e.value.completed)
+      .map((e) => e.key)
+      .toSet();
+
+  Map<int, int> get levelStars =>
+      stageResults.map((k, v) => MapEntry(k, v.stars));
+
+  int get completedCount => stageResults.values.where((r) => r.completed).length;
+  int get totalStars => stageResults.values.fold(0, (sum, r) => sum + r.stars);
+  int get questionsInRevisionCount => revisionQueue.length;
+  int get questionsMasteredCount => masteredQuestions.length;
+  int get totalAttemptsCount => questionAttempts.values.fold(0, (sum, a) => sum + a);
+  int get totalCorrectAnswersCount => questionCorrectCount.values.fold(0, (sum, c) => sum + c);
+  int get totalIncorrectAnswersCount => questionIncorrectCount.values.fold(0, (sum, i) => sum + i);
+  int get correctCount => questionsAnswered.values.where((c) => c).length;
+  int get wrongCount => totalIncorrectAnswersCount;
+  double get accuracyRate {
+    final total = questionsAnswered.length;
+    if (total == 0) return 0.0;
+    return (correctCount / total) * 100.0;
+  }
 
   bool isLevelUnlocked(int level) {
     if (level <= 1) return true;
-    return level <= currentUnlockedLevel;
-  }
-
-  bool isLevelCompleted(int level) {
-    return completedLevels.contains(level);
-  }
-
-  int getStars(int level) {
-    return levelStars[level] ?? 0;
-  }
-
-  int get totalStars {
-    return levelStars.values.fold(0, (sum, val) => sum + val);
-  }
-
-  int get completedCount => completedLevels.length;
-
-  double get completionPercentage => (completedCount / 33.0).clamp(0.0, 1.0);
-
-  int get correctCount {
-    return isCorrectMap.values.where((c) => c == true).length;
-  }
-
-  int get wrongCount {
-    return completedLevels.length - correctCount;
-  }
-
-  double get accuracyRate {
-    if (completedLevels.isEmpty) return 0.0;
-    return (correctCount / completedLevels.length.toDouble()) * 100.0;
-  }
-
-  bool isWorldCompleted(int worldId) {
-    final world = GastroWorld.worlds.firstWhere((w) => w.id == worldId);
-    for (int lvl = world.startLevel; lvl <= world.endLevel; lvl++) {
-      if (!completedLevels.contains(lvl)) return false;
-    }
-    return true;
-  }
-
-  bool isWorldUnlocked(int worldId) {
-    if (worldId == 1) return true;
-    final world = GastroWorld.worlds.firstWhere((w) => w.id == worldId);
-    return isLevelUnlocked(world.startLevel);
+    final world = GastroWorld.getWorldForLevel(level);
+    return isWorldUnlocked(world.id);
   }
 
   int getCompletedCountInWorld(int worldId) {
-    final world = GastroWorld.worlds.firstWhere((w) => w.id == worldId);
+    final world = GastroWorld.worlds.firstWhere(
+      (w) => w.id == worldId,
+      orElse: () => GastroWorld.worlds.first,
+    );
     int count = 0;
-    for (int lvl = world.startLevel; lvl <= world.endLevel; lvl++) {
-      if (completedLevels.contains(lvl)) count++;
+    for (final qId in world.questionIds) {
+      if (questionsAnswered[qId] == true) count++;
     }
     return count;
   }
-
-  int get questionsInRevisionCount => revisionQueue.length;
-  int get questionsMasteredCount => masteredQuestions.length;
-  int get totalAttemptsCount => questionAttempts.values.fold(0, (sum, val) => sum + val);
-  int get totalCorrectAnswersCount => questionCorrectCount.values.fold(0, (sum, val) => sum + val);
-  int get totalIncorrectAnswersCount => questionIncorrectCount.values.fold(0, (sum, val) => sum + val);
 
   void recordQuestionAnswer({
     required int questionId,
@@ -128,283 +148,252 @@ class GameProgress {
     required bool isCorrect,
     int earnedXp = 0,
   }) {
-    // Record attempts
-    questionAttempts[questionId] = (questionAttempts[questionId] ?? 0) + 1;
-    userAnswers[questionId] = selectedOptionIndex;
-    isCorrectMap[questionId] = isCorrect;
+    answerQuestion(questionId, isCorrect, selectedOptionIndex: selectedOptionIndex);
+    if (earnedXp > 0) totalXP += earnedXp;
+  }
 
+  void completeLevel(int level, [dynamic p1, dynamic p2, dynamic p3]) {
+    int stars = 3;
+    int score = 0;
+    int crystals = 0;
+
+    if (p1 is int) {
+      stars = p1;
+    }
+    if (p2 is int) {
+      score = p2;
+    }
+    if (p3 is int) {
+      crystals = p3;
+    }
+
+    totalCrystals += crystals;
+    final world = GastroWorld.getWorldForLevel(level);
+    completeStage(world.id, stars, score);
+  }
+
+  void updateArcadeStats({
+    required int score,
+    int? maxCombo,
+    int? combo,
+    int crystals = 0,
+  }) {
+    if (score > totalScore) totalScore = score;
+    final finalCombo = maxCombo ?? combo ?? 0;
+    if (finalCombo > this.maxCombo) this.maxCombo = finalCombo;
+    totalCrystals += crystals;
+    lastPlayed = DateTime.now();
+  }
+
+  bool isLevelCompleted(int stageId) {
+    return stageResults[stageId]?.completed ?? false;
+  }
+
+  int getStars(int stageId) {
+    return stageResults[stageId]?.stars ?? 0;
+  }
+
+  bool isWorldUnlocked(int worldId) {
+    if (worldId == 1) return true;
+    return isLevelCompleted(worldId - 1);
+  }
+
+  bool isWorldCompleted(int worldId) {
+    return isLevelCompleted(worldId);
+  }
+
+  double calculateWorldCompletion(int worldId) {
+    final world = GastroWorld.worlds.firstWhere(
+      (w) => w.id == worldId,
+      orElse: () => GastroWorld.worlds.first,
+    );
+    if (world.questionIds.isEmpty) return 0.0;
+    int answered = 0;
+    for (final qId in world.questionIds) {
+      if (questionsAnswered.containsKey(qId)) answered++;
+    }
+    return (answered / world.questionIds.length).clamp(0.0, 1.0);
+  }
+
+  // Core API Methods
+
+  void answerQuestion(int questionId, bool isCorrect, {int? selectedOptionIndex}) {
+    questionsAnswered[questionId] = isCorrect;
+    if (selectedOptionIndex != null) {
+      userAnswers[questionId] = selectedOptionIndex;
+    }
+
+    questionAttempts[questionId] = (questionAttempts[questionId] ?? 0) + 1;
     if (isCorrect) {
       questionCorrectCount[questionId] = (questionCorrectCount[questionId] ?? 0) + 1;
-      // If it was in the revision queue, remove it and mark as mastered!
-      if (revisionQueue.contains(questionId)) {
-        revisionQueue.remove(questionId);
-        masteredQuestions.add(questionId);
-      } else if (!masteredQuestions.contains(questionId)) {
-        masteredQuestions.add(questionId);
-      }
+      totalXP += 50;
+      markMastered(questionId);
     } else {
       questionIncorrectCount[questionId] = (questionIncorrectCount[questionId] ?? 0) + 1;
-      // Add to revision queue if not present, and unmark from mastered
-      if (!revisionQueue.contains(questionId)) {
-        revisionQueue.add(questionId);
-      }
-      masteredQuestions.remove(questionId);
+      addToRevision(questionId);
     }
-
-    if (earnedXp > 0) {
-      totalXp += earnedXp;
-    }
-
     lastPlayed = DateTime.now();
-    _evaluateBadges();
   }
 
-  void completeLevel(int level, int selectedOptionIndex, bool isCorrect) {
-    completedLevels.add(level);
+  void completeStage(int stageId, int stars, int score) {
+    final prevResult = stageResults[stageId];
+    final bestScore = prevResult != null && prevResult.score > score ? prevResult.score : score;
+    final bestStars = prevResult != null && prevResult.stars > stars ? prevResult.stars : stars;
 
-    // Integrate with question repetition tracking
-    recordQuestionAnswer(
-      questionId: level,
-      selectedOptionIndex: selectedOptionIndex,
-      isCorrect: isCorrect,
+    stageResults[stageId] = StageResult(
+      stageId: stageId,
+      score: bestScore,
+      stars: bestStars,
+      completed: true,
+      completedAt: DateTime.now(),
     );
 
-    // Stars: 3 stars if correct, 1 star if incorrect (completed for learning)
-    final earnedStars = isCorrect ? 3 : 1;
-    final prevStars = levelStars[level] ?? 0;
-    if (earnedStars > prevStars) {
-      levelStars[level] = earnedStars;
+    totalScore += score;
+    totalXP += stars * 100;
+
+    if (stageId >= currentStage && currentStage < 7) {
+      currentStage = stageId + 1;
     }
 
-    // XP calculation: 100 XP for correct, 30 XP for learning completion
-    final addedXp = isCorrect ? 100 : 30;
-    totalXp += addedXp;
-
-    // Unlock next level if not already unlocked
-    if (level == currentUnlockedLevel && currentUnlockedLevel < 33) {
-      currentUnlockedLevel = level + 1;
+    // Unlock new weapon corresponding to world
+    final world = GastroWorld.worlds.firstWhere(
+      (w) => w.id == stageId,
+      orElse: () => GastroWorld.worlds.first,
+    );
+    if (!unlockedWeapons.contains(world.unlockedWeaponName)) {
+      unlockedWeapons.add(world.unlockedWeaponName);
     }
 
-    // Unlock weapon for this world if world is completed
-    for (final world in GastroWorld.worlds) {
-      if (isWorldCompleted(world.id)) {
-        unlockedWeapons.add(world.unlockedWeaponName);
-      }
-    }
-
-    // Check badges
-    _evaluateBadges();
     lastPlayed = DateTime.now();
   }
 
-  void equipWeapon(String weaponName) {
-    if (unlockedWeapons.contains(weaponName)) {
-      equippedWeapon = weaponName;
+  void addToRevision(int questionId) {
+    if (!revisionQueue.contains(questionId) && !masteredQuestions.contains(questionId)) {
+      revisionQueue.add(questionId);
     }
   }
 
-  void updateArcadeStats({int? score, int? combo, int? crystals}) {
-    if (score != null && score > arcadeHighScore) {
-      arcadeHighScore = score;
-    }
-    if (combo != null && combo > maxCombo) {
-      maxCombo = combo;
-    }
-    if (crystals != null) {
-      totalCrystals += crystals;
-    }
-    if (totalCrystals >= 100) {
-      unlockedBadges.add('badge_collector');
-    }
-    if (arcadeHighScore >= 2000) {
-      unlockedBadges.add('badge_arcade_pro');
-    }
+  void markMastered(int questionId) {
+    masteredQuestions.add(questionId);
+    revisionQueue.remove(questionId);
   }
 
-  void _evaluateBadges() {
-    // World completion badges
-    for (final world in GastroWorld.worlds) {
-      if (isWorldCompleted(world.id)) {
-        unlockedBadges.add('badge_world_${world.id}');
-      }
-    }
+  // Serialization
 
-    // Revision mastery badges
-    if (masteredQuestions.length >= 10) {
-      unlockedBadges.add('badge_revision_apprentice');
-    }
-    if (masteredQuestions.length >= 33) {
-      unlockedBadges.add('badge_revision_master');
-    }
-
-    // Global achievements
-    if (completedLevels.isNotEmpty) {
-      unlockedBadges.add('badge_first_step');
-    }
-    if (completedCount >= 16) {
-      unlockedBadges.add('badge_halfway');
-    }
-    if (completedCount >= 33) {
-      unlockedBadges.add('badge_master_gastro');
-    }
-    if (completedCount >= 33 && correctCount == 33) {
-      unlockedBadges.add('badge_perfection');
-    }
-    if (totalXp >= 1500) {
-      unlockedBadges.add('badge_xp_veteran');
-    }
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'currentUnlockedLevel': currentUnlockedLevel,
-      'completedLevels': completedLevels.toList(),
-      'levelStars': levelStars.map((k, v) => MapEntry(k.toString(), v)),
-      'userAnswers': userAnswers.map((k, v) => MapEntry(k.toString(), v)),
-      'isCorrectMap': isCorrectMap.map((k, v) => MapEntry(k.toString(), v)),
-      'totalXp': totalXp,
-      'unlockedBadges': unlockedBadges.toList(),
-      'lastPlayed': lastPlayed?.toIso8601String(),
-      'revisionQueue': revisionQueue,
-      'masteredQuestions': masteredQuestions.toList(),
-      'questionAttempts': questionAttempts.map((k, v) => MapEntry(k.toString(), v)),
-      'questionCorrectCount': questionCorrectCount.map((k, v) => MapEntry(k.toString(), v)),
-      'questionIncorrectCount': questionIncorrectCount.map((k, v) => MapEntry(k.toString(), v)),
-      'arcadeHighScore': arcadeHighScore,
-      'maxCombo': maxCombo,
-      'totalCrystals': totalCrystals,
-      'unlockedWeapons': unlockedWeapons.toList(),
-      'equippedWeapon': equippedWeapon,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'currentStage': currentStage,
+        'questionsAnswered': questionsAnswered.map((k, v) => MapEntry(k.toString(), v)),
+        'stageResults': stageResults.map((k, v) => MapEntry(k.toString(), v.toJson())),
+        'totalScore': totalScore,
+        'totalXP': totalXP,
+        'unlockedWeapons': unlockedWeapons,
+        'revisionQueue': revisionQueue,
+        'masteredQuestions': masteredQuestions.toList(),
+        'unlockedBadges': unlockedBadges.toList(),
+        'lastPlayed': lastPlayed?.toIso8601String(),
+        'userAnswers': userAnswers.map((k, v) => MapEntry(k.toString(), v)),
+        'questionAttempts': questionAttempts.map((k, v) => MapEntry(k.toString(), v)),
+        'questionCorrectCount': questionCorrectCount.map((k, v) => MapEntry(k.toString(), v)),
+        'questionIncorrectCount': questionIncorrectCount.map((k, v) => MapEntry(k.toString(), v)),
+        'maxCombo': maxCombo,
+        'totalCrystals': totalCrystals,
+        'equippedWeapon': equippedWeapon,
+      };
 
   factory GameProgress.fromJson(Map<String, dynamic> json) {
-    final Map<int, int> stars = {};
-    if (json['levelStars'] != null) {
-      (json['levelStars'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is int) stars[key] = v;
-      });
-    }
-
-    final Map<int, int> answers = {};
-    if (json['userAnswers'] != null) {
-      (json['userAnswers'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is int) answers[key] = v;
-      });
-    }
-
-    final Map<int, bool> correctMap = {};
-    if (json['isCorrectMap'] != null) {
-      (json['isCorrectMap'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is bool) correctMap[key] = v;
-      });
-    }
-
-    final completed = (json['completedLevels'] as List<dynamic>?)
-            ?.map((e) => (e as num).toInt())
-            .toSet() ??
-        <int>{};
-
-    final badges = (json['unlockedBadges'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toSet() ??
-        <String>{};
-
-    final revQueue = (json['revisionQueue'] as List<dynamic>?)
-            ?.map((e) => (e as num).toInt())
-            .toList() ??
-        <int>[];
-
-    final mastered = (json['masteredQuestions'] as List<dynamic>?)
-            ?.map((e) => (e as num).toInt())
-            .toSet() ??
-        <int>{};
-
-    final Map<int, int> attempts = {};
-    if (json['questionAttempts'] != null) {
-      (json['questionAttempts'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is int) attempts[key] = v;
-      });
-    }
-
-    final Map<int, int> correctCountMap = {};
-    if (json['questionCorrectCount'] != null) {
-      (json['questionCorrectCount'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is int) correctCountMap[key] = v;
-      });
-    }
-
-    final Map<int, int> incorrectCountMap = {};
-    if (json['questionIncorrectCount'] != null) {
-      (json['questionIncorrectCount'] as Map<String, dynamic>).forEach((k, v) {
-        final key = int.tryParse(k);
-        if (key != null && v is int) incorrectCountMap[key] = v;
-      });
-    }
-
-    final weapons = (json['unlockedWeapons'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toSet() ??
-        <String>{'Laser Médical MK-I'};
-
-    return GameProgress(
-      currentUnlockedLevel: (json['currentUnlockedLevel'] as num?)?.toInt() ?? 1,
-      completedLevels: completed,
-      levelStars: stars,
-      userAnswers: answers,
-      isCorrectMap: correctMap,
-      totalXp: (json['totalXp'] as num?)?.toInt() ?? 0,
-      unlockedBadges: badges,
-      lastPlayed: json['lastPlayed'] != null
-          ? DateTime.tryParse(json['lastPlayed'] as String)
-          : null,
-      revisionQueue: revQueue,
-      masteredQuestions: mastered,
-      questionAttempts: attempts,
-      questionCorrectCount: correctCountMap,
-      questionIncorrectCount: incorrectCountMap,
-      arcadeHighScore: (json['arcadeHighScore'] as num?)?.toInt() ?? 0,
-      maxCombo: (json['maxCombo'] as num?)?.toInt() ?? 0,
-      totalCrystals: (json['totalCrystals'] as num?)?.toInt() ?? 0,
-      unlockedWeapons: weapons,
-      equippedWeapon: (json['equippedWeapon'] as String?) ?? 'Laser Médical MK-I',
+    final progress = GameProgress(
+      currentStage: json['currentStage'] as int? ?? 1,
+      totalScore: json['totalScore'] as int? ?? (json['arcadeHighScore'] as int? ?? 0),
+      totalXP: json['totalXP'] as int? ?? (json['totalXp'] as int? ?? 0),
+      unlockedWeapons: (json['unlockedWeapons'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      revisionQueue: (json['revisionQueue'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
+      masteredQuestions: (json['masteredQuestions'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toSet(),
+      unlockedBadges: (json['unlockedBadges'] as List<dynamic>?)?.map((e) => e.toString()).toSet(),
+      lastPlayed: json['lastPlayed'] != null ? DateTime.tryParse(json['lastPlayed'] as String) : null,
+      maxCombo: json['maxCombo'] as int? ?? 0,
+      totalCrystals: json['totalCrystals'] as int? ?? 0,
+      equippedWeapon: json['equippedWeapon'] as String? ?? 'Laser Médical MK-I',
     );
+
+    if (json['questionsAnswered'] is Map) {
+      final map = json['questionsAnswered'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is bool) {
+          progress.questionsAnswered[id] = v;
+        }
+      });
+    } else if (json['isCorrectMap'] is Map) {
+      final map = json['isCorrectMap'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is bool) {
+          progress.questionsAnswered[id] = v;
+        }
+      });
+    }
+
+    if (json['stageResults'] is Map) {
+      final map = json['stageResults'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is Map<String, dynamic>) {
+          progress.stageResults[id] = StageResult.fromJson(v);
+        }
+      });
+    }
+
+    if (json['userAnswers'] is Map) {
+      final map = json['userAnswers'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is num) {
+          progress.userAnswers[id] = v.toInt();
+        }
+      });
+    }
+
+    if (json['questionAttempts'] is Map) {
+      final map = json['questionAttempts'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is num) {
+          progress.questionAttempts[id] = v.toInt();
+        }
+      });
+    }
+
+    if (json['questionCorrectCount'] is Map) {
+      final map = json['questionCorrectCount'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is num) {
+          progress.questionCorrectCount[id] = v.toInt();
+        }
+      });
+    }
+
+    if (json['questionIncorrectCount'] is Map) {
+      final map = json['questionIncorrectCount'] as Map;
+      map.forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is num) {
+          progress.questionIncorrectCount[id] = v.toInt();
+        }
+      });
+    }
+
+    return progress;
   }
 
   String serialize() => jsonEncode(toJson());
 
-  static GameProgress deserialize(String data) {
+  static GameProgress deserialize(String jsonStr) {
     try {
-      final json = jsonDecode(data) as Map<String, dynamic>;
-      return GameProgress.fromJson(json);
+      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return GameProgress.fromJson(data);
     } catch (_) {
       return GameProgress();
     }
-  }
-
-  void reset() {
-    currentUnlockedLevel = 1;
-    completedLevels.clear();
-    levelStars.clear();
-    userAnswers.clear();
-    isCorrectMap.clear();
-    totalXp = 0;
-    unlockedBadges.clear();
-    lastPlayed = null;
-    revisionQueue.clear();
-    masteredQuestions.clear();
-    questionAttempts.clear();
-    questionCorrectCount.clear();
-    questionIncorrectCount.clear();
-    arcadeHighScore = 0;
-    maxCombo = 0;
-    totalCrystals = 0;
-    unlockedWeapons = {'Laser Médical MK-I'};
-    equippedWeapon = 'Laser Médical MK-I';
   }
 }

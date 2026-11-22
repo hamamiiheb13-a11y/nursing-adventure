@@ -1,396 +1,617 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../arcade/weapon_system.dart';
 
-class CapsuleWarriorsHowToPlayScreen extends StatelessWidget {
-  const CapsuleWarriorsHowToPlayScreen({super.key});
+import '../audio/audio_service.dart';
+import '../theme/capsule_theme.dart';
+import '../widgets/capsule_parallax_background.dart';
+
+class CapsuleWarriorsHowToPlayScreen extends StatefulWidget {
+  final VoidCallback? onStart;
+
+  const CapsuleWarriorsHowToPlayScreen({
+    super.key,
+    this.onStart,
+  });
+
+  @override
+  State<CapsuleWarriorsHowToPlayScreen> createState() =>
+      _CapsuleWarriorsHowToPlayScreenState();
+}
+
+class _CapsuleWarriorsHowToPlayScreenState
+    extends State<CapsuleWarriorsHowToPlayScreen>
+    with SingleTickerProviderStateMixin {
+  final AudioService _audio = AudioService();
+  late final PageController _pageController;
+  late final AnimationController _animController;
+  Timer? _autoAdvanceTimer;
+
+  int _currentPage = 0;
+
+  final List<Map<String, dynamic>> _tutorialSteps = [
+    {
+      'title': 'DÉPLACER LA CAPSULE',
+      'subtitle': 'Commandes de pilotage 2D',
+      'desc':
+          'Utilisez [Z,Q,S,D] ou les flèches du clavier (sur PC) ou le joystick et les flèches tactiles (sur mobile) pour mouvoir votre véhicule médical dans la lumière de l\'estomac.',
+      'color': CapsuleColors.cyanGlow,
+      'badge': 'ÉTAPE 1 / 6',
+    },
+    {
+      'title': 'TIRER SUR LES ENNEMIS',
+      'subtitle': 'Laser médical & Arsenal',
+      'desc':
+          'Appuyez sur [ESPACE] ou touchez le bouton de tir cyan pour neutraliser les bactéries Helicobacter et virions pathogènes avant qu\'ils ne corrodent votre coque.',
+      'color': CapsuleColors.electricBlue,
+      'badge': 'ÉTAPE 2 / 6',
+    },
+    {
+      'title': 'ÉVITER LES OBSTACLES',
+      'subtitle': 'Sucs gastriques & Spores toxiques',
+      'desc':
+          'Slalomez avec agilité entre les replis de la muqueuse, évitez les jets acides corrosifs et activez votre bouclier [E] ou [Shift] en cas de danger imminent.',
+      'color': CapsuleColors.dangerOrange,
+      'badge': 'ÉTAPE 3 / 6',
+    },
+    {
+      'title': 'COLLECTER LES BONUS',
+      'subtitle': 'Nanocristaux & Réparations',
+      'desc':
+          'Ramassez les cristaux énergétiques et cœurs de soin flottants pour regagner de la vie, augmenter votre score combo et charger votre tir surpuissant.',
+      'color': CapsuleColors.gold,
+      'badge': 'ÉTAPE 4 / 6',
+    },
+    {
+      'title': 'VALIDER LES QUESTIONS CLINIQUE',
+      'subtitle': 'Checkpoints pédagogiques MICI',
+      'desc':
+          'Aux nanoportes de diagnostic, répondez aux questions officielles issues du PFE ISSIT. Chaque bonne réponse restaure votre santé et valide vos compétences.',
+      'color': CapsuleColors.successGreen,
+      'badge': 'ÉTAPE 5 / 6',
+    },
+    {
+      'title': 'TERRASSER LE BOSS DU SECTEUR',
+      'subtitle': 'Affrontement décisif de fin de monde',
+      'desc':
+          'En fin de chaque stage, affrontez le Titan pathogène ! Évitez ses salves de cytokines, visez son noyau et terrassez-le pour débloquer le secteur suivant.',
+      'color': CapsuleColors.purple,
+      'badge': 'ÉTAPE 6 / 6',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    _pageController = PageController();
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+
+    _startAutoAdvance();
+  }
+
+  @override
+  void dispose() {
+    _autoAdvanceTimer?.cancel();
+    _pageController.dispose();
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoAdvance() {
+    _autoAdvanceTimer?.cancel();
+    _autoAdvanceTimer = Timer.periodic(const Duration(seconds: 7), (timer) {
+      if (_currentPage < _tutorialSteps.length - 1) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _onUserInteraction() {
+    _autoAdvanceTimer?.cancel();
+  }
+
+  void _nextPage() {
+    _onUserInteraction();
+    _audio.playClick();
+    if (_currentPage < _tutorialSteps.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      _finishTutorial();
+    }
+  }
+
+  void _prevPage() {
+    _onUserInteraction();
+    _audio.playClick();
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _finishTutorial() {
+    _audio.playClick();
+    if (widget.onStart != null) {
+      widget.onStart!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isLast = _currentPage == _tutorialSteps.length - 1;
     final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 750;
+    final isCompact = media.size.height < 520;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF030712),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        title: Text(
-          'GUIDE DU PILOTE • COMMENT JOUER',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: isMobile ? 15 : 18,
-            letterSpacing: 0.8,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 14 : 32,
-          vertical: 20,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Controls Section
-                _buildSectionTitle('1. COMMANDES DU VÉHICULE MÉDICAL'),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: CapsuleColors.darkNavy,
+      body: CapsuleParallaxBackground(
+        showHeroCapsule: false,
+        showEnemySilhouettes: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 1. Top Bar: RETOUR button + Header + Skip/Commencer
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
                   children: [
-                    Expanded(
-                      child: _buildInfoCard(
-                        title: 'Commandes Ordinateur (PC)',
-                        icon: Icons.computer_rounded,
-                        color: const Color(0xFF00E5FF),
-                        items: const [
-                          'Flèches ou [A / D] : Naviguer horizontalement',
-                          'Flèche Haut ou [W] : Monter (Propulsion)',
-                          'Flèche Bas ou [S] : Descendre',
-                          '[ESPACE] : Tirer avec l\'arme équipée',
-                          '[E] ou [Shift] : Activer le bouclier énergétique',
-                          '[P] ou [Échap] : Mettre en pause',
-                        ],
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        _audio.playClick();
+                        Navigator.of(context).pop();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'RETOUR',
+                              style: GoogleFonts.orbitron(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
-                    Expanded(
-                      child: _buildInfoCard(
-                        title: 'Commandes Tactiles (Mobile)',
-                        icon: Icons.smartphone_rounded,
-                        color: const Color(0xFF38BDF8),
-                        items: const [
-                          'Flèches tactiles gauches : Avancer / Reculer',
-                          'Bouton Fusée (vert) : Propulseur vertical',
-                          'Bouton Cible (cyan) : Tir laser',
-                          'Bouton Bouclier (indigo) : Défense biomagnétique',
-                          'Bouton Pause en haut à droite',
-                          'Commandes optimisées 60 FPS réactives',
+                    Text(
+                      'COMMENT JOUER • GUIDE DU PILOTE',
+                      style: GoogleFonts.orbitron(
+                        fontSize: isCompact ? 14 : 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: CapsuleColors.cyanGlow.withValues(alpha: 0.7),
+                            blurRadius: 10,
+                          ),
                         ],
+                      ),
+                    ),
+                    const Spacer(),
+                    // Direct "COMMENCER" CTA top-right
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: CapsuleColors.cyanGlow,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      onPressed: _finishTutorial,
+                      child: Text(
+                        'COMMENCER',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+              ),
 
-                // 2. Arsenal Section
-                _buildSectionTitle('2. ARSENAL DES 6 ARMES ÉVOLUTIVES'),
-                const SizedBox(height: 12),
-                ...WeaponConfig.allWeapons.map((weapon) => _buildWeaponCard(weapon)),
-                const SizedBox(height: 28),
-
-                // 3. Bestiary Section
-                _buildSectionTitle('3. BESTIAIRE DES 5 PATHOGÈNES GASTRIQUES'),
-                const SizedBox(height: 12),
-                _buildBestiary(),
-                const SizedBox(height: 28),
-
-                // 4. Pedagogical Rules Section
-                _buildSectionTitle('4. SYSTÈME DE RÉPÉTITION ESPACÉE INTELLIGENTE'),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.psychology_rounded, color: Color(0xFF10B981), size: 28),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Apprentissage Actif & Consolidation Mémorielle',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+              // 2. Main PageView of Step-by-Step Cards with Animated Illustrations
+              Expanded(
+                child: Listener(
+                  onPointerDown: (_) => _onUserInteraction(),
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (idx) => setState(() => _currentPage = idx),
+                    itemCount: _tutorialSteps.length,
+                    itemBuilder: (context, index) {
+                      final step = _tutorialSteps[index];
+                      return Center(
+                        child: Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxWidth: 780),
+                          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+                          padding: EdgeInsets.all(isCompact ? 16 : 24),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: (step['color'] as Color).withValues(alpha: 0.6),
+                              width: 1.8,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (step['color'] as Color).withValues(alpha: 0.2),
+                                blurRadius: 24,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '• Chaque bonne réponse aux nanoportes de contrôle rapporte +100 XP, un boost de propulsion et recharge vos armes.\n'
-                        '• Une mauvaise réponse retire 1 cœur, affiche la justification clinique complète issue du mémoire de l\'ISSIT Tunis, et place la question dans votre File de Révision.\n'
-                        '• Les questions erronées réapparaissent intelligemment plus tard dans les mondes suivants jusqu\'à être parfaitement maîtrisées !\n'
-                        '• À la fin de chaque secteur, le Boss vous défie sur un ensemble de questions cliniques du monde pour valider votre avancement.',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFCBD5E1),
-                          fontSize: 13,
-                          height: 1.5,
+                          child: Row(
+                            children: [
+                              // Left: Animated Illustration Canvas
+                              Expanded(
+                                flex: 5,
+                                child: Container(
+                                  height: isCompact ? 170 : 210,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF030712),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: const Color(0xFF1E293B)),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: AnimatedBuilder(
+                                      animation: _animController,
+                                      builder: (context, _) {
+                                        return CustomPaint(
+                                          painter: _TutorialStepPainter(
+                                            stepIndex: index,
+                                            progress: _animController.value,
+                                            color: step['color'] as Color,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+
+                              // Right: Description & Text
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: (step['color'] as Color).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        step['badge'] as String,
+                                        style: GoogleFonts.orbitron(
+                                          color: step['color'] as Color,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      step['title'] as String,
+                                      style: GoogleFonts.orbitron(
+                                        fontSize: isCompact ? 15 : 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                    Text(
+                                      step['subtitle'] as String,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: step['color'] as Color,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      step['desc'] as String,
+                                      style: GoogleFonts.inter(
+                                        fontSize: isCompact ? 11.5 : 13,
+                                        color: CapsuleColors.textSubtle,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // 3. Bottom Controls: Prev, Dots Indicator, Next / Commencer
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Previous Button
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFF334155)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _currentPage > 0 ? _prevPage : null,
+                      icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                      label: Text('PRÉCÉDENT', style: GoogleFonts.orbitron(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                    ),
+
+                    // Dot Indicators
+                    Row(
+                      children: List.generate(_tutorialSteps.length, (i) {
+                        final isActive = i == _currentPage;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: isActive ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isActive ? CapsuleColors.cyanGlow : const Color(0xFF334155),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
+                    ),
+
+                    // Next / Commencer Button
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isLast ? CapsuleColors.cyanGlow : CapsuleColors.electricBlue,
+                        foregroundColor: isLast ? Colors.black : Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      ),
+                      onPressed: _nextPage,
+                      icon: Icon(isLast ? Icons.rocket_launch_rounded : Icons.arrow_forward_ios_rounded, size: 14),
+                      label: Text(
+                        isLast ? 'COMMENCER' : 'SUIVANT',
+                        style: GoogleFonts.orbitron(fontSize: 11, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.plusJakartaSans(
-        color: const Color(0xFF00E5FF),
-        fontSize: 13.5,
-        fontWeight: FontWeight.w900,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
+class _TutorialStepPainter extends CustomPainter {
+  final int stepIndex;
+  final double progress; // 0..1
+  final Color color;
 
-  Widget _buildInfoCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required List<String> items,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF1E293B)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFFCBD5E1),
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  _TutorialStepPainter({
+    required this.stepIndex,
+    required this.progress,
+    required this.color,
+  });
 
-  Widget _buildWeaponCard(WeaponConfig weapon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: weapon.glowColor.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: weapon.glowColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: weapon.glowColor.withValues(alpha: 0.5)),
-            ),
-            child: Icon(weapon.icon, color: weapon.glowColor, size: 26),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      weapon.name,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Dégâts: ${weapon.damage}  •  Cadence: ${(1.0 / weapon.cooldownSeconds).toStringAsFixed(1)}/s',
-                      style: GoogleFonts.inter(
-                        color: weapon.glowColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  weapon.description,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * math.pi * 2;
+    final center = Offset(size.width / 2, size.height / 2);
 
-  Widget _buildBestiary() {
-    final enemies = [
-      {
-        'name': 'Helico-Grub',
-        'sub': 'Bactérie gastrique spiralée (Helicobacter pylori)',
-        'desc': 'Ondule dans le flux gastrique et libère des toxines qui affaiblissent la barrière muqueuse.',
-        'hp': '2 - 4 HP',
-        'color': Color(0xFF10B981),
-      },
-      {
-        'name': 'Spike-Virion',
-        'sub': 'Pathogène viral à pointes rotatives',
-        'desc': 'Capside hautement instable tourbillonnant à grande vitesse pour percer les défenses de la capsule.',
-        'hp': '2 - 3 HP',
-        'color': Color(0xFFEC4899),
-      },
-      {
-        'name': 'Cytokine-Blob',
-        'sub': 'Médiateur de l\'inflammation muqueuse',
-        'desc': 'Sécrète et crache des globules acides corrosifs ciblant directement la trajectoire de vol.',
-        'hp': '3 - 5 HP',
-        'color': Color(0xFFF59E0B),
-      },
-      {
-        'name': 'Acid Sentry',
-        'sub': 'Sentinelle blindée résistante',
-        'desc': 'Balaye verticalement les plis de l\'estomac et projette des salves énergétiques doubles.',
-        'hp': '4 - 6 HP',
-        'color': Color(0xFF38BDF8),
-      },
-      {
-        'name': 'Toxic Spore',
-        'sub': 'Mine biologique flottante',
-        'desc': 'Flotte au gré des sécrétions digestives et explose violemment au contact.',
-        'hp': '2 HP',
-        'color': Color(0xFF34D399),
-      },
-    ];
+    switch (stepIndex) {
+      case 0:
+        // 1. Move capsule: animated arrows + capsule bobbing/moving
+        final capX = size.width * (0.35 + math.sin(t) * 0.15);
+        final capY = size.height * (0.5 + math.cos(t * 1.5) * 0.15);
 
-    return Column(
-      children: enemies.map((e) {
-        final col = e['color'] as Color;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF1E293B)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: col.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: col, width: 1.5),
-                ),
-                child: Icon(Icons.coronavirus_rounded, color: col, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          e['name'] as String,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            e['hp'] as String,
-                            style: GoogleFonts.inter(
-                              color: col,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      e['sub'] as String,
-                      style: GoogleFonts.inter(
-                        color: col,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      e['desc'] as String,
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF94A3B8),
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        // Movement directional arrows
+        final arrowPaint = Paint()
+          ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.4 + 0.3 * math.sin(t * 2))
+          ..strokeWidth = 2.0
+          ..style = PaintingStyle.stroke;
+        canvas.drawCircle(center, 40, arrowPaint);
+
+        // Arrows: up, down, left, right
+        _drawArrow(canvas, Offset(center.dx, center.dy - 44), 0, arrowPaint);
+        _drawArrow(canvas, Offset(center.dx + 44, center.dy), math.pi / 2, arrowPaint);
+        _drawArrow(canvas, Offset(center.dx, center.dy + 44), math.pi, arrowPaint);
+        _drawArrow(canvas, Offset(center.dx - 44, center.dy), -math.pi / 2, arrowPaint);
+
+        // Capsule
+        _drawMiniCapsule(canvas, Offset(capX, capY), withPropulsion: true, t: t);
+        break;
+
+      case 1:
+        // 2. Shoot enemies: animated laser beams
+        final capPos = Offset(size.width * 0.28, size.height * 0.5);
+        final enemyPos = Offset(size.width * 0.72, size.height * 0.5);
+        _drawMiniCapsule(canvas, capPos, withPropulsion: true, t: t);
+
+        // Enemy
+        canvas.drawCircle(enemyPos, 16, Paint()..color = CapsuleColors.dangerRed);
+
+        // Pulsing laser beam
+        final laserCycle = (progress * 3) % 1.0;
+        final lx1 = capPos.dx + 22;
+        final lx2 = lx1 + (enemyPos.dx - lx1) * laserCycle;
+        final beamPaint = Paint()
+          ..color = CapsuleColors.cyanGlow
+          ..strokeWidth = 3.5
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(lx1, capPos.dy), Offset(lx2, capPos.dy), beamPaint);
+        break;
+
+      case 2:
+        // 3. Avoid obstacles: capsule dodging up and down
+        final capY3 = size.height * (0.5 + math.sin(t * 2) * 0.3);
+        _drawMiniCapsule(canvas, Offset(size.width * 0.3, capY3), withPropulsion: true, t: t);
+
+        // Obstacles drifting left
+        final obs1X = (size.width * 0.7 - progress * size.width * 0.4) % size.width;
+        final obs2X = (size.width * 0.9 - progress * size.width * 0.4) % size.width;
+        canvas.drawCircle(Offset(obs1X, size.height * 0.3), 16, Paint()..color = CapsuleColors.dangerOrange);
+        canvas.drawCircle(Offset(obs2X, size.height * 0.7), 18, Paint()..color = const Color(0xFF881337));
+        break;
+
+      case 3:
+        // 4. Collect bonuses: collectibles flying toward capsule
+        final capPos4 = Offset(size.width * 0.7, size.height * 0.5);
+        _drawMiniCapsule(canvas, capPos4, withPropulsion: false, t: t);
+
+        // Sparkling crystals flying
+        for (int i = 0; i < 4; i++) {
+          final frac = ((progress + i * 0.25) % 1.0);
+          final cx = size.width * 0.15 + (capPos4.dx - size.width * 0.15) * frac;
+          final cy = size.height * (0.3 + i * 0.15) + math.sin(t + i) * 10;
+          canvas.drawCircle(Offset(cx, cy), 6, Paint()..color = CapsuleColors.gold);
+          canvas.drawCircle(Offset(cx, cy), 3, Paint()..color = Colors.white);
+        }
+        break;
+
+      case 4:
+        // 5. Answer questions: mini question panel mockup
+        final panelRect = Rect.fromCenter(center: center, width: 140, height: 90);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(panelRect, const Radius.circular(10)),
+          Paint()..color = const Color(0xFF0F172A),
         );
-      }).toList(),
-    );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(panelRect, const Radius.circular(10)),
+          Paint()
+            ..color = CapsuleColors.successGreen
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+        );
+
+        // Question lines
+        canvas.drawLine(
+          Offset(panelRect.left + 12, panelRect.top + 18),
+          Offset(panelRect.right - 12, panelRect.top + 18),
+          Paint()..color = Colors.white..strokeWidth = 3,
+        );
+        // Correct option glow
+        final optRect = Rect.fromLTWH(panelRect.left + 10, panelRect.top + 35, 120, 18);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(optRect, const Radius.circular(5)),
+          Paint()..color = CapsuleColors.successGreen.withValues(alpha: 0.3),
+        );
+        canvas.drawCircle(Offset(panelRect.left + 20, panelRect.top + 44), 4, Paint()..color = CapsuleColors.successGreen);
+        break;
+
+      case 5:
+        // 6. Defeat boss: colossal boss exploding
+        final bossCenter = Offset(size.width * 0.65, size.height * 0.5);
+        canvas.drawCircle(bossCenter, 28, Paint()..color = CapsuleColors.purple);
+        canvas.drawCircle(bossCenter, 14, Paint()..color = CapsuleColors.dangerRed);
+
+        // Explosion sparks around boss
+        final rand = math.Random(55);
+        final expP = (progress * 2) % 1.0;
+        for (int i = 0; i < 16; i++) {
+          final angle = rand.nextDouble() * math.pi * 2;
+          final dist = 28 + expP * 35;
+          final px = bossCenter.dx + math.cos(angle) * dist;
+          final py = bossCenter.dy + math.sin(angle) * dist;
+          canvas.drawCircle(Offset(px, py), 2.5, Paint()..color = CapsuleColors.gold.withValues(alpha: 1.0 - expP));
+        }
+
+        // Capsule at left
+        _drawMiniCapsule(canvas, Offset(size.width * 0.22, size.height * 0.5), withPropulsion: true, t: t);
+        break;
+    }
   }
+
+  void _drawArrow(Canvas canvas, Offset tip, double rotation, Paint paint) {
+    canvas.save();
+    canvas.translate(tip.dx, tip.dy);
+    canvas.rotate(rotation);
+    final p = Path()
+      ..moveTo(0, -6)
+      ..lineTo(5, 4)
+      ..lineTo(-5, 4)
+      ..close();
+    canvas.drawPath(p, paint..style = PaintingStyle.fill);
+    canvas.restore();
+  }
+
+  void _drawMiniCapsule(Canvas canvas, Offset pos, {required bool withPropulsion, required double t}) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+
+    if (withPropulsion) {
+      final flame = Path()
+        ..moveTo(-16, -5)
+        ..lineTo(-32 + math.sin(t * 8) * 4, 0)
+        ..lineTo(-16, 5)
+        ..close();
+      canvas.drawPath(flame, Paint()..color = CapsuleColors.dangerOrange);
+    }
+
+    final rrect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-16, -10, 32, 20),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(rrect, Paint()..color = Colors.white);
+
+    // Front cyan
+    canvas.save();
+    canvas.clipRect(const Rect.fromLTWH(0, -10, 16, 20));
+    canvas.drawRRect(rrect, Paint()..color = CapsuleColors.cyanGlow);
+    canvas.restore();
+
+    canvas.drawOval(const Rect.fromLTWH(2, -5, 8, 10), Paint()..color = CapsuleColors.electricBlue);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _TutorialStepPainter oldDelegate) => true;
 }

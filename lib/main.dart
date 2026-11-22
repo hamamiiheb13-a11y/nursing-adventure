@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'theme/app_theme.dart';
-import 'screens/capsule_warriors_home_screen.dart';
 
-void main() {
+import 'screens/capsule_warriors_final_screen.dart';
+import 'screens/capsule_warriors_home_screen.dart';
+import 'screens/capsule_warriors_how_to_play_screen.dart';
+import 'screens/capsule_warriors_intro_screen.dart';
+import 'screens/capsule_warriors_review_screen.dart';
+import 'screens/capsule_warriors_settings_screen.dart';
+import 'screens/capsule_warriors_world_select_screen.dart';
+import 'services/storage_service.dart';
+import 'theme/capsule_theme.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
+
+  // Prefer landscape orientation for full arcade game immersion
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
   ]);
+
+  // Preload progress
+  await StorageService().loadProgress();
+
   runApp(const CapsuleWarriorsApp());
 }
 
@@ -25,22 +39,58 @@ class CapsuleWarriorsApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF030712),
-        primaryColor: const Color(0xFF00E5FF),
+        scaffoldBackgroundColor: CapsuleColors.darkNavy,
+        primaryColor: CapsuleColors.cyanGlow,
+        canvasColor: CapsuleColors.darkNavy,
+        cardColor: CapsuleColors.cardNavy,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00E5FF),
-          secondary: Color(0xFF38BDF8),
-          surface: Color(0xFF0F172A),
-          error: Color(0xFFEF4444),
+          primary: CapsuleColors.cyanGlow,
+          secondary: CapsuleColors.electricBlue,
+          surface: CapsuleColors.surfaceNavy,
+          error: CapsuleColors.dangerRed,
           onPrimary: Colors.black,
+          onSecondary: Colors.white,
           onSurface: Colors.white,
         ),
         textTheme: GoogleFonts.interTextTheme(
           ThemeData.dark().textTheme,
         ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: CapsuleColors.surfaceNavy,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          titleTextStyle: GoogleFonts.orbitron(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
         useMaterial3: true,
       ),
-      home: const CapsuleWarriorsHomeScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const CapsuleWarriorsHomeScreen(),
+        '/home': (context) => const CapsuleWarriorsHomeScreen(),
+        '/intro': (context) => CapsuleWarriorsIntroScreen(
+              progress: StorageService().currentProgress,
+              onContinue: () {
+                Navigator.of(context).pushReplacementNamed('/world-select');
+              },
+            ),
+        '/world-select': (context) => CapsuleWarriorsWorldSelectScreen(
+              progress: StorageService().currentProgress,
+            ),
+        '/how-to-play': (context) => const CapsuleWarriorsHowToPlayScreen(),
+        '/settings': (context) => CapsuleWarriorsSettingsScreen(
+              progress: StorageService().currentProgress,
+            ),
+        '/review': (context) => CapsuleWarriorsReviewScreen(
+              progress: StorageService().currentProgress,
+            ),
+        '/final': (context) => CapsuleWarriorsFinalScreen(
+              progress: StorageService().currentProgress,
+            ),
+      },
     );
   }
 }

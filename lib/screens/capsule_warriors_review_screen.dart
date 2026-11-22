@@ -1,32 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../audio/audio_service.dart';
 import '../models/game_progress.dart';
 import '../models/gastro_question.dart';
 import '../models/gastro_world.dart';
+import '../services/storage_service.dart';
+import '../theme/capsule_theme.dart';
+import '../widgets/capsule_parallax_background.dart';
 
 class CapsuleWarriorsReviewScreen extends StatefulWidget {
-  final GameProgress progress;
+  final GameProgress? progress;
 
-  const CapsuleWarriorsReviewScreen({super.key, required this.progress});
+  const CapsuleWarriorsReviewScreen({
+    super.key,
+    this.progress,
+  });
 
   @override
-  State<CapsuleWarriorsReviewScreen> createState() => _CapsuleWarriorsReviewScreenState();
+  State<CapsuleWarriorsReviewScreen> createState() =>
+      _CapsuleWarriorsReviewScreenState();
 }
 
-class _CapsuleWarriorsReviewScreenState extends State<CapsuleWarriorsReviewScreen> {
+class _CapsuleWarriorsReviewScreenState
+    extends State<CapsuleWarriorsReviewScreen> {
+  final AudioService _audio = AudioService();
+  final StorageService _storage = StorageService();
+  late GameProgress _progress;
+
+  String _filter = 'ALL'; // 'ALL', 'CORRECT', 'TO_REVIEW'
   int _selectedWorldFilter = 0; // 0 = all
-  String _statusFilter = 'all'; // all, mastered, revision
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+    ]);
+    _progress = widget.progress ?? _storage.currentProgress;
+  }
 
   List<GastroQuestion> get _filteredQuestions {
     return allGastroQuestions.where((q) {
       if (_selectedWorldFilter != 0 && q.worldId != _selectedWorldFilter) {
         return false;
       }
-      if (_statusFilter == 'mastered' && !widget.progress.masteredQuestions.contains(q.id)) {
-        return false;
-      }
-      if (_statusFilter == 'revision' && !widget.progress.revisionQueue.contains(q.id)) {
-        return false;
+      final isAnswered = _progress.questionsAnswered.containsKey(q.id);
+      final isCorrect = _progress.questionsAnswered[q.id] == true;
+      final inRevision = _progress.revisionQueue.contains(q.id) ||
+          (_progress.questionsAnswered.containsKey(q.id) && !isCorrect);
+
+      if (_filter == 'CORRECT') {
+        return isAnswered && isCorrect;
+      } else if (_filter == 'TO_REVIEW') {
+        return inRevision;
       }
       return true;
     }).toList();
@@ -35,115 +65,197 @@ class _CapsuleWarriorsReviewScreenState extends State<CapsuleWarriorsReviewScree
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 750;
+    final isCompact = media.size.height < 520;
+
+    int correctCount = 0;
+    for (final isCorrect in _progress.questionsAnswered.values) {
+      if (isCorrect) correctCount++;
+    }
+    final masteredCount = correctCount > 0 ? correctCount : _progress.masteredQuestions.length;
+    final revisionCount = _progress.revisionQueue.length;
     final questions = _filteredQuestions;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF030712),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        title: Text(
-          'CENTRE DE RÉVISION (33 QUESTIONS PFE)',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: isMobile ? 14 : 17,
-            letterSpacing: 0.8,
+      backgroundColor: CapsuleColors.darkNavy,
+      body: CapsuleParallaxBackground(
+        showHeroCapsule: false,
+        showEnemySilhouettes: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 1. Top Bar: RETOUR button + Title + Progress Header (X mastered, Y to review)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        _audio.playClick();
+                        Navigator.of(context).pop();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'RETOUR',
+                              style: GoogleFonts.orbitron(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      'RÉVISION DES 33 QUESTIONS CLINIQUES',
+                      style: GoogleFonts.orbitron(
+                        fontSize: isCompact ? 13 : 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Progress Header: X mastered, Y to review
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF1E293B)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: CapsuleColors.successGreen, size: 15),
+                          const SizedBox(width: 5),
+                          Text(
+                            '$masteredCount maîtrisées',
+                            style: GoogleFonts.orbitron(
+                              color: CapsuleColors.successGreen,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.warning_amber_rounded, color: CapsuleColors.dangerOrange, size: 15),
+                          const SizedBox(width: 5),
+                          Text(
+                            '$revisionCount à réviser',
+                            style: GoogleFonts.orbitron(
+                              color: CapsuleColors.dangerOrange,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 2. Filter Bar (ALL / CORRECT / TO REVIEW + Stage filter chips)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F172A),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFF1E293B)),
+                    bottom: BorderSide(color: Color(0xFF1E293B)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Filter Mode
+                    _buildFilterButton('ALL', 'TOUTES (33)', Icons.list_alt_rounded),
+                    const SizedBox(width: 8),
+                    _buildFilterButton('CORRECT', 'CORRECTES ($masteredCount)', Icons.check_circle_outline_rounded, activeColor: CapsuleColors.successGreen),
+                    const SizedBox(width: 8),
+                    _buildFilterButton('TO_REVIEW', 'À RÉVISER ($revisionCount)', Icons.replay_rounded, activeColor: CapsuleColors.dangerOrange),
+
+                    const Spacer(),
+
+                    // Stage Selector Dropdown
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _selectedWorldFilter,
+                          dropdownColor: const Color(0xFF0F172A),
+                          isDense: true,
+                          style: GoogleFonts.orbitron(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          items: [
+                            const DropdownMenuItem(value: 0, child: Text('Tous les Stages')),
+                            ...GastroWorld.worlds.map((w) => DropdownMenuItem(value: w.id, child: Text('Stage ${w.id}'))),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedWorldFilter = val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 3. Question List with Expandable Clinical Explanation
+              Expanded(
+                child: questions.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.search_off_rounded, color: CapsuleColors.textSubtle, size: 40),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Aucune question pour ce filtre.',
+                              style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        itemCount: questions.length,
+                        itemBuilder: (context, idx) {
+                          final q = questions[idx];
+                          return _buildQuestionTile(q);
+                        },
+                      ),
+              ),
+            ],
           ),
         ),
-      ),
-      body: Column(
-        children: [
-          // Filter Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F172A),
-              border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
-            ),
-            child: Column(
-              children: [
-                // Status Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildStatusChip('all', 'Toutes (${allGastroQuestions.length})', Icons.list_alt_rounded),
-                      const SizedBox(width: 8),
-                      _buildStatusChip(
-                        'mastered',
-                        'Maîtrisées (${widget.progress.masteredQuestions.length})',
-                        Icons.check_circle_rounded,
-                        activeColor: const Color(0xFF10B981),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildStatusChip(
-                        'revision',
-                        'En Révision (${widget.progress.revisionQueue.length})',
-                        Icons.sync_problem_rounded,
-                        activeColor: const Color(0xFFF87171),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // World Filter Dropdown / Row
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildWorldChip(0, 'Tous les mondes'),
-                      ...allGastroWorlds.map((w) => _buildWorldChip(w.id, 'Monde ${w.id}')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Question List
-          Expanded(
-            child: questions.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.search_off_rounded, color: Color(0xFF64748B), size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Aucune question ne correspond à ce filtre.',
-                          style: GoogleFonts.inter(color: const Color(0xFF94A3B8)),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 12 : 24,
-                      vertical: 16,
-                    ),
-                    itemCount: questions.length,
-                    itemBuilder: (context, idx) {
-                      final q = questions[idx];
-                      return _buildQuestionCard(q, isMobile);
-                    },
-                  ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildStatusChip(String key, String label, IconData icon, {Color? activeColor}) {
-    final isSelected = _statusFilter == key;
-    final color = activeColor ?? const Color(0xFF00E5FF);
+  Widget _buildFilterButton(String key, String label, IconData icon, {Color? activeColor}) {
+    final isSelected = _filter == key;
+    final color = activeColor ?? CapsuleColors.cyanGlow;
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => setState(() => _statusFilter = key),
+      onTap: () => setState(() => _filter = key),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? color.withValues(alpha: 0.2) : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(10),
@@ -152,14 +264,14 @@ class _CapsuleWarriorsReviewScreenState extends State<CapsuleWarriorsReviewScree
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? color : const Color(0xFF94A3B8), size: 16),
+            Icon(icon, color: isSelected ? color : CapsuleColors.textSubtle, size: 14),
             const SizedBox(width: 6),
             Text(
               label,
-              style: GoogleFonts.inter(
-                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              style: GoogleFonts.orbitron(
+                color: isSelected ? Colors.white : CapsuleColors.textSubtle,
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
               ),
             ),
           ],
@@ -168,243 +280,254 @@ class _CapsuleWarriorsReviewScreenState extends State<CapsuleWarriorsReviewScree
     );
   }
 
-  Widget _buildWorldChip(int worldId, String label) {
-    final isSelected = _selectedWorldFilter == worldId;
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => setState(() => _selectedWorldFilter = worldId),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF38BDF8).withValues(alpha: 0.25) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF334155)),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              color: isSelected ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
-              fontSize: 11.5,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildQuestionTile(GastroQuestion q) {
+    final hasAnswered = _progress.questionsAnswered.containsKey(q.id);
+    final isCorrect = _progress.questionsAnswered[q.id] == true;
+    final studentSelectedIdx = _progress.userAnswers[q.id];
 
-  Widget _buildQuestionCard(GastroQuestion q, bool isMobile) {
-    final isMastered = widget.progress.masteredQuestions.contains(q.id);
-    final inRevision = widget.progress.revisionQueue.contains(q.id);
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (!hasAnswered) {
+      statusColor = const Color(0xFF64748B);
+      statusText = 'NON TENTÉE';
+      statusIcon = Icons.help_outline_rounded;
+    } else if (isCorrect) {
+      statusColor = CapsuleColors.successGreen;
+      statusText = 'CORRECT';
+      statusIcon = Icons.check_circle_rounded;
+    } else {
+      statusColor = CapsuleColors.dangerRed;
+      statusText = 'ERREUR';
+      statusIcon = Icons.cancel_rounded;
+    }
+
     final world = GastroWorld.getWorldForLevel(q.id);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isMastered
-              ? const Color(0xFF10B981).withValues(alpha: 0.5)
-              : inRevision
-                  ? const Color(0xFFEF4444).withValues(alpha: 0.5)
-                  : const Color(0xFF1E293B),
+          color: statusColor.withValues(alpha: hasAnswered ? 0.6 : 0.25),
+          width: hasAnswered ? 1.5 : 1.0,
         ),
+        boxShadow: hasAnswered
+            ? [
+                BoxShadow(
+                  color: statusColor.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                ),
+              ]
+            : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 20),
+          ),
+          title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: world.primaryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: world.primaryColor.withValues(alpha: 0.4)),
                 ),
                 child: Text(
-                  'QUESTION ${q.id} • MONDE ${q.worldId}',
-                  style: GoogleFonts.plusJakartaSans(
+                  'Q${q.id} • STAGE ${q.worldId}',
+                  style: GoogleFonts.orbitron(
                     color: world.primaryColor,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                q.anatomicalTheme,
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  q.anatomicalTheme,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: CapsuleColors.textSubtle,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (isMastered)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 13),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Maîtrisée',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF10B981),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else if (inRevision)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.sync_problem_rounded, color: Color(0xFFEF4444), size: 13),
-                      const SizedBox(width: 4),
-                      Text(
-                        'À réviser',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFF87171),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  statusText,
+                  style: GoogleFonts.orbitron(
+                    color: statusColor,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Question Statement
-          Text(
-            q.questionText,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              height: 1.35,
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              q.questionText,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-          const SizedBox(height: 14),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(color: Color(0xFF1E293B)),
+                  const SizedBox(height: 6),
 
-          // Options
-          Column(
-            children: List.generate(q.options.length, (optIdx) {
-              final isCorrect = optIdx == q.correctOptionIndex;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isCorrect
-                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                      : const Color(0xFF1E293B).withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isCorrect ? const Color(0xFF10B981) : const Color(0xFF334155),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isCorrect ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                      color: isCorrect ? const Color(0xFF10B981) : const Color(0xFF64748B),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        q.options[optIdx],
-                        style: GoogleFonts.inter(
-                          color: isCorrect ? Colors.white : const Color(0xFFCBD5E1),
-                          fontSize: 12.5,
-                          fontWeight: isCorrect ? FontWeight.w700 : FontWeight.w500,
-                        ),
+                  // Options list showing student selection vs correct option
+                  ...List.generate(q.options.length, (optIdx) {
+                    final isOptionCorrect = optIdx == q.correctOptionIndex;
+                    final isStudentSelected = optIdx == studentSelectedIdx;
+
+                    Color optBg = const Color(0xFF1E293B).withValues(alpha: 0.5);
+                    Color optBorder = const Color(0xFF334155);
+
+                    if (isOptionCorrect) {
+                      optBg = CapsuleColors.successGreen.withValues(alpha: 0.15);
+                      optBorder = CapsuleColors.successGreen;
+                    } else if (isStudentSelected && !isOptionCorrect) {
+                      optBg = CapsuleColors.dangerRed.withValues(alpha: 0.15);
+                      optBorder = CapsuleColors.dangerRed;
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: optBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: optBorder),
                       ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isOptionCorrect
+                                ? Icons.check_circle_rounded
+                                : (isStudentSelected ? Icons.cancel_rounded : Icons.radio_button_unchecked_rounded),
+                            color: isOptionCorrect
+                                ? CapsuleColors.successGreen
+                                : (isStudentSelected ? CapsuleColors.dangerRed : const Color(0xFF64748B)),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              q.options[optIdx],
+                              style: GoogleFonts.inter(
+                                color: isOptionCorrect ? Colors.white : const Color(0xFFCBD5E1),
+                                fontSize: 12,
+                                fontWeight: isOptionCorrect ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (isOptionCorrect)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: CapsuleColors.successGreen,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'BONNE RÉPONSE',
+                                style: GoogleFonts.orbitron(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          if (isStudentSelected && !isOptionCorrect)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: CapsuleColors.dangerRed,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'VOTRE RÉPONSE',
+                                style: GoogleFonts.orbitron(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 10),
+
+                  // Expandable Clinical Explanation Box
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.electricBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: CapsuleColors.electricBlue.withValues(alpha: 0.4)),
                     ),
-                    if (isCorrect)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'BONNE RÉPONSE',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.lightbulb_outline_rounded, color: CapsuleColors.cyanGlow, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'EXPLICATION CLINIQUE OFFICIELLE (PFE ISSIT) :',
+                                style: GoogleFonts.orbitron(
+                                  color: CapsuleColors.cyanGlow,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                q.explanation,
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFFE2E8F0),
+                                  fontSize: 11.5,
+                                  height: 1.45,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 10),
-
-          // Clinical Explanation Box
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8), size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'RATIONNEL CLINIQUE VALIDÉ (ISSIT PFE) :',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF38BDF8),
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        q.explanation,
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFE2E8F0),
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

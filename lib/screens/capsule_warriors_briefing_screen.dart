@@ -1,491 +1,596 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../arcade/gastro_arcade_screen.dart';
+import '../audio/audio_service.dart';
 import '../models/game_progress.dart';
 import '../models/gastro_world.dart';
-import '../models/gastro_question.dart';
-import '../arcade/weapon_system.dart';
-import '../arcade/gastro_arcade_screen.dart';
 import '../services/storage_service.dart';
-import '../audio/audio_service.dart';
-import '../widgets/tactile_button.dart';
+import '../theme/capsule_theme.dart';
+import '../widgets/capsule_parallax_background.dart';
 
 class CapsuleWarriorsBriefingScreen extends StatefulWidget {
-  final GastroWorld world;
-  final GameProgress progress;
+  final GastroWorld? world;
+  final int? stageId;
+  final GameProgress? progress;
 
   const CapsuleWarriorsBriefingScreen({
     super.key,
-    required this.world,
-    required this.progress,
+    this.world,
+    this.stageId,
+    this.progress,
   });
 
   @override
-  State<CapsuleWarriorsBriefingScreen> createState() => _CapsuleWarriorsBriefingScreenState();
+  State<CapsuleWarriorsBriefingScreen> createState() =>
+      _CapsuleWarriorsBriefingScreenState();
 }
 
-class _CapsuleWarriorsBriefingScreenState extends State<CapsuleWarriorsBriefingScreen> {
+class _CapsuleWarriorsBriefingScreenState
+    extends State<CapsuleWarriorsBriefingScreen>
+    with SingleTickerProviderStateMixin {
   final AudioService _audio = AudioService();
   final StorageService _storage = StorageService();
-  late int _selectedLevel;
+
+  late final GastroWorld _world;
+  late GameProgress _progress;
+  late final AnimationController _glowController;
+  late final Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Default to highest unlocked level within this world or the world's start level
-    final currentUnlocked = widget.progress.currentUnlockedLevel;
-    if (currentUnlocked >= widget.world.startLevel && currentUnlocked <= widget.world.endLevel) {
-      _selectedLevel = currentUnlocked;
-    } else if (currentUnlocked > widget.world.endLevel) {
-      _selectedLevel = widget.world.startLevel;
-    } else {
-      _selectedLevel = widget.world.startLevel;
-    }
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    final stage = widget.stageId ?? widget.world?.id ?? 1;
+    _world = widget.world ??
+        GastroWorld.worlds.firstWhere(
+          (w) => w.id == stage,
+          orElse: () => GastroWorld.worlds.first,
+        );
+
+    _progress = widget.progress ?? _storage.currentProgress;
+
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..repeat(reverse: true);
+
+    _glowAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
   }
 
-  void _onEquipWeapon(String weaponName) {
-    setState(() {
-      widget.progress.equippedWeapon = weaponName;
-    });
-    _storage.saveProgress(widget.progress);
-    _audio.playTargetLock();
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
   }
 
-  void _launchMission() {
+  void _startMission() {
     _audio.playClick();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GastroArcadeScreen(
-          level: _selectedLevel,
-          progress: widget.progress,
+          stageId: _world.id,
+          progress: _progress,
         ),
       ),
-    ).then((_) => setState(() {}));
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 750;
-    final world = widget.world;
+    final isCompact = media.size.height < 520;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF030712),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        title: Text(
-          'BRIEFING DE MISSION • MONDE ${world.id}',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: isMobile ? 15 : 18,
-            letterSpacing: 0.8,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 14 : 32,
-          vertical: 20,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 880),
+      backgroundColor: CapsuleColors.darkNavy,
+      body: CapsuleParallaxBackground(
+        showHeroCapsule: false,
+        showEnemySilhouettes: false,
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 20 : 36,
+              vertical: isCompact ? 10 : 16,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // World Banner
-                _buildWorldBanner(isMobile),
-                const SizedBox(height: 20),
-
-                // Sector Levels Selector
-                _buildLevelSelector(),
-                const SizedBox(height: 24),
-
-                // Boss Intelligence Card
-                _buildBossIntelCard(),
-                const SizedBox(height: 24),
-
-                // Weapon Loadout Selector
-                _buildWeaponArsenalSection(),
-                const SizedBox(height: 28),
-
-                // Launch Button
-                TactileButton(
-                  label: 'Lancer la Capsule (Niveau $_selectedLevel)',
-                  subtitle: 'Initialiser la propulsion et entrer dans la muqueuse gastrique',
-                  icon: Icons.rocket_launch_rounded,
-                  style: TactileButtonStyle.primary,
-                  height: 60,
-                  onPressed: _launchMission,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorldBanner(bool isMobile) {
-    final world = widget.world;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: world.primaryColor.withValues(alpha: 0.5), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: world.primaryColor.withValues(alpha: 0.15),
-            blurRadius: 18,
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [world.primaryColor, world.secondaryColor]),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(world.icon, color: Colors.white, size: 32),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                // 1. Top Bar: RETOUR button + Header
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: world.primaryColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'ZONE ${world.id} • ${world.title.toUpperCase()}',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: world.primaryColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        _audio.playClick();
+                        Navigator.of(context).pop();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'RETOUR',
+                              style: GoogleFonts.orbitron(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Q${world.startLevel} à Q${world.endLevel}',
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF94A3B8),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  world.description,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFE2E8F0),
-                    fontSize: 13.5,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLevelSelector() {
-    final world = widget.world;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SÉLECTIONNEZ LE NIVEAU DU SECTEUR',
-          style: GoogleFonts.plusJakartaSans(
-            color: const Color(0xFF94A3B8),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: List.generate(world.endLevel - world.startLevel + 1, (i) {
-            final lvl = world.startLevel + i;
-            final isUnlocked = widget.progress.isLevelUnlocked(lvl);
-            final isCompleted = widget.progress.isLevelCompleted(lvl);
-            final isSelected = lvl == _selectedLevel;
-            final stars = widget.progress.getStars(lvl);
-
-            return InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: isUnlocked
-                  ? () {
-                      _audio.playClick();
-                      setState(() => _selectedLevel = lvl);
-                    }
-                  : null,
-              child: Container(
-                width: 96,
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? world.primaryColor.withValues(alpha: 0.25)
-                      : const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected
-                        ? world.primaryColor
-                        : isUnlocked
-                            ? const Color(0xFF334155)
-                            : const Color(0xFF1E293B),
-                    width: isSelected ? 2.0 : 1.0,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'NIVEAU $lvl',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: isUnlocked ? Colors.white : const Color(0xFF64748B),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (isCompleted)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(3, (s) {
-                          return Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: s < stars ? const Color(0xFFFFD166) : const Color(0xFF475569),
-                          );
-                        }),
-                      )
-                    else if (isUnlocked)
-                      Text(
-                        'En cours',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF00E5FF),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      )
-                    else
-                      const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF64748B)),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBossIntelCard() {
-    final boss = widget.world.boss;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
-            ),
-            child: Icon(boss.icon, color: const Color(0xFFEF4444), size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'ALERTE BOSS DE FIN DE SECTEUR',
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFFEF4444),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'DANGER MAX',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  boss.name,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  boss.title,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeaponArsenalSection() {
-    final unlockedWeapons = widget.progress.unlockedWeapons;
-    final equipped = widget.progress.equippedWeapon;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'ARSENAL MÉDICAL DE LA CAPSULE',
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF94A3B8),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-              ),
-            ),
-            Text(
-              '${unlockedWeapons.length} / ${WeaponConfig.allWeapons.length} Armes Débloquées',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF00E5FF),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Column(
-          children: WeaponConfig.allWeapons.map((weapon) {
-            final isUnlocked = unlockedWeapons.contains(weapon.name);
-            final isEquipped = equipped == weapon.name;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isEquipped
-                    ? weapon.glowColor.withValues(alpha: 0.15)
-                    : const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isEquipped
-                      ? weapon.glowColor
-                      : isUnlocked
-                          ? const Color(0xFF334155)
-                          : const Color(0xFF1E293B),
-                  width: isEquipped ? 1.8 : 1.0,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isUnlocked ? weapon.icon : Icons.lock_rounded,
-                    color: isUnlocked ? weapon.glowColor : const Color(0xFF64748B),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+                    const SizedBox(width: 16),
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          weapon.name,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: isUnlocked ? Colors.white : const Color(0xFF64748B),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
+                          'STAGE ${_world.id} : ${_world.name.toUpperCase()}',
+                          style: GoogleFonts.orbitron(
+                            fontSize: isCompact ? 16 : 20,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 1.5,
+                            shadows: [
+                              Shadow(
+                                color: _world.primaryColor.withValues(alpha: 0.7),
+                                blurRadius: 12,
+                              ),
+                            ],
                           ),
                         ),
                         Text(
-                          weapon.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          _world.subtitle,
                           style: GoogleFonts.inter(
-                            color: const Color(0xFF94A3B8),
-                            fontSize: 11,
+                            fontSize: 11.5,
+                            color: CapsuleColors.turquoise,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  if (isUnlocked)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isEquipped ? weapon.glowColor : const Color(0xFF1E293B),
-                        foregroundColor: isEquipped ? Colors.black : Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    const Spacer(),
+                    // Question Count Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: CapsuleColors.purple.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: CapsuleColors.purple.withValues(alpha: 0.6)),
                       ),
-                      onPressed: isEquipped ? null : () => _onEquipWeapon(weapon.name),
-                      child: Text(
-                        isEquipped ? 'Équipée' : 'Équiper',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11.5),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.menu_book_rounded, color: CapsuleColors.cyanGlow, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_world.questionIds.length} questions à résoudre',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  else
-                    Text(
-                      'Débloqué plus tard',
-                      style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 11),
                     ),
-                ],
-              ),
-            );
-          }).toList(),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // 2. Middle Content Grid
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left Column: Environment description & Objectives
+                      Expanded(
+                        flex: 5,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Theme / Environment Card
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFF1E293B)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.terrain_rounded, color: _world.primaryColor, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'ENVIRONNEMENT GASTRIQUE',
+                                          style: GoogleFonts.orbitron(
+                                            color: _world.primaryColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _world.description,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _world.environmentDescription,
+                                      style: GoogleFonts.inter(
+                                        color: CapsuleColors.textSubtle,
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Mission Objectives
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFF1E293B)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'OBJECTIFS DE LA MISSION',
+                                      style: GoogleFonts.orbitron(
+                                        color: CapsuleColors.gold,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildObjectiveItem('1. Naviguer et neutraliser les pathogènes digestifs.'),
+                                    _buildObjectiveItem('2. Répondre aux ${_world.questionIds.length} checkpoints cliniques MICI.'),
+                                    _buildObjectiveItem('3. Terrasser le Boss : ${_world.bossName}.'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Right Column: Enemy Previews + Weapon Loadout
+                      Expanded(
+                        flex: 6,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Enemy Preview (3 canvas illustrations)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: CapsuleColors.dangerRed.withValues(alpha: 0.4)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'MENACES DÉTECTÉES DANS CE SECTEUR',
+                                          style: GoogleFonts.orbitron(
+                                            color: CapsuleColors.dangerRed,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                        Text(
+                                          'BOSS: ${_world.bossName.toUpperCase()}',
+                                          style: GoogleFonts.orbitron(
+                                            color: CapsuleColors.dangerOrange,
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(child: _buildEnemyPreviewItem(type: 0, name: 'Helico-Grub', desc: 'Flagellé spiralé')),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: _buildEnemyPreviewItem(type: 1, name: 'Spike-Virion', desc: 'Capside perforante')),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: _buildEnemyPreviewItem(type: 2, name: 'Cytokine-Blob', desc: 'Acide corrosif')),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Weapon Loadout Card
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: CapsuleColors.cyanGlow.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: CapsuleColors.cyanGlow),
+                                      ),
+                                      child: const Icon(Icons.flash_on_rounded, color: CapsuleColors.cyanGlow, size: 24),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'ARSENAL ÉQUIPÉ : ${_progress.equippedWeapon.toUpperCase()}',
+                                            style: GoogleFonts.orbitron(
+                                              color: Colors.white,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Récompense stage : Déblocage ${_world.unlockedWeaponName}',
+                                            style: GoogleFonts.inter(
+                                              color: CapsuleColors.turquoise,
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // 3. Large "COMMENCER LA MISSION" Glowing Button
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _glowAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        height: 52,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            colors: [
+                              CapsuleColors.electricBlue,
+                              CapsuleColors.cyanGlow,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: CapsuleColors.cyanGlow.withValues(
+                                alpha: 0.35 * _glowAnimation.value,
+                              ),
+                              blurRadius: 18 * _glowAnimation.value,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _startMission,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.rocket_launch_rounded, color: Colors.black, size: 22),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'COMMENCER LA MISSION',
+                                  style: GoogleFonts.orbitron(
+                                    color: Colors.black,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
+
+  Widget _buildObjectiveItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline_rounded, color: CapsuleColors.successGreen, size: 15),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnemyPreviewItem({
+    required int type,
+    required String name,
+    required String desc,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF030712),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF1E293B)),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: CustomPaint(
+              painter: _EnemyBriefingPainter(enemyType: type),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.orbitron(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            desc,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: CapsuleColors.textSubtle,
+              fontSize: 8.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EnemyBriefingPainter extends CustomPainter {
+  final int enemyType;
+
+  _EnemyBriefingPainter({required this.enemyType});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    if (enemyType == 0) {
+      // Helicobacter (curved body with flagella)
+      final bodyPaint = Paint()..color = CapsuleColors.dangerRed;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center, width: 24, height: 12),
+          const Radius.circular(6),
+        ),
+        bodyPaint,
+      );
+      final flagPaint = Paint()
+        ..color = CapsuleColors.dangerOrange
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+      for (int i = -1; i <= 1; i++) {
+        final p = Path()
+          ..moveTo(center.dx + 12, center.dy + i * 3)
+          ..quadraticBezierTo(center.dx + 18, center.dy + i * 6, center.dx + 22, center.dy + i * 4);
+        canvas.drawPath(p, flagPaint);
+      }
+    } else if (enemyType == 1) {
+      // Spike Virion
+      final virPaint = Paint()..color = CapsuleColors.purple;
+      canvas.drawCircle(center, 10, virPaint);
+      final spikePaint = Paint()
+        ..color = CapsuleColors.dangerOrange
+        ..strokeWidth = 2.0;
+      for (int i = 0; i < 6; i++) {
+        final angle = i * math.pi / 3;
+        canvas.drawLine(
+          Offset(center.dx + math.cos(angle) * 10, center.dy + math.sin(angle) * 10),
+          Offset(center.dx + math.cos(angle) * 16, center.dy + math.sin(angle) * 16),
+          spikePaint,
+        );
+      }
+    } else {
+      // Cytokine Blob
+      final blobPaint = Paint()..color = CapsuleColors.dangerOrange;
+      canvas.drawCircle(center, 12, blobPaint);
+      canvas.drawCircle(Offset(center.dx + 6, center.dy - 6), 5, blobPaint);
+      canvas.drawCircle(Offset(center.dx - 5, center.dy + 6), 4, blobPaint);
+      canvas.drawCircle(center, 5, Paint()..color = Colors.white.withValues(alpha: 0.6));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EnemyBriefingPainter oldDelegate) =>
+      oldDelegate.enemyType != enemyType;
 }

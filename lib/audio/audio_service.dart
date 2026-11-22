@@ -120,6 +120,12 @@ class AudioService {
     }
   }
 
+  void playStageComplete() {
+    if (_sfxEnabled) {
+      _platform.playVictory();
+    }
+  }
+
   void startBgm() {
     if (_bgmEnabled) {
       _platform.startBgm();
