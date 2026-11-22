@@ -11,6 +11,7 @@ import 'capsule_warriors_how_to_play_screen.dart';
 import 'capsule_warriors_intro_screen.dart';
 import 'capsule_warriors_settings_screen.dart';
 import 'capsule_warriors_world_select_screen.dart';
+import 'home_screen.dart';
 
 class CapsuleWarriorsHomeScreen extends StatefulWidget {
   const CapsuleWarriorsHomeScreen({super.key});
@@ -130,6 +131,15 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     ).then((_) => _loadSaveData());
   }
 
+  void _onHospitalServices() {
+    _audio.playClick();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const HomeScreen(),
+      ),
+    ).then((_) => _loadSaveData());
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -142,7 +152,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     }
 
     final size = MediaQuery.of(context).size;
-    final isCompact = size.height < 500 || size.width < 700;
+    final isCompact = size.height < 650 || size.width < 850;
 
     return Scaffold(
       backgroundColor: CapsuleColors.darkNavy,
@@ -252,82 +262,89 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
   }
 
   Widget _buildGameLogo(bool isCompact) {
-    final fontSize = isCompact ? 32.0 : 48.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          children: [
-            // Cyan Outer Glow Text Shadow
-            Text(
+    final fontSize = isCompact ? 30.0 : 40.0;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Stack(
+        children: [
+          // Cyan Outer Glow Text Shadow
+          Text(
+            'CAPSULE WARRIORS',
+            maxLines: 1,
+            style: GoogleFonts.orbitron(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 3.0,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 5
+                ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.5)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+            ),
+          ),
+          // White / Electric Blue Foreground Gradient
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [
+                Colors.white,
+                CapsuleColors.cyanGlow,
+                CapsuleColors.electricBlue,
+              ],
+              stops: [0.0, 0.5, 1.0],
+            ).createShader(bounds),
+            child: Text(
               'CAPSULE WARRIORS',
+              maxLines: 1,
               style: GoogleFonts.orbitron(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 3.0,
-                foreground: Paint()
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = 5
-                  ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.5)
-                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+                color: Colors.white,
               ),
             ),
-            // White / Electric Blue Foreground Gradient
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [
-                  Colors.white,
-                  CapsuleColors.cyanGlow,
-                  CapsuleColors.electricBlue,
-                ],
-                stops: [0.0, 0.5, 1.0],
-              ).createShader(bounds),
-              child: Text(
-                'CAPSULE WARRIORS',
-                style: GoogleFonts.orbitron(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 3.0,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSubtitle(bool isCompact) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 24,
-          height: 2,
-          color: CapsuleColors.turquoise,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'THE STOMACH MISSION',
-          style: GoogleFonts.orbitron(
-            fontSize: isCompact ? 13.0 : 16.0,
-            fontWeight: FontWeight.w800,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 24,
+            height: 2,
             color: CapsuleColors.turquoise,
-            letterSpacing: 4.0,
-            shadows: [
-              Shadow(
-                color: CapsuleColors.turquoise.withValues(alpha: 0.8),
-                blurRadius: 10,
-              ),
-            ],
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Text(
+            'THE STOMACH MISSION',
+            maxLines: 1,
+            style: GoogleFonts.orbitron(
+              fontSize: isCompact ? 12.0 : 15.0,
+              fontWeight: FontWeight.w800,
+              color: CapsuleColors.turquoise,
+              letterSpacing: 3.5,
+              shadows: [
+                Shadow(
+                  color: CapsuleColors.turquoise.withValues(alpha: 0.8),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildMenuButtons(bool isCompact) {
+    final gap = isCompact ? 8.0 : 10.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -342,7 +359,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
             onTap: _onPlay,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: gap),
 
         // 2. REPRENDRE (Only visible if save exists)
         if (_hasSave) ...[
@@ -354,7 +371,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
             isCompact: isCompact,
             onTap: _onResume,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: gap),
         ],
 
         // 3. COMMENT JOUER
@@ -366,7 +383,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
           isCompact: isCompact,
           onTap: _onHowToPlay,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: gap),
 
         // 4. PARAMÈTRES
         _buildArcadeButton(
@@ -376,6 +393,17 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
           accentColor: CapsuleColors.purple,
           isCompact: isCompact,
           onTap: _onSettings,
+        ),
+        SizedBox(height: gap),
+
+        // 5. SERVICES HOSPITALIERS & SIMULATION CLINIQUE
+        _buildArcadeButton(
+          title: '🏥 SERVICES HOSPITALIERS',
+          subtitle: 'SIMULATION CLINIQUE & ENDOSCOPIE',
+          isPrimary: false,
+          accentColor: const Color(0xFF10B981),
+          isCompact: isCompact,
+          onTap: _onHospitalServices,
         ),
       ],
     );
@@ -390,12 +418,12 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     required VoidCallback onTap,
   }) {
     final effectiveAccent = isPrimary ? CapsuleColors.cyanGlow : (accentColor ?? CapsuleColors.electricBlue);
-    final width = isCompact ? 280.0 : 340.0;
-    final height = isCompact ? 50.0 : 58.0;
+    final width = isCompact ? 280.0 : 330.0;
+    final minHeight = isCompact ? 46.0 : 54.0;
 
     return Container(
       width: width,
-      height: height,
+      constraints: BoxConstraints(minHeight: minHeight),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: LinearGradient(
@@ -431,21 +459,22 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
           splashColor: effectiveAccent.withValues(alpha: 0.3),
           highlightColor: effectiveAccent.withValues(alpha: 0.1),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: isCompact ? 5 : 7),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         title,
                         style: GoogleFonts.orbitron(
                           color: Colors.white,
-                          fontSize: isCompact ? 13.5 : 15.0,
+                          fontSize: isCompact ? 12.5 : 14.5,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
+                          letterSpacing: 1.1,
                         ),
                       ),
                       Text(
@@ -454,9 +483,9 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
                           color: isPrimary
                               ? Colors.white.withValues(alpha: 0.85)
                               : CapsuleColors.textSubtle,
-                          fontSize: 10.0,
+                          fontSize: isCompact ? 9.5 : 10.0,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],

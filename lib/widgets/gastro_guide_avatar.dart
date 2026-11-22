@@ -148,7 +148,6 @@ class _DoctorPainter extends CustomPainter {
 
     // Neck & Face Base
     final skinPaint = Paint()..color = const Color(0xFFFFDBAC);
-    final skinShadow = Paint()..color = const Color(0xFFF1C27D);
 
     // Scrub V-neck
     final scrubPath = Path();
@@ -419,7 +418,6 @@ class _DoctorPainter extends CustomPainter {
       case GuideMood.encouraging:
         return const Color(0xFF38BDF8);
       case GuideMood.neutral:
-      default:
         return const Color(0xFF00E5FF);
     }
   }

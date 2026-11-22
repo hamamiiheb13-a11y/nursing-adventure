@@ -6,7 +6,6 @@ import '../services/storage_service.dart';
 import '../audio/audio_service.dart';
 import '../widgets/tactile_button.dart';
 import '../widgets/ecg_monitor_widget.dart';
-import '../widgets/hospital_pager_widget.dart';
 import '../arcade/gastro_arcade_screen.dart';
 import 'arcade_mission_map_screen.dart';
 import 'revision_queue_screen.dart';
@@ -394,6 +393,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildTopBar(bool isSoundOn, int revCount) {
     return Row(
       children: [
+        if (Navigator.of(context).canPop()) ...[
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            tooltip: 'Retour à Capsule Warriors',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 4),
+        ],
         // Brand logo
         Container(
           width: 34,

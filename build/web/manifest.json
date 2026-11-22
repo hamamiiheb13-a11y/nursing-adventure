@@ -1,12 +1,12 @@
 {
-    "name": "GASTRO QUEST – Le Jeu Éducatif MICI",
-    "short_name": "GastroQuest",
+    "name": "CAPSULE WARRIORS – The Stomach Mission",
+    "short_name": "CapsuleWarriors",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#040D1A",
+    "background_color": "#0A0E1A",
     "theme_color": "#00E5FF",
-    "description": "Le jeu éducatif médical sur les MICI pour les étudiants en gastro-entérologie.",
-    "orientation": "portrait-primary",
+    "description": "Jeu 2D Arcade Éducatif Médical sur les MICI pour les étudiants en santé • ISSIT PFE.",
+    "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [
         {

@@ -22,5 +22,6 @@ void main() {
     expect(find.text('🎮 JOUER'), findsOneWidget);
     expect(find.text('❓ COMMENT JOUER'), findsOneWidget);
     expect(find.text('⚙ PARAMÈTRES'), findsOneWidget);
+    expect(find.text('🏥 SERVICES HOSPITALIERS'), findsOneWidget);
   });
 }

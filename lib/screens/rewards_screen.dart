@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/game_progress.dart';
-import '../models/gastro_world.dart';
 import '../audio/audio_service.dart';
 
 class RewardsScreen extends StatelessWidget {
