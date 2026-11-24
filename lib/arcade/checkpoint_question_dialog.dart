@@ -124,9 +124,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           // Main Dialog Card
           Center(
             child: Container(
-              width: isLandscape ? math.min(media.size.width * 0.92, 980) : 540,
-              height: isLandscape ? math.min(media.size.height * 0.90, 520) : null,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              width: isLandscape ? math.min(media.size.width * 0.94, 980) : 540,
+              height: isLandscape ? math.min(media.size.height * 0.94, 540) : null,
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF0B132B),
                 borderRadius: BorderRadius.circular(22),
@@ -200,12 +200,15 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
   }
 
   Widget _buildLandscapeContent(GastroQuestion q, bool isCorrect) {
+    final media = MediaQuery.of(context);
+    final bool isCompact = media.size.height < 430;
+
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isCompact ? 12 : 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left 55%: Question, Theme, Scanning indicator, Result explanation
+          // Left 55%: Question, Theme, Scanning indicator, Result explanation & Summary card
           Expanded(
             flex: 55,
             child: SingleChildScrollView(
@@ -217,7 +220,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 10, vertical: isCompact ? 3 : 5),
                         decoration: BoxDecoration(
                           color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
@@ -228,13 +231,13 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.radar_rounded, color: Color(0xFF00E5FF), size: 16),
-                            const SizedBox(width: 6),
+                            Icon(Icons.radar_rounded, color: const Color(0xFF00E5FF), size: isCompact ? 13 : 16),
+                            const SizedBox(width: 5),
                             Text(
                               'TRANSMISSION CHECKPOINT #${widget.checkpointIndex}',
                               style: GoogleFonts.plusJakartaSans(
                                 color: const Color(0xFF00E5FF),
-                                fontSize: 11,
+                                fontSize: isCompact ? 9.5 : 11,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.8,
                               ),
@@ -242,9 +245,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                           ],
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8, vertical: isCompact ? 3 : 4),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1E293B),
                           borderRadius: BorderRadius.circular(8),
@@ -253,41 +256,41 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                           'Q${q.originalNumber}',
                           style: GoogleFonts.inter(
                             color: const Color(0xFF94A3B8),
-                            fontSize: 11,
+                            fontSize: isCompact ? 9.5 : 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: isCompact ? 6 : 12),
 
                   // Anatomical Theme
                   Text(
                     q.anatomicalTheme.toUpperCase(),
                     style: GoogleFonts.inter(
                       color: const Color(0xFF38BDF8),
-                      fontSize: 11,
+                      fontSize: isCompact ? 9.5 : 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: isCompact ? 4 : 8),
 
                   // Question Text
                   Text(
                     q.questionText,
                     style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
-                      fontSize: 16.5,
+                      fontSize: isCompact ? 13.5 : 16.5,
                       fontWeight: FontWeight.w700,
-                      height: 1.38,
+                      height: 1.35,
                     ),
                   ),
 
                   // Explanation / Result after answer
                   if (_isValidated) ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: isCompact ? 10 : 16),
                     _buildResultBox(q, isCorrect),
                   ],
                 ],
@@ -295,9 +298,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
             ),
           ),
 
-          const SizedBox(width: 20),
+          SizedBox(width: isCompact ? 12 : 20),
           const VerticalDivider(color: Color(0xFF1E293B), width: 1),
-          const SizedBox(width: 20),
+          SizedBox(width: isCompact ? 12 : 20),
 
           // Right 45%: Options and Validate / Continue button
           Expanded(
@@ -316,13 +319,13 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: isCompact ? 8 : 12),
                 if (!_isValidated)
                   TactileButton(
                     label: 'Valider ma réponse',
                     icon: Icons.check_circle_rounded,
                     style: TactileButtonStyle.primary,
-                    height: 48,
+                    height: isCompact ? 42 : 48,
                     onPressed: _selectedIndex != null ? _onValidate : null,
                   )
                 else
@@ -330,7 +333,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                     label: 'Reprendre la mission',
                     icon: Icons.play_arrow_rounded,
                     style: TactileButtonStyle.primary,
-                    height: 48,
+                    height: isCompact ? 42 : 48,
                     onPressed: _onContinue,
                   ),
               ],
@@ -508,9 +511,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
         color: isCorrect
             ? const Color(0xFF064E3B).withValues(alpha: 0.6)
             : const Color(0xFF450A0A).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+          width: 1.6,
         ),
       ),
       child: Column(
@@ -524,17 +528,19 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                isCorrect ? 'EXCELLENT ! (+100 XP)' : 'RÉPONSE INCORRECTE (-1 CŒUR)',
-                style: GoogleFonts.plusJakartaSans(
-                  color: isCorrect ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  isCorrect ? 'RÉPONSE VALIDÉE ! (+100 XP)' : 'RÉPONSE INCORRECTE (-1 CŒUR)',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isCorrect ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             q.explanation,
             style: GoogleFonts.inter(
@@ -543,6 +549,63 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               height: 1.45,
             ),
           ),
+          if (q.fichePoints.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.school_rounded, color: Color(0xFF00E5FF), size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          q.ficheTitle.toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF00E5FF),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...q.fichePoints.map(
+                    (point) => Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Text(
+                              point,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFE2E8F0),
+                                fontSize: 11,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

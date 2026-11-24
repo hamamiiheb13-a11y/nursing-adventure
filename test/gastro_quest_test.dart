@@ -4,38 +4,36 @@ import 'package:nursing_adventure/models/gastro_world.dart';
 import 'package:nursing_adventure/models/game_progress.dart';
 
 void main() {
-  group('Gastro Quest 33 Questions & 7 Worlds Validation', () {
-    test('Must contain exactly 33 questions and 7 worlds', () {
-      expect(allGastroQuestions.length, 33);
+  group('Gastro Quest 27 Questions & 7 Worlds Validation', () {
+    test('Must contain exactly 27 questions from the official PFE questionnaire and 7 worlds', () {
+      expect(allGastroQuestions.length, 27);
       expect(GastroWorld.worlds.length, 7);
       for (int i = 0; i < 7; i++) {
         expect(GastroWorld.worlds[i].id, i + 1);
-        expect(GastroWorld.worlds[i].questionIds.isNotEmpty, true);
         expect(GastroWorld.worlds[i].bossName.isNotEmpty, true);
       }
     });
 
-    test('Questions distribution across 7 worlds must be 4, 5, 5, 4, 4, 8, 3', () {
+    test('Questions distribution across worlds must be 4, 5, 3, 5, 7, 3, and dynamic revision in World 7', () {
       final w1 = allGastroQuestions.where((q) => q.worldId == 1).toList();
       final w2 = allGastroQuestions.where((q) => q.worldId == 2).toList();
       final w3 = allGastroQuestions.where((q) => q.worldId == 3).toList();
       final w4 = allGastroQuestions.where((q) => q.worldId == 4).toList();
       final w5 = allGastroQuestions.where((q) => q.worldId == 5).toList();
       final w6 = allGastroQuestions.where((q) => q.worldId == 6).toList();
-      final w7 = allGastroQuestions.where((q) => q.worldId == 7).toList();
 
       expect(w1.length, 4, reason: 'Monde 1 must have 4 questions (Q1-Q4)');
       expect(w2.length, 5, reason: 'Monde 2 must have 5 questions (Q5-Q9)');
-      expect(w3.length, 5, reason: 'Monde 3 must have 5 questions (Q10-Q14)');
-      expect(w4.length, 4, reason: 'Monde 4 must have 4 questions (Q15-Q18)');
-      expect(w5.length, 4, reason: 'Monde 5 must have 4 questions (Q19-Q22)');
-      expect(w6.length, 8, reason: 'Monde 6 must have 8 questions (Q23-Q30)');
-      expect(w7.length, 3, reason: 'Monde 7 must have 3 questions (Q31-Q33)');
+      expect(w3.length, 3, reason: 'Monde 3 must have 3 questions (Q10-Q12)');
+      expect(w4.length, 5, reason: 'Monde 4 must have 5 questions (Q13-Q17)');
+      expect(w5.length, 7, reason: 'Monde 5 must have 7 questions (Q18-Q24)');
+      expect(w6.length, 3, reason: 'Monde 6 must have 3 questions (Q25-Q27)');
+      expect(GastroWorld.worlds[6].questionIds.isEmpty, true, reason: 'Monde 7 is dynamic revision mode');
 
-      expect(w1.length + w2.length + w3.length + w4.length + w5.length + w6.length + w7.length, 33);
+      expect(w1.length + w2.length + w3.length + w4.length + w5.length + w6.length, 27);
     });
 
-    test('Every question has valid options, correct index, and explanation', () {
+    test('Every question has valid options, correct index, explanation, and educational summary card', () {
       for (int i = 0; i < allGastroQuestions.length; i++) {
         final q = allGastroQuestions[i];
         expect(q.id, i + 1, reason: 'Question id must match index + 1');
@@ -44,6 +42,8 @@ void main() {
         expect(q.correctOptionIndex, inInclusiveRange(0, q.options.length - 1));
         expect(q.explanation.isNotEmpty, true);
         expect(q.anatomicalTheme.isNotEmpty, true);
+        expect(q.ficheTitle.isNotEmpty, true);
+        expect(q.fichePoints.isNotEmpty, true);
 
         // Check options are non-empty
         for (final opt in q.options) {
@@ -52,8 +52,8 @@ void main() {
       }
     });
 
-    test('Question IDs are consecutive from 1 to 33', () {
-      for (int i = 0; i < 33; i++) {
+    test('Question IDs are consecutive from 1 to 27', () {
+      for (int i = 0; i < 27; i++) {
         expect(allGastroQuestions[i].id, i + 1);
         expect(allGastroQuestions[i].originalNumber, i + 1);
       }

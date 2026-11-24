@@ -1059,6 +1059,25 @@ class ArcadeGamePainter extends CustomPainter {
   void _drawPlayerCapsule(Canvas canvas, Size size) {
     final p = controller.player;
 
+    // --- ION PROPULSION JET TRAIL (WORLD COORDINATES) ---
+    if (p.trailPositions.isNotEmpty) {
+      for (int i = 0; i < p.trailPositions.length; i++) {
+        final pos = p.trailPositions[i];
+        final fraction = (i + 1) / p.trailPositions.length; // 0..1 (fading backwards)
+        final radius = (p.radius * 0.42 * fraction).clamp(2.0, 9.0);
+        final alpha = (fraction * 0.55).clamp(0.06, 0.6);
+
+        final trailGlow = Paint()
+          ..color = const Color(0xFF00E5FF).withValues(alpha: alpha)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
+        canvas.drawCircle(pos, radius * 1.5, trailGlow);
+
+        final trailCore = Paint()
+          ..color = Colors.white.withValues(alpha: alpha * 0.85);
+        canvas.drawCircle(pos, radius * 0.5, trailCore);
+      }
+    }
+
     canvas.save();
     canvas.translate(p.position.dx, p.position.dy);
     canvas.rotate(p.angle);
@@ -1095,8 +1114,10 @@ class ArcadeGamePainter extends CustomPainter {
     }
 
     // --- C. THRUSTER FLAME NOZZLE ---
-    if (p.isThrusting || p.isBoosted) {
-      final flameLength = p.isBoosted ? 38.0 : 24.0 + math.sin(controller.gameTime * 25.0) * 6.0;
+    final isFiringThruster = p.isThrusting || p.isBoosted || p.flameIntensity > 0.1 || p.moveInput.dx > 0.1;
+    if (isFiringThruster) {
+      final intensity = math.max(p.flameIntensity, p.isBoosted ? 1.5 : (p.isThrusting ? 1.0 : 0.6));
+      final flameLength = (24.0 + math.sin(controller.gameTime * 28.0) * 6.0) * intensity;
       final flamePath = Path()
         ..moveTo(-p.radius * 0.9, -6.0)
         ..lineTo(-p.radius * 0.9 - flameLength, 0)

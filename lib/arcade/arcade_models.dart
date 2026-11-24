@@ -5,7 +5,7 @@ import '../models/gastro_world.dart';
 import 'weapon_system.dart';
 
 enum CollectibleType {
-  cellBubble,     // Translucent smiling red/pink cell bubble (Reference Image 1)
+  cellBubble,     // Translucent smiling red/pink cell bubble
   atpCrystal,     // Golden hexagonal energy crystal
   vitaminCapsule, // Red & white medical pill capsule
   heartBoost,     // Medical repair nanobot (+1 Heart)
@@ -14,7 +14,7 @@ enum CollectibleType {
 }
 
 enum ObstacleType {
-  toothyMicrobe,  // Green toothy monster with mouth, teeth & eye stalk (Reference Image 1)
+  toothyMicrobe,  // Green toothy monster with mouth, teeth & eye stalk
   spikyVirus,     // Violet rotating spike pathogen
   acidDroplet,    // Dripping yellow/green bile/acid from ceiling
   mucosalSpike,   // Inflammatory polyp / mucosal barb
@@ -23,6 +23,7 @@ enum ObstacleType {
 class CapsulePlayer {
   Offset position;
   Offset velocity;
+  Offset moveInput; // Analog vector (-1..1, -1..1)
   double angle;
   double radius;
   int hearts;
@@ -32,16 +33,23 @@ class CapsulePlayer {
   bool isMovingLeft;
   bool isMovingRight;
   bool isMovingDown;
+  bool isShooting; // Continuous hold-to-fire
   double boostTimer;
   double animPhase;
   double shootCooldownTimer;
   double shieldTimer;
   double doubleShotTimer;
+  double specialSkillCooldown;
+  double specialSkillMaxCooldown;
+  double joystickSensitivity;
+  double flameIntensity; // 0.0 to 1.0
+  List<Offset> trailPositions;
   WeaponType weaponType;
 
   CapsulePlayer({
     this.position = const Offset(120, 240),
     this.velocity = Offset.zero,
+    this.moveInput = Offset.zero,
     this.angle = 0.0,
     this.radius = 18.0,
     this.hearts = 3,
@@ -51,18 +59,25 @@ class CapsulePlayer {
     this.isMovingLeft = false,
     this.isMovingRight = false,
     this.isMovingDown = false,
+    this.isShooting = false,
     this.boostTimer = 0.0,
     this.animPhase = 0.0,
     this.shootCooldownTimer = 0.0,
     this.shieldTimer = 0.0,
     this.doubleShotTimer = 0.0,
+    this.specialSkillCooldown = 0.0,
+    this.specialSkillMaxCooldown = 8.0,
+    this.joystickSensitivity = 1.0,
+    this.flameIntensity = 0.0,
+    List<Offset>? trailPositions,
     this.weaponType = WeaponType.medicalLaser,
-  });
+  }) : trailPositions = trailPositions ?? <Offset>[];
 
   bool get isInvulnerable => invulnerableTimer > 0 || shieldTimer > 0;
   bool get isShieldActive => shieldTimer > 0;
   bool get isBoosted => boostTimer > 0;
   bool get hasDoubleShot => doubleShotTimer > 0;
+  bool get canUseSpecialSkill => specialSkillCooldown <= 0;
 
   void activateShield(double durationSeconds) {
     shieldTimer = math.max(shieldTimer, durationSeconds);
@@ -72,11 +87,15 @@ class CapsulePlayer {
     doubleShotTimer = math.max(doubleShotTimer, durationSeconds);
   }
 
+  void triggerSpecialSkill() {
+    specialSkillCooldown = specialSkillMaxCooldown;
+  }
+
   void takeDamage() {
     if (isInvulnerable) return;
     hearts = math.max(0, hearts - 1);
-    invulnerableTimer = 1.6; // 1.6s grace period
-    velocity = Offset(velocity.dx * 0.3 - 80, -60); // knockback
+    invulnerableTimer = 1.8; // 1.8s grace period
+    velocity = Offset(velocity.dx * 0.3 - 60, -40); // Soft knockback
   }
 
   void heal() {
@@ -86,8 +105,9 @@ class CapsulePlayer {
 
 class TunnelGeometry {
   final double levelLength;
-  final double baseCeiling;
-  final double baseFloor;
+  double baseCeiling;
+  double baseFloor;
+  double viewportHeight;
   final GastroWorld world;
 
   TunnelGeometry({
@@ -95,34 +115,56 @@ class TunnelGeometry {
     required this.world,
     this.baseCeiling = 70.0,
     this.baseFloor = 420.0,
+    this.viewportHeight = 500.0,
   });
+
+  /// Adapts ceiling and floor positions dynamically to any screen height!
+  void updateViewport(double width, double height) {
+    viewportHeight = height.clamp(280.0, 1600.0);
+    // Ceiling occupies the top 13-16% of the screen
+    baseCeiling = (viewportHeight * 0.14).clamp(42.0, 90.0);
+    // Floor occupies the bottom 13-16% of the screen (leaving ~72% playable corridor)
+    baseFloor = (viewportHeight * 0.86).clamp(viewportHeight - 90.0, viewportHeight - 42.0);
+  }
 
   /// Calculates ceiling Y at a given world X
   double getCeilingY(double worldX, double timeSeconds) {
+    final scale = (viewportHeight / 500.0).clamp(0.6, 1.3);
+
     if (worldX > levelLength - 900) {
       // Open up into the wide Boss Arena!
       final progress = ((worldX - (levelLength - 900)) / 500).clamp(0.0, 1.0);
-      return (baseCeiling - 40.0) * progress + (baseCeiling + 15 * math.sin(worldX * 0.003)) * (1.0 - progress);
+      return (baseCeiling - 35.0 * scale) * progress +
+          (baseCeiling + 12 * scale * math.sin(worldX * 0.003)) * (1.0 - progress);
     }
 
-    final wave1 = math.sin(worldX * 0.0028) * 32.0;
-    final wave2 = math.cos(worldX * 0.007 + 0.8) * 16.0;
-    final peristalsis = math.sin(timeSeconds * 1.8 + worldX * 0.005) * 6.0;
-    return baseCeiling + wave1 + wave2 + peristalsis;
+    final wave1 = math.sin(worldX * 0.0028) * (20.0 * scale);
+    final wave2 = math.cos(worldX * 0.007 + 0.8) * (10.0 * scale);
+    final peristalsis = math.sin(timeSeconds * 1.8 + worldX * 0.005) * (4.0 * scale);
+    final rawY = baseCeiling + wave1 + wave2 + peristalsis;
+
+    // Hard clamp to ensure ceiling never dips past 25% of screen height
+    return rawY.clamp(20.0, viewportHeight * 0.24);
   }
 
   /// Calculates floor Y at a given world X
   double getFloorY(double worldX, double timeSeconds) {
+    final scale = (viewportHeight / 500.0).clamp(0.6, 1.3);
+
     if (worldX > levelLength - 900) {
       // Open up into the wide Boss Arena!
       final progress = ((worldX - (levelLength - 900)) / 500).clamp(0.0, 1.0);
-      return (baseFloor + 60.0) * progress + (baseFloor + 18 * math.sin(worldX * 0.0032 + 1.2)) * (1.0 - progress);
+      return (baseFloor + 40.0 * scale) * progress +
+          (baseFloor + 14 * scale * math.sin(worldX * 0.0032 + 1.2)) * (1.0 - progress);
     }
 
-    final wave1 = math.sin(worldX * 0.0031 + 1.4) * 36.0;
-    final wave2 = math.sin(worldX * 0.0065 - 0.5) * 18.0;
-    final peristalsis = math.cos(timeSeconds * 1.8 + worldX * 0.005) * 6.0;
-    return baseFloor + wave1 + wave2 + peristalsis;
+    final wave1 = math.sin(worldX * 0.0031 + 1.4) * (22.0 * scale);
+    final wave2 = math.sin(worldX * 0.0065 - 0.5) * (12.0 * scale);
+    final peristalsis = math.cos(timeSeconds * 1.8 + worldX * 0.005) * (4.0 * scale);
+    final rawY = baseFloor + wave1 + wave2 + peristalsis;
+
+    // Hard clamp to ensure floor never rises above 76% of screen height
+    return rawY.clamp(viewportHeight * 0.76, viewportHeight - 15.0);
   }
 }
 
@@ -189,6 +231,7 @@ class ArcadeCheckpoint {
   final int index; // 1, 2, 3...
   final double worldX;
   final GastroQuestion question;
+  final bool isRevision;
   bool isTriggered;
   bool isCompleted;
   bool isAnswerCorrect;
@@ -197,6 +240,7 @@ class ArcadeCheckpoint {
     required this.index,
     required this.worldX,
     required this.question,
+    this.isRevision = false,
     this.isTriggered = false,
     this.isCompleted = false,
     this.isAnswerCorrect = false,

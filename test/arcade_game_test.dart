@@ -72,21 +72,40 @@ void main() {
   });
 
   group('ArcadeGameController & Educational Checkpoints Integration', () {
-    test('Level 1 initializes with World 1 and original questions', () {
+    test('Level 1 initializes with World 1 and 3 checkpoints plus 1 boss question', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
 
       expect(controller.world.id, 1);
-      expect(controller.checkpoints.length, 2);
+      expect(controller.checkpoints.length, 3);
       expect(controller.collectibles.isNotEmpty, true);
       expect(controller.obstacles.isNotEmpty, true);
       expect(controller.boss.name, 'Helicobacter Rex');
+      expect(controller.boss.challengeQuestions.length, 1);
+      expect(controller.boss.currentHp, 1);
 
-      // Checkpoint questions match original questions
+      // Checkpoint questions match official questions Q1..Q3
       for (final cp in controller.checkpoints) {
         expect(allGastroQuestions.contains(cp.question), true);
-        expect(cp.question.originalNumber, inInclusiveRange(1, 100));
+        expect(cp.question.originalNumber, inInclusiveRange(1, 27));
       }
+    });
+
+    test('Analog movement vector and EMP special skill work properly', () {
+      final progress = GameProgress();
+      final controller = ArcadeGameController(level: 1, progress: progress);
+      controller.start();
+
+      // Test analog movement vector
+      const inputVec = Offset(0.6, -0.8);
+      controller.setMoveVector(inputVec);
+      expect(controller.player.moveInput, inputVec);
+
+      // Test special skill (EMP Blast)
+      expect(controller.player.specialSkillCooldown, 0.0);
+      controller.triggerSpecialSkill();
+      expect(controller.player.specialSkillCooldown, greaterThan(0.0));
+      expect(controller.screenShake, greaterThan(0.0));
     });
 
     test('Correct checkpoint answer increases XP, combo, and awards speed boost', () {
@@ -132,7 +151,7 @@ void main() {
 
     test('Answering a revision question correctly removes it from queue and marks as Mastered', () {
       final progress = GameProgress();
-      progress.revisionQueue.add(4); // Q46 in revision
+      progress.revisionQueue.add(4); // Q4 in revision
 
       expect(progress.revisionQueue.contains(4), true);
       expect(progress.masteredQuestions.contains(4), false);
@@ -156,29 +175,13 @@ void main() {
       controller.start();
 
       final boss = controller.boss;
-      expect(boss.currentHp, 3);
+      expect(boss.currentHp, 1);
       expect(boss.isDefeated, false);
 
-      // Hit 1
+      // Hit 1 - Defeat!
       controller.answerBossQuestion(
         questionId: boss.challengeQuestions[0].id,
         selectedOptionIndex: boss.challengeQuestions[0].correctOptionIndex,
-        isCorrect: true,
-      );
-      expect(boss.currentHp, 2);
-
-      // Hit 2
-      controller.answerBossQuestion(
-        questionId: boss.challengeQuestions[1].id,
-        selectedOptionIndex: boss.challengeQuestions[1].correctOptionIndex,
-        isCorrect: true,
-      );
-      expect(boss.currentHp, 1);
-
-      // Hit 3 - Defeat!
-      controller.answerBossQuestion(
-        questionId: boss.challengeQuestions[2].id,
-        selectedOptionIndex: boss.challengeQuestions[2].correctOptionIndex,
         isCorrect: true,
       );
       expect(boss.currentHp, 0);

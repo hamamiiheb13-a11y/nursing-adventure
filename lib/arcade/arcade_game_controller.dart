@@ -45,7 +45,7 @@ class ArcadeGameController extends ChangeNotifier {
   double viewportWidth = 800.0;
   double viewportHeight = 500.0;
 
-  double totalDistance = 5200.0;
+  double totalDistance = 5000.0;
   int score = 0;
   int combo = 0;
   int highestCombo = 0;
@@ -66,18 +66,19 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _initLevel() {
-    // Level length scales smoothly: 4200 to 5600
-    totalDistance = 4500.0 + (level % 5) * 220.0;
+    // Distance scales cleanly with stage
+    totalDistance = 4400.0 + (level % 6) * 200.0;
 
     tunnel = TunnelGeometry(
       levelLength: totalDistance,
       world: world,
-      baseCeiling: 85.0,
-      baseFloor: 430.0,
+      baseCeiling: 70.0,
+      baseFloor: 420.0,
+      viewportHeight: viewportHeight,
     );
 
     player = CapsulePlayer(
-      position: Offset(100.0, (tunnel.baseCeiling + tunnel.baseFloor) / 2),
+      position: Offset(120.0, viewportHeight * 0.5),
       hearts: 3,
       maxHearts: 3,
       weaponType: equippedWeaponConfig.type,
@@ -97,12 +98,12 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateBackgroundErythrocytes() {
     final rand = math.Random(level * 777);
     backgroundCells.clear();
-    for (int i = 0; i < 45; i++) {
+    for (int i = 0; i < 40; i++) {
       backgroundCells.add(
         BackgroundErythrocyte(
-          position: Offset(rand.nextDouble() * totalDistance, rand.nextDouble() * 550),
+          position: Offset(rand.nextDouble() * totalDistance, rand.nextDouble() * 600),
           depth: 0.15 + rand.nextDouble() * 0.65,
-          radius: 12.0 + rand.nextDouble() * 24.0,
+          radius: 12.0 + rand.nextDouble() * 22.0,
           wobblePhase: rand.nextDouble() * math.pi * 2,
           rotation: rand.nextDouble() * math.pi * 2,
         ),
@@ -113,38 +114,76 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateCheckpoints() {
     checkpoints.clear();
 
-    // Primary question for this level
-    final currentQ = allGastroQuestions[(level - 1).clamp(0, allGastroQuestions.length - 1)];
+    if (level >= 1 && level <= 6) {
+      // Questions officielles du nouveau PDF pour ce stage
+      final stageQuestions = allGastroQuestions.where((q) => q.worldId == level).toList();
+      if (stageQuestions.isEmpty) return;
 
-    // Check if there are questions in the revision queue to mix in!
-    GastroQuestion? revisionQ;
-    if (progress.revisionQueue.isNotEmpty) {
-      final revId = progress.revisionQueue.firstWhere(
-        (id) => id != currentQ.id,
-        orElse: () => -1,
-      );
-      if (revId != -1) {
-        revisionQ = allGastroQuestions.firstWhere((q) => q.id == revId);
+      // La dernière question sera le duel final du Boss !
+      // Toutes les questions précédentes sont réparties le long du parcours.
+      final checkpointQuestions = stageQuestions.length > 1
+          ? stageQuestions.sublist(0, stageQuestions.length - 1)
+          : stageQuestions;
+
+      final count = checkpointQuestions.length;
+      for (int i = 0; i < count; i++) {
+        final fraction = 0.22 + (0.54 / math.max(1, count)) * i;
+        checkpoints.add(
+          ArcadeCheckpoint(
+            index: i + 1,
+            worldX: totalDistance * fraction,
+            question: checkpointQuestions[i],
+            isRevision: false,
+          ),
+        );
+      }
+    } else {
+      // =====================================================================
+      // STAGE 7 : MODE DE RÉVISION INTELLIGENT
+      // Reprend EXCLUSIVEMENT les questions que l'étudiant a ratées !
+      // =====================================================================
+      final failedIds = progress.revisionQueue.toList();
+      final List<GastroQuestion> revQuestions = [];
+
+      for (final id in failedIds) {
+        final q = allGastroQuestions.firstWhere(
+          (item) => item.id == id,
+          orElse: () => allGastroQuestions.first,
+        );
+        if (!revQuestions.contains(q)) {
+          revQuestions.add(q);
+        }
+      }
+
+      if (revQuestions.isNotEmpty) {
+        final count = revQuestions.length;
+        for (int i = 0; i < count; i++) {
+          final fraction = 0.18 + (0.60 / math.max(1, count)) * i;
+          checkpoints.add(
+            ArcadeCheckpoint(
+              index: i + 1,
+              worldX: totalDistance * fraction,
+              question: revQuestions[i],
+              isRevision: true,
+            ),
+          );
+        }
+      } else {
+        // MAÎTRISE PARFAITE : L'étudiant n'a commis AUCUNE erreur pendant les 6 premiers stages !
+        // 3 Checkpoints de consécration et Boss suprême
+        final masterQuestions = [allGastroQuestions[3], allGastroQuestions[11], allGastroQuestions[26]];
+        for (int i = 0; i < masterQuestions.length; i++) {
+          checkpoints.add(
+            ArcadeCheckpoint(
+              index: i + 1,
+              worldX: totalDistance * (0.28 + i * 0.24),
+              question: masterQuestions[i],
+              isRevision: false,
+            ),
+          );
+        }
       }
     }
-
-    // Place checkpoint 1 at ~30%
-    checkpoints.add(
-      ArcadeCheckpoint(
-        index: 1,
-        worldX: totalDistance * 0.32,
-        question: revisionQ ?? currentQ,
-      ),
-    );
-
-    // Place checkpoint 2 at ~65%
-    checkpoints.add(
-      ArcadeCheckpoint(
-        index: 2,
-        worldX: totalDistance * 0.68,
-        question: currentQ,
-      ),
-    );
   }
 
   void _generateCollectibles() {
@@ -152,54 +191,50 @@ class ArcadeGameController extends ChangeNotifier {
     final rand = math.Random(level * 333);
     int colId = 1;
 
-    // Distribute clusters along the tunnel
-    for (double x = 300.0; x < totalDistance - 700.0; x += 110.0 + rand.nextDouble() * 90.0) {
+    for (double x = 280.0; x < totalDistance - 700.0; x += 120.0 + rand.nextDouble() * 80.0) {
       final ceilY = tunnel.getCeilingY(x, 0.0);
       final floorY = tunnel.getFloorY(x, 0.0);
       final midY = (ceilY + floorY) / 2;
 
-      // Group in gentle arches of 3 to 4 items
-      int count = 2 + rand.nextInt(3);
-      for (int i = 0; i < count; i++) {
-        final itemX = x + i * 32.0;
-        final floatOffset = math.sin((i / count) * math.pi) * 35.0;
-        final itemY = midY - floatOffset + (rand.nextDouble() - 0.5) * 30.0;
-
-        CollectibleType type = CollectibleType.cellBubble;
-        int xp = 20;
+      // Group in clusters of 2-3
+      final clusterSize = 1 + rand.nextInt(3);
+      for (int c = 0; c < clusterSize; c++) {
+        final roll = rand.nextDouble();
+        CollectibleType type;
+        int xp = 25;
         int pts = 50;
 
-        final roll = rand.nextDouble();
         if (roll < 0.40) {
           type = CollectibleType.cellBubble;
           xp = 20;
           pts = 40;
-        } else if (roll < 0.70) {
+        } else if (roll < 0.72) {
           type = CollectibleType.atpCrystal;
           xp = 35;
-          pts = 80;
-        } else if (roll < 0.85) {
+          pts = 75;
+        } else if (roll < 0.88) {
           type = CollectibleType.vitaminCapsule;
-          xp = 50;
-          pts = 120;
-        } else if (roll < 0.92) {
-          type = CollectibleType.shieldBoost;
-          xp = 60;
-          pts = 140;
-        } else if (roll < 0.96) {
-          type = CollectibleType.weaponUpgrade;
-          xp = 75;
-          pts = 180;
-        } else {
+          xp = 40;
+          pts = 90;
+        } else if (roll < 0.94) {
           type = CollectibleType.heartBoost;
           xp = 60;
+          pts = 120;
+        } else if (roll < 0.98) {
+          type = CollectibleType.shieldBoost;
+          xp = 80;
           pts = 150;
+        } else {
+          type = CollectibleType.weaponUpgrade;
+          xp = 100;
+          pts = 200;
         }
 
+        final itemY = midY + (rand.nextDouble() - 0.5) * (floorY - ceilY - 80.0);
         collectibles.add(
           ArcadeCollectible(
             id: colId++,
-            position: Offset(itemX, itemY.clamp(ceilY + 30.0, floorY - 30.0)),
+            position: Offset(x + c * 28.0, itemY.clamp(ceilY + 20.0, floorY - 20.0)),
             type: type,
             xpValue: xp,
             scoreValue: pts,
@@ -212,12 +247,11 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _generateObstacles() {
     obstacles.clear();
-    final rand = math.Random(level * 555);
+    final rand = math.Random(level * 444);
     int obsId = 1;
 
-    for (double x = 500.0; x < totalDistance - 800.0; x += 220.0 + rand.nextDouble() * 160.0) {
-      // Avoid placing right on checkpoints
-      bool onCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 120.0);
+    for (double x = 450.0; x < totalDistance - 750.0; x += 190.0 + rand.nextDouble() * 120.0) {
+      bool onCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 140.0);
       if (onCheckpoint) continue;
 
       final ceilY = tunnel.getCeilingY(x, 0.0);
@@ -225,40 +259,40 @@ class ArcadeGameController extends ChangeNotifier {
 
       final roll = rand.nextDouble();
       if (roll < 0.45) {
-        // Green toothy monster sitting on the floor (Reference Image 1)
+        // Monstre vert à dents sur le sol
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
-            position: Offset(x, floorY - 32.0),
-            initialY: floorY - 32.0,
+            position: Offset(x, floorY - 28.0),
+            initialY: floorY - 28.0,
             type: ObstacleType.toothyMicrobe,
-            radius: 28.0,
+            radius: 26.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
       } else if (roll < 0.75) {
-        // Spiky virus hovering mid-tunnel
-        final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * 60.0;
+        // Virus spirochète flottant au milieu
+        final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * 50.0;
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
             position: Offset(x, midY),
             initialY: midY,
             type: ObstacleType.spikyVirus,
-            radius: 22.0,
+            radius: 20.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
       } else {
-        // Acid droplet dripping from ceiling
+        // Gouttelette de suc gastrique acide tombant du plafond
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
-            position: Offset(x, ceilY + 18.0),
-            initialY: ceilY + 18.0,
+            position: Offset(x, ceilY + 16.0),
+            initialY: ceilY + 16.0,
             type: ObstacleType.acidDroplet,
-            radius: 18.0,
-            velocityY: 80.0 + rand.nextDouble() * 60.0,
+            radius: 16.0,
+            velocityY: 85.0 + rand.nextDouble() * 55.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
@@ -268,12 +302,11 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _generateEnemies() {
     enemies.clear();
-    final rand = math.Random(level * 888);
+    final rand = math.Random(level * 555);
     int enemyId = 1;
 
-    for (double x = 450.0; x < totalDistance - 850.0; x += 190.0 + rand.nextDouble() * 130.0) {
-      // Avoid placing right on checkpoints
-      bool onCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 120.0);
+    for (double x = 500.0; x < totalDistance - 800.0; x += 220.0 + rand.nextDouble() * 140.0) {
+      bool onCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 150.0);
       if (onCheckpoint) continue;
 
       final ceilY = tunnel.getCeilingY(x, 0.0);
@@ -287,27 +320,21 @@ class ArcadeGameController extends ChangeNotifier {
       int score;
       int xp;
 
-      if (roll < 0.28) {
+      if (roll < 0.40) {
         eType = EnemyType.helicoGrub;
-        hp = 2 + (level / 7).floor();
+        hp = 2 + (level / 4).floor();
         radius = 20.0;
-        score = 120;
-        xp = 25;
-      } else if (roll < 0.52) {
-        eType = EnemyType.spikeVirion;
-        hp = 2 + (level / 8).floor();
-        radius = 18.0;
         score = 140;
         xp = 30;
-      } else if (roll < 0.74) {
+      } else if (roll < 0.72) {
         eType = EnemyType.cytokineBlob;
-        hp = 3 + (level / 6).floor();
+        hp = 3 + (level / 5).floor();
         radius = 22.0;
         score = 180;
         xp = 35;
-      } else if (roll < 0.90) {
+      } else if (roll < 0.88) {
         eType = EnemyType.acidSentry;
-        hp = 4 + (level / 5).floor();
+        hp = 4 + (level / 4).floor();
         radius = 24.0;
         score = 220;
         xp = 45;
@@ -319,12 +346,12 @@ class ArcadeGameController extends ChangeNotifier {
         xp = 20;
       }
 
-      final enemyY = midY + (rand.nextDouble() - 0.5) * 80.0;
+      final enemyY = midY + (rand.nextDouble() - 0.5) * 60.0;
       enemies.add(
         ArcadeEnemy(
           id: enemyId++,
-          position: Offset(x, enemyY.clamp(ceilY + 25.0, floorY - 25.0)),
-          velocity: Offset(-45.0 - rand.nextDouble() * 30.0, 0),
+          position: Offset(x, enemyY.clamp(ceilY + 28.0, floorY - 28.0)),
+          velocity: Offset(-45.0 - rand.nextDouble() * 25.0, 0),
           type: eType,
           maxHp: hp,
           radius: radius,
@@ -337,8 +364,23 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _generateBoss() {
-    // Challenge questions from current world
-    final worldQuestions = allGastroQuestions.where((q) => q.worldId == world.id).toList();
+    List<GastroQuestion> challengeQuestions;
+
+    if (level >= 1 && level <= 6) {
+      final stageQuestions = allGastroQuestions.where((q) => q.worldId == level).toList();
+      // Le boss teste la question d'apogée du stage
+      challengeQuestions = stageQuestions.isNotEmpty ? [stageQuestions.last] : [allGastroQuestions.first];
+    } else {
+      // Stage 7 : Le boss teste les révisions ou la synthèse finale
+      if (progress.revisionQueue.isNotEmpty) {
+        challengeQuestions = progress.revisionQueue
+            .map((id) => allGastroQuestions.firstWhere((q) => q.id == id, orElse: () => allGastroQuestions.first))
+            .take(3)
+            .toList();
+      } else {
+        challengeQuestions = [allGastroQuestions[3], allGastroQuestions[11], allGastroQuestions[26]];
+      }
+    }
 
     boss = ArcadeBoss(
       name: world.boss.name,
@@ -346,7 +388,9 @@ class ArcadeGameController extends ChangeNotifier {
       auraColor: world.boss.auraColor,
       icon: world.boss.icon,
       position: Offset(totalDistance - 350.0, (tunnel.baseCeiling + tunnel.baseFloor) / 2),
-      challengeQuestions: worldQuestions,
+      challengeQuestions: challengeQuestions,
+      maxHp: challengeQuestions.length,
+      currentHp: challengeQuestions.length,
     );
   }
 
@@ -370,29 +414,104 @@ class ArcadeGameController extends ChangeNotifier {
     }
   }
 
+  /// Responsive Viewport Adapter : Recalcule dynamiquement les parois du tunnel et positions
   void setViewport(double width, double height) {
-    viewportWidth = width;
-    viewportHeight = height;
+    if ((viewportWidth - width).abs() > 1.0 || (viewportHeight - height).abs() > 1.0) {
+      viewportWidth = width;
+      viewportHeight = height;
+      tunnel.updateViewport(width, height);
+
+      // Re-centrage doux du joueur pour qu'il soit toujours parfaitement visible
+      final ceilY = tunnel.getCeilingY(player.position.dx, gameTime) + player.radius + 8.0;
+      final floorY = tunnel.getFloorY(player.position.dx, gameTime) - player.radius - 8.0;
+      if (player.position.dy < ceilY || player.position.dy > floorY) {
+        player.position = Offset(player.position.dx, (ceilY + floorY) / 2);
+      }
+    }
   }
 
-  // Input actions
+  // =========================================================================
+  // COMMANDES & SYSTÈME D'INPUT PROFESSIONNEL (JOYSTICK + WASD / SOURIS)
+  // =========================================================================
+
+  /// Déplacement analogique fluide continu via Joystick ou Clavier
+  void setMoveVector(Offset vector) {
+    // Zone morte de 0.12 pour éliminer tout tremblement
+    if (vector.distance < 0.12) {
+      player.moveInput = Offset.zero;
+      player.isThrusting = false;
+      player.isMovingDown = false;
+      player.isMovingLeft = false;
+      player.isMovingRight = false;
+    } else {
+      player.moveInput = vector;
+      player.isThrusting = vector.dy < -0.25;
+      player.isMovingDown = vector.dy > 0.25;
+      player.isMovingLeft = vector.dx < -0.25;
+      player.isMovingRight = vector.dx > 0.25;
+    }
+  }
+
+  /// Déplacement au clavier : met à jour le vecteur omnidirectionnel
+  void updateKeyboardDirection([
+    bool up = false,
+    bool down = false,
+    bool left = false,
+    bool right = false,
+  ]) {
+    double dx = 0.0;
+    double dy = 0.0;
+    if (up) dy -= 1.0;
+    if (down) dy += 1.0;
+    if (left) dx -= 1.0;
+    if (right) dx += 1.0;
+
+    final vec = Offset(dx, dy);
+    if (vec.distance > 0.01) {
+      setMoveVector(vec / vec.distance);
+    } else {
+      setMoveVector(Offset.zero);
+    }
+  }
+
   void setThrust(bool value) {
     player.isThrusting = value;
-    if (value && state == GameState.playing) {
-      audio.playThruster();
-    }
+    _recalculateDirectionalBooleans();
   }
 
   void setMoveLeft(bool value) {
     player.isMovingLeft = value;
+    _recalculateDirectionalBooleans();
   }
 
   void setMoveRight(bool value) {
     player.isMovingRight = value;
+    _recalculateDirectionalBooleans();
   }
 
   void setMoveDown(bool value) {
     player.isMovingDown = value;
+    _recalculateDirectionalBooleans();
+  }
+
+  void _recalculateDirectionalBooleans() {
+    double dx = 0.0;
+    double dy = 0.0;
+    if (player.isThrusting) dy -= 1.0;
+    if (player.isMovingDown) dy += 1.0;
+    if (player.isMovingLeft) dx -= 1.0;
+    if (player.isMovingRight) dx += 1.0;
+
+    final vec = Offset(dx, dy);
+    player.moveInput = vec.distance > 0.01 ? (vec / vec.distance) : Offset.zero;
+  }
+
+  /// Tir continu (hold to shoot)
+  void setShooting(bool isShooting, [Offset? targetPos]) {
+    player.isShooting = isShooting;
+    if (isShooting) {
+      shoot(targetPos);
+    }
   }
 
   void shoot([Offset? targetScreenPos]) {
@@ -410,7 +529,7 @@ class ArcadeGameController extends ChangeNotifier {
     if (targetScreenPos != null) {
       final playerScreenPos = Offset(player.position.dx - cameraX, player.position.dy);
       final delta = targetScreenPos - playerScreenPos;
-      if (delta.distance > 8.0) {
+      if (delta.distance > 10.0) {
         shotDir = delta / delta.distance;
       }
     }
@@ -464,7 +583,7 @@ class ArcadeGameController extends ChangeNotifier {
       playerProjectiles.add(
         CapsuleProjectile(
           position: player.position + shotDir * 26.0,
-          velocity: (shotDir * baseSpeed) + (normalDir * -60.0),
+          velocity: (shotDir * baseSpeed) + (normalDir * -55.0),
           damage: bulletDamage,
           color: color,
           radius: 8.0,
@@ -484,7 +603,7 @@ class ArcadeGameController extends ChangeNotifier {
       playerProjectiles.add(
         CapsuleProjectile(
           position: player.position + shotDir * 26.0,
-          velocity: (shotDir * baseSpeed) + (normalDir * 60.0),
+          velocity: (shotDir * baseSpeed) + (normalDir * 55.0),
           damage: bulletDamage,
           color: color,
           radius: 8.0,
@@ -492,7 +611,7 @@ class ArcadeGameController extends ChangeNotifier {
         ),
       );
     } else {
-      // medicalLaser
+      // Laser Médical standard
       playerProjectiles.add(
         CapsuleProjectile(
           position: player.position + shotDir * 24.0,
@@ -511,13 +630,59 @@ class ArcadeGameController extends ChangeNotifier {
 
   void activateShield() {
     if (state != GameState.playing && state != GameState.bossFight) return;
-    player.activateShield(4.0);
+    player.activateShield(5.0);
     audio.playTargetLock();
-    _addFloatingText('BOUCLIER ACTIF !', player.position + const Offset(0, -35), const Color(0xFF818CF8));
+    _addFloatingText('BOUCLIER ACTIF (5s) !', player.position + const Offset(0, -35), const Color(0xFF00E5FF));
     notifyListeners();
   }
 
-  /// 60 FPS Engine Tick
+  /// Compétence Spéciale : Impulsion Électromagnétique Médicale (EMP)
+  void triggerSpecialSkill() {
+    if (state != GameState.playing && state != GameState.bossFight) return;
+    if (!player.canUseSpecialSkill) return;
+
+    player.triggerSpecialSkill();
+    audio.playBossLaser();
+
+    // 1. Désintégration immédiate de tous les projectiles ennemis
+    for (final ep in enemyProjectiles) {
+      _emitHitSparks(ep.position);
+    }
+    enemyProjectiles.clear();
+
+    // 2. Dégâts de zone majeurs aux germes et bactéries environnants
+    for (final enemy in enemies) {
+      if (enemy.isDead) continue;
+      final dist = (enemy.position - player.position).distance;
+      if (dist < 340.0) {
+        enemy.takeDamage(6);
+        _emitHitSparks(enemy.position);
+        score += 150;
+        earnedXp += 30;
+      }
+    }
+
+    // 3. Onde de choc visuelle et particules d'énergie
+    screenShake = 1.2;
+    for (int i = 0; i < 32; i++) {
+      final angle = (i / 32.0) * math.pi * 2;
+      particles.add(
+        ArcadeParticle(
+          position: player.position,
+          velocity: Offset(math.cos(angle) * 350.0, math.sin(angle) * 350.0),
+          color: const Color(0xFF00E5FF),
+          size: 5.5,
+          life: 0.65,
+          maxLife: 0.65,
+        ),
+      );
+    }
+
+    _addFloatingText('ONDE EMP DE NETTOYAGE !', player.position + const Offset(0, -45), const Color(0xFF00E5FF));
+    notifyListeners();
+  }
+
+  /// 60 FPS Game Loop
   void update(double dt) {
     if (state != GameState.playing && state != GameState.bossFight) {
       return;
@@ -526,6 +691,16 @@ class ArcadeGameController extends ChangeNotifier {
     gameTime += dt;
     if (screenShake > 0) {
       screenShake = math.max(0.0, screenShake - dt * 3.5);
+    }
+
+    // Décompte de la compétence spéciale
+    if (player.specialSkillCooldown > 0) {
+      player.specialSkillCooldown = math.max(0.0, player.specialSkillCooldown - dt);
+    }
+
+    // Tir continu si la commande est maintenue
+    if (player.isShooting && player.shootCooldownTimer <= 0) {
+      shoot();
     }
 
     _updatePlayerPhysics(dt);
@@ -543,7 +718,7 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _updatePlayerPhysics(double dt) {
-    // Decrement timers
+    // Décrémentation des timers
     if (player.invulnerableTimer > 0) {
       player.invulnerableTimer = math.max(0.0, player.invulnerableTimer - dt);
     }
@@ -562,82 +737,79 @@ class ArcadeGameController extends ChangeNotifier {
 
     player.animPhase += dt * 4.0;
 
-    // Vertical physics: Thruster vs Gravity & Mucosal drag
-    double vy = player.velocity.dy;
-    const double gravity = 480.0;
-    const double thrustPower = 1150.0;
+    // Vitesse maximale selon le mode (boosté ou standard) et la sensibilité
+    final double maxSpeed = (player.isBoosted ? 360.0 : 250.0) * player.joystickSensitivity;
 
-    if (player.isThrusting) {
-      vy -= thrustPower * dt;
-      // Emit thruster bubble particles
-      _emitThrusterParticles();
-    } else {
-      vy += gravity * dt;
-    }
-
-    if (player.isMovingDown) {
-      vy += 650.0 * dt;
-    }
-
-    // Mucosal fluid damping
-    vy *= 0.94;
-    vy = vy.clamp(-400.0, 420.0);
-
-    // Horizontal physics: Cruise auto-propulsion + directional control
-    double vx = player.velocity.dx;
-    double targetCruise = player.isBoosted ? 340.0 : 190.0;
+    // Vitesse cible déduite du vecteur d'entrée
+    double targetVx = player.moveInput.dx * maxSpeed;
+    double targetVy = player.moveInput.dy * maxSpeed;
 
     if (state == GameState.bossFight) {
-      // In boss fight, hover in place with player freedom
-      targetCruise = 0.0;
-      if (player.isMovingRight) vx += 300.0 * dt;
-      if (player.isMovingLeft) vx -= 300.0 * dt;
-      vx *= 0.88;
+      // Arène du boss : liberté totale 360°
     } else {
-      if (player.isMovingRight) {
-        vx += 280.0 * dt;
-      } else if (player.isMovingLeft) {
-        vx -= 280.0 * dt;
-      } else {
-        vx += (targetCruise - vx) * 3.5 * dt;
+      // En exploration : propulsion vers l'avant par défaut si le joueur ne tire pas vers l'arrière
+      if (player.moveInput.dx >= -0.15) {
+        targetVx = math.max(targetVx, player.isBoosted ? 260.0 : 140.0);
       }
-      vx = vx.clamp(40.0, player.isBoosted ? 450.0 : 320.0);
     }
 
-    player.velocity = Offset(vx, vy);
+    // Accélération et décélération douces (frottement biologique sans plongeon brusque)
+    double currentVx = player.velocity.dx;
+    double currentVy = player.velocity.dy;
+
+    currentVx += (targetVx - currentVx) * 8.5 * dt;
+    currentVy += (targetVy - currentVy) * 9.5 * dt;
+
+    player.velocity = Offset(currentVx, currentVy);
     player.position += player.velocity * dt;
 
-    // Tilt angle reflects vertical climb/descent
-    final targetAngle = (player.velocity.dy / 420.0).clamp(-0.45, 0.45);
-    player.angle += (targetAngle - player.angle) * 7.0 * dt;
+    // Calcul de l'inclinaison de la capsule selon le déplacement vertical
+    final targetAngle = (player.velocity.dy / 300.0).clamp(-0.40, 0.40);
+    player.angle += (targetAngle - player.angle) * 8.0 * dt;
 
-    // Boundaries collision: Ceiling and floor with soft deflection
+    // Intensité de la flamme du réacteur
+    final currentSpeed = player.velocity.distance;
+    final targetFlame = (currentSpeed / 240.0).clamp(0.2, 1.0);
+    player.flameIntensity += (targetFlame - player.flameIntensity) * 7.0 * dt;
+
+    // Enregistrement de la traînée ionique (garder les 10 dernières positions)
+    player.trailPositions.insert(0, player.position);
+    if (player.trailPositions.length > 10) {
+      player.trailPositions.removeLast();
+    }
+
+    // Particules de propulsion
+    if (player.flameIntensity > 0.4 || player.isThrusting) {
+      _emitThrusterParticles();
+    }
+
+    // Collisions avec les parois du tunnel avec déflexion douce
     final ceilY = tunnel.getCeilingY(player.position.dx, gameTime) + player.radius + 6.0;
     final floorY = tunnel.getFloorY(player.position.dx, gameTime) - player.radius - 6.0;
 
     if (player.position.dy < ceilY) {
       player.position = Offset(player.position.dx, ceilY);
-      player.velocity = Offset(player.velocity.dx * 0.8, 30.0);
+      player.velocity = Offset(player.velocity.dx * 0.85, 20.0);
     } else if (player.position.dy > floorY) {
       player.position = Offset(player.position.dx, floorY);
-      player.velocity = Offset(player.velocity.dx * 0.8, -30.0);
+      player.velocity = Offset(player.velocity.dx * 0.85, -20.0);
     }
   }
 
   void _updateCamera() {
     if (state == GameState.bossFight) {
-      // Keep boss and player centered
-      final targetX = (totalDistance - 480.0).clamp(0.0, totalDistance);
+      // Arène de boss : caméra stabilisée
+      final targetX = (totalDistance - viewportWidth * 0.70).clamp(0.0, totalDistance);
       cameraX += (targetX - cameraX) * 0.06;
     } else {
-      // Smooth horizontal camera tracking
-      final targetCameraX = player.position.dx - viewportWidth * 0.28;
+      // La capsule est maintenue à environ 33 % de l'écran depuis la gauche
+      // Cela dégage 67 % du champ de vision devant elle et évite que le joystick ne la cache !
+      final targetCameraX = player.position.dx - viewportWidth * 0.33;
       cameraX = math.max(0.0, targetCameraX);
     }
   }
 
   void _updateProjectiles(double dt) {
-    // Player projectiles
     for (int i = playerProjectiles.length - 1; i >= 0; i--) {
       final p = playerProjectiles[i];
       p.update(dt);
@@ -648,7 +820,6 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // Enemy projectiles
     for (int i = enemyProjectiles.length - 1; i >= 0; i--) {
       final p = enemyProjectiles[i];
       p.update(dt);
@@ -683,18 +854,15 @@ class ArcadeGameController extends ChangeNotifier {
       obs.animPhase += dt * 2.5;
 
       if (obs.type == ObstacleType.acidDroplet) {
-        // Acid drop falling from ceiling to floor
         double newY = obs.position.dy + obs.velocityY * dt;
         final floorY = tunnel.getFloorY(obs.position.dx, gameTime);
         if (newY >= floorY - 10.0) {
-          // Splash and reset to ceiling
           _emitSplashParticles(obs.position, const Color(0xFF84CC16));
-          newY = tunnel.getCeilingY(obs.position.dx, gameTime) + 12.0;
+          newY = tunnel.getCeilingY(obs.position.dx, gameTime) + 14.0;
         }
         obs.position = Offset(obs.position.dx, newY);
       } else if (obs.type == ObstacleType.spikyVirus) {
-        // Floating sinusoidal bob
-        final floatY = obs.initialY + math.sin(obs.animPhase) * 22.0;
+        final floatY = obs.initialY + math.sin(obs.animPhase) * 20.0;
         obs.position = Offset(obs.position.dx, floatY);
       }
     }
@@ -709,8 +877,7 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // Gentle hovering sine motion in boss chamber
-    final hoverY = (tunnel.baseCeiling + tunnel.baseFloor) / 2 + math.sin(boss.animPhase * 1.5) * 35.0;
+    final hoverY = (tunnel.baseCeiling + tunnel.baseFloor) / 2 + math.sin(boss.animPhase * 1.5) * 32.0;
     boss.position = Offset(boss.position.dx, hoverY);
   }
 
@@ -759,7 +926,7 @@ class ArcadeGameController extends ChangeNotifier {
           _addFloatingText('+1 CŒUR !', item.position, const Color(0xFF34D399));
         } else if (item.type == CollectibleType.shieldBoost) {
           player.activateShield(5.0);
-          _addFloatingText('BOUCLIER ACTIF (5s) !', item.position, const Color(0xFF818CF8));
+          _addFloatingText('BOUCLIER ACTIF (5s) !', item.position, const Color(0xFF00E5FF));
         } else if (item.type == CollectibleType.weaponUpgrade) {
           player.activateDoubleShot(8.0);
           _addFloatingText('SUPER CADENCE (8s) !', item.position, const Color(0xFF38BDF8));
@@ -771,12 +938,11 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 2. Player Projectiles vs Enemies & Boss
+    // 2. Projectiles du joueur contre ennemis et Boss
     for (int pIdx = playerProjectiles.length - 1; pIdx >= 0; pIdx--) {
       final p = playerProjectiles[pIdx];
       bool bulletHit = false;
 
-      // Against enemies
       for (final enemy in enemies) {
         if (enemy.isDead) continue;
         final dist = (p.position - enemy.position).distance;
@@ -794,8 +960,7 @@ class ArcadeGameController extends ChangeNotifier {
             _emitExplosion(enemy.position, enemy.type);
             audio.playCombo();
 
-            // 25% chance to drop a bonus
-            if (math.Random().nextDouble() < 0.25) {
+            if (math.Random().nextDouble() < 0.28) {
               collectibles.add(
                 ArcadeCollectible(
                   id: 9000 + collectibles.length,
@@ -813,7 +978,6 @@ class ArcadeGameController extends ChangeNotifier {
         }
       }
 
-      // Against Boss
       if (!bulletHit && state == GameState.bossFight && !boss.isDefeated) {
         final dist = (p.position - boss.position).distance;
         if (dist < p.radius + 60.0) {
@@ -833,14 +997,14 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 3. Enemy Projectiles vs Player
+    // 3. Projectiles ennemis contre le joueur
     for (int epIdx = enemyProjectiles.length - 1; epIdx >= 0; epIdx--) {
       final ep = enemyProjectiles[epIdx];
       final dist = (player.position - ep.position).distance;
       if (dist < player.radius + ep.radius) {
         if (player.isShieldActive) {
           _emitShieldDeflect(player.position);
-          _addFloatingText('DÉVIÉ !', player.position + const Offset(0, -25), const Color(0xFF818CF8));
+          _addFloatingText('DÉVIÉ !', player.position + const Offset(0, -25), const Color(0xFF00E5FF));
         } else if (!player.isInvulnerable) {
           player.takeDamage();
           combo = 0;
@@ -856,7 +1020,7 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 4. Enemies vs Player (Body contact)
+    // 4. Contact physique direct ennemis
     for (final enemy in enemies) {
       if (enemy.isDead) continue;
       final dist = (player.position - enemy.position).distance;
@@ -864,7 +1028,7 @@ class ArcadeGameController extends ChangeNotifier {
         if (player.isShieldActive) {
           _emitShieldDeflect(player.position);
           enemy.takeDamage(2);
-          _addFloatingText('CHOC BOUCLIER !', enemy.position + const Offset(0, -20), const Color(0xFF818CF8));
+          _addFloatingText('CHOC BOUCLIER !', enemy.position + const Offset(0, -20), const Color(0xFF00E5FF));
         } else if (!player.isInvulnerable) {
           player.takeDamage();
           combo = 0;
@@ -886,15 +1050,12 @@ class ArcadeGameController extends ChangeNotifier {
         final dist = (player.position - obs.position).distance;
         if (dist < player.radius + obs.radius) {
           player.takeDamage();
-          combo = 0; // Combo break
+          combo = 0;
           screenShake = 1.0;
           audio.playHit();
-
           _addFloatingText('-1 CŒUR', player.position + const Offset(0, -25), const Color(0xFFEF4444));
           _emitHitSparks(player.position);
-
           if (player.hearts <= 0) {
-            // Emergency learning recovery
             _onPlayerZeroHearts();
           }
           break;
@@ -902,10 +1063,10 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 3. Checkpoints
+    // 6. Déclenchement des Checkpoints pédagogiques
     if (state == GameState.playing) {
       for (final cp in checkpoints) {
-        if (!cp.isTriggered && player.position.dx >= cp.worldX - 20.0) {
+        if (!cp.isTriggered && player.position.dx >= cp.worldX - 25.0) {
           cp.isTriggered = true;
           activeCheckpoint = cp;
           state = GameState.checkpoint;
@@ -915,7 +1076,7 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 4. Boss Chamber Entrance
+    // 7. Entrée dans l'arène du Boss
     if (state == GameState.playing && player.position.dx >= totalDistance - 750.0) {
       state = GameState.bossFight;
       audio.playPagerBeep();
@@ -924,13 +1085,13 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _onPlayerZeroHearts() {
-    // Graceful revival: give 1 heart so student never gets locked out of educational learning!
+    // Récupération pédagogique : confère 1 cœur et 3s d'invulnérabilité pour ne jamais bloquer l'étudiant
     player.hearts = 1;
     player.invulnerableTimer = 3.0;
     _addFloatingText('RÉANIMATION D\'URGENCE !', player.position + const Offset(0, -35), const Color(0xFF38BDF8));
   }
 
-  /// Called when student validates a checkpoint question
+  /// Validation d'un Checkpoint pédagogique
   void answerCheckpoint({required int selectedOptionIndex, required bool isCorrect}) {
     if (activeCheckpoint == null) return;
 
@@ -938,7 +1099,7 @@ class ArcadeGameController extends ChangeNotifier {
     cp.isCompleted = true;
     cp.isAnswerCorrect = isCorrect;
 
-    // Track progression & spaced repetition queue
+    // Enregistrement officiel de la réponse
     progress.recordQuestionAnswer(
       questionId: cp.question.id,
       selectedOptionIndex: selectedOptionIndex,
@@ -947,10 +1108,16 @@ class ArcadeGameController extends ChangeNotifier {
     );
 
     if (isCorrect) {
+      // Si c'était une question de révision, elle est validée et retirée de la file d'attente !
+      if (cp.isRevision) {
+        progress.revisionQueue.remove(cp.question.id);
+        progress.masteredQuestions.add(cp.question.id);
+        _addFloatingText('NOTION MAÎTRISÉE ! +150 XP', player.position + const Offset(0, -45), const Color(0xFFFFD700));
+      }
       earnedXp += 100;
       score += 300;
       combo += 2;
-      player.boostTimer = 3.5; // Boost thrusters!
+      player.boostTimer = 3.5;
       audio.playCorrect();
       _addFloatingText('EXCELLENT ! +100 XP', player.position + const Offset(0, -30), const Color(0xFF34D399));
     } else {
@@ -960,13 +1127,12 @@ class ArcadeGameController extends ChangeNotifier {
       _addFloatingText('RÉVISION ENREGISTRÉE', player.position + const Offset(0, -30), const Color(0xFFF87171));
     }
 
-    // Resume play
     activeCheckpoint = null;
     state = GameState.playing;
     notifyListeners();
   }
 
-  /// Called during the Boss challenge
+  /// Défi final du Boss
   void answerBossQuestion({required int questionId, required int selectedOptionIndex, required bool isCorrect}) {
     progress.recordQuestionAnswer(
       questionId: questionId,
@@ -976,19 +1142,23 @@ class ArcadeGameController extends ChangeNotifier {
     );
 
     if (isCorrect) {
+      if (level == 7) {
+        progress.revisionQueue.remove(questionId);
+        progress.masteredQuestions.add(questionId);
+      }
       boss.takeDamage();
       audio.playBossLaser();
-      score += 450;
-      earnedXp += 120;
+      score += 400;
+      earnedXp += 150;
       _emitBossLaser();
-
+      _addFloatingText('CRITIQUE SUR LE BOSS ! -1 HP', player.position + const Offset(0, -30), const Color(0xFF38BDF8));
       if (boss.isDefeated) {
         _onBossDefeated();
       }
     } else {
       player.takeDamage();
-      combo = 0;
-      audio.playHit();
+      audio.playWrong();
+      _addFloatingText('RIPOSTE DU BOSS !', player.position + const Offset(0, -30), const Color(0xFFEF4444));
     }
 
     notifyListeners();
@@ -997,10 +1167,11 @@ class ArcadeGameController extends ChangeNotifier {
   void _onBossDefeated() {
     isBossDefeated = true;
     state = GameState.victory;
+    score += 1500;
+    earnedXp += 400;
     audio.playVictory();
 
-    // Mark current level completed in GameProgress
-    progress.completeLevel(level, 0, true);
+    progress.completeLevel(level, 3, score, crystalsCollected);
     progress.updateArcadeStats(
       score: score,
       combo: highestCombo,
@@ -1026,10 +1197,10 @@ class ArcadeGameController extends ChangeNotifier {
     final rand = math.Random();
     particles.add(
       ArcadeParticle(
-        position: player.position + Offset(-player.radius - 4.0, (rand.nextDouble() - 0.5) * 8.0),
-        velocity: Offset(-180.0 - rand.nextDouble() * 60.0, (rand.nextDouble() - 0.5) * 45.0),
-        color: rand.nextBool() ? const Color(0xFF00E5FF) : const Color(0xFF90E0EF),
-        size: 3.5 + rand.nextDouble() * 3.5,
+        position: player.position + Offset(-player.radius - 6.0, (rand.nextDouble() - 0.5) * 8.0),
+        velocity: Offset(-190.0 - rand.nextDouble() * 70.0, (rand.nextDouble() - 0.5) * 40.0),
+        color: rand.nextBool() ? const Color(0xFF00E5FF) : const Color(0xFFFF9100),
+        size: 3.5 + rand.nextDouble() * 4.0,
         maxLife: 0.35,
       ),
     );
@@ -1040,6 +1211,7 @@ class ArcadeGameController extends ChangeNotifier {
     Color pCol = const Color(0xFFFFD166);
     if (type == CollectibleType.cellBubble) pCol = const Color(0xFFFB7185);
     if (type == CollectibleType.heartBoost) pCol = const Color(0xFF34D399);
+    if (type == CollectibleType.shieldBoost) pCol = const Color(0xFF00E5FF);
 
     for (int i = 0; i < 12; i++) {
       final angle = rand.nextDouble() * math.pi * 2;
@@ -1091,10 +1263,9 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _emitBossLaser() {
-    // Generate beam particles from player to boss
     final start = player.position;
     final end = boss.position;
-    final count = 25;
+    const count = 25;
     for (int i = 0; i < count; i++) {
       final t = i / count;
       final pos = Offset.lerp(start, end, t)!;
@@ -1136,7 +1307,7 @@ class ArcadeGameController extends ChangeNotifier {
         ArcadeParticle(
           position: pos,
           velocity: Offset(math.cos(angle) * speed, math.sin(angle) * speed),
-          color: const Color(0xFF818CF8),
+          color: const Color(0xFF00E5FF),
           size: 3.5 + rand.nextDouble() * 3.0,
           maxLife: 0.35,
         ),

@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'arcade_game_controller.dart';
 import '../widgets/virtual_joystick.dart';
 import '../widgets/tactile_button.dart';
+import '../utils/fullscreen_util.dart';
 
-class ArcadeHudOverlay extends StatelessWidget {
+class ArcadeHudOverlay extends StatefulWidget {
   final ArcadeGameController controller;
   final VoidCallback onPause;
   final VoidCallback onResume;
@@ -21,9 +22,16 @@ class ArcadeHudOverlay extends StatelessWidget {
   });
 
   @override
+  State<ArcadeHudOverlay> createState() => _ArcadeHudOverlayState();
+}
+
+class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
+  ArcadeGameController get controller => widget.controller;
+
+  @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 800 || isMobileTouch;
+    final isMobile = media.size.width < 850 || widget.isMobileTouch;
     final int progressPercent = (controller.progressFraction * 100).clamp(0, 100).toInt();
 
     return Stack(
@@ -32,48 +40,55 @@ class ArcadeHudOverlay extends StatelessWidget {
         // 1. TOP LEFT: 3 HEARTS (Red hearts, grey when lost)
         // ====================================================================
         Positioned(
-          top: 14,
-          left: 16,
+          top: 12,
+          left: 14,
           child: _buildHearts(),
         ),
 
         // ====================================================================
-        // 2. TOP CENTER: Stage name + Progress bar (% completed)
+        // 2. TOP LEFT SUB-BAR: Active Weapon Badge (docked below hearts)
         // ====================================================================
         Positioned(
-          top: 14,
+          top: 48,
+          left: 14,
+          child: _buildWeaponBadge(),
+        ),
+
+        // ====================================================================
+        // 3. TOP CENTER: Stage name + Progress bar (% completed)
+        // ====================================================================
+        Positioned(
+          top: 12,
           left: 150,
-          right: 240,
+          right: 200,
           child: Center(
             child: _buildStageProgress(progressPercent),
           ),
         ),
 
         // ====================================================================
-        // 3. TOP RIGHT: Score + XP counter
+        // 4. TOP RIGHT: Score + XP counter
         // ====================================================================
         Positioned(
-          top: 14,
-          right: 68,
+          top: 12,
+          right: 96,
           child: _buildScoreAndXp(),
         ),
 
         // ====================================================================
-        // 4. TOP RIGHT CORNER: Pause button (||)
+        // 5. TOP RIGHT ACTIONS: Fullscreen + Pause Button
         // ====================================================================
         Positioned(
-          top: 14,
-          right: 16,
-          child: _buildPauseButton(),
-        ),
-
-        // ====================================================================
-        // 5. BOTTOM LEFT: Weapon icon + Ammo / Power indicator
-        // ====================================================================
-        Positioned(
-          bottom: isMobile ? 150 : 16,
-          left: 16,
-          child: _buildWeaponBadge(),
+          top: 12,
+          right: 14,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildFullscreenButton(),
+              const SizedBox(width: 8),
+              _buildPauseButton(),
+            ],
+          ),
         ),
 
         // ====================================================================
@@ -81,7 +96,7 @@ class ArcadeHudOverlay extends StatelessWidget {
         // ====================================================================
         if (!isMobile)
           Positioned(
-            bottom: 16,
+            bottom: 14,
             left: 0,
             right: 0,
             child: Center(
@@ -90,101 +105,39 @@ class ArcadeHudOverlay extends StatelessWidget {
           ),
 
         // ====================================================================
-        // 7. BOTTOM CONTROLS (Touch / Mobile: Joystick Left + Shoot/Shield Right)
+        // 7. BOTTOM CONTROLS (Mobile Touch: Analog Joystick Left + Skills/Fire Right)
         // ====================================================================
         if (isMobile)
           Positioned(
-            bottom: 8,
+            bottom: 6,
             left: 8,
             right: 8,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Left Virtual Joystick
+                // Left Virtual Analog Joystick (Analog vector 360°)
                 VirtualAnalogJoystick(
-                  radius: 65,
-                  knobRadius: 30,
-                  onDirectionChanged: (up, down, left, right) {
-                    controller.setThrust(up);
-                    controller.setMoveDown(down);
-                    controller.setMoveLeft(left);
-                    controller.setMoveRight(right);
-                  },
+                  radius: 56,
+                  knobRadius: 26,
+                  onMove: (vector) => controller.setMoveVector(vector),
                 ),
 
-                // Right Action Buttons
+                // Right Action Buttons (EMP Skill + Shield + Continuous Fire)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Shield Button
-                    GestureDetector(
-                      onTap: controller.activateShield,
-                      child: Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: controller.player.isShieldActive
-                              ? const Color(0xFF00E5FF).withValues(alpha: 0.8)
-                              : const Color(0xFF0B192C).withValues(alpha: 0.85),
-                          border: Border.all(
-                            color: const Color(0xFF00E5FF),
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF00E5FF).withValues(alpha: 0.45),
-                              blurRadius: 14,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.shield_rounded, color: Colors.white, size: 26),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
+                    // EMP Shockwave Special Skill Button
+                    _buildEmpSkillButton(),
+                    const SizedBox(width: 10),
 
-                    // Fire Button (Red Neon)
-                    GestureDetector(
-                      onTapDown: (_) => controller.shoot(),
-                      child: Container(
-                        width: 76,
-                        height: 76,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [Color(0xFFFF2A6D), Color(0xFF880E4F)],
-                          ),
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2.2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF2A6D).withValues(alpha: 0.65),
-                              blurRadius: 18,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.flash_on_rounded, color: Colors.white, size: 30),
-                            Text(
-                              'FEU',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // Energy Shield Button
+                    _buildShieldButton(),
+                    const SizedBox(width: 12),
+
+                    // Continuous Fire Button (Hold-to-shoot & Tap)
+                    _buildFireButton(),
                   ],
                 ),
               ],
@@ -197,6 +150,199 @@ class ArcadeHudOverlay extends StatelessWidget {
         if (controller.state == GameState.paused)
           _buildPauseModal(context),
       ],
+    );
+  }
+
+  // --- FULLSCREEN TOGGLE BUTTON ---
+  Widget _buildFullscreenButton() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        FullscreenUtil.toggle();
+        setState(() {});
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF334155)),
+          boxShadow: const [
+            BoxShadow(color: Colors.black45, blurRadius: 8),
+          ],
+        ),
+        child: Icon(
+          FullscreenUtil.isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+          color: const Color(0xFF38BDF8),
+          size: 20,
+        ),
+      ),
+    );
+  }
+
+  // --- EMP SPECIAL SKILL BUTTON ---
+  Widget _buildEmpSkillButton() {
+    final cd = controller.player.specialSkillCooldown;
+    final maxCd = controller.player.specialSkillMaxCooldown;
+    final isReady = cd <= 0;
+    final progress = isReady ? 1.0 : (1.0 - (cd / maxCd)).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: isReady ? controller.triggerSpecialSkill : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isReady
+                  ? const Color(0xFF3B0764).withValues(alpha: 0.9)
+                  : const Color(0xFF1E1B4B).withValues(alpha: 0.75),
+              border: Border.all(
+                color: isReady ? const Color(0xFFA855F7) : const Color(0xFF4C1D95),
+                width: 2.0,
+              ),
+              boxShadow: isReady
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFA855F7).withValues(alpha: 0.5),
+                        blurRadius: 14,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.electric_bolt_rounded,
+                  color: isReady ? const Color(0xFFE9D5FF) : const Color(0xFF6B7280),
+                  size: 22,
+                ),
+                Text(
+                  isReady ? 'EMP' : '${cd.toStringAsFixed(0)}s',
+                  style: GoogleFonts.inter(
+                    color: isReady ? const Color(0xFFE9D5FF) : const Color(0xFF9CA3AF),
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!isReady)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 2.5,
+                color: const Color(0xFFA855F7),
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // --- SHIELD BUTTON ---
+  Widget _buildShieldButton() {
+    final isActive = controller.player.isShieldActive;
+    return GestureDetector(
+      onTap: controller.activateShield,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isActive
+              ? const Color(0xFF00E5FF).withValues(alpha: 0.85)
+              : const Color(0xFF0B192C).withValues(alpha: 0.85),
+          border: Border.all(
+            color: const Color(0xFF00E5FF),
+            width: 2.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00E5FF).withValues(alpha: isActive ? 0.75 : 0.35),
+              blurRadius: isActive ? 16 : 10,
+              spreadRadius: isActive ? 2 : 0,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.shield_rounded,
+              color: isActive ? const Color(0xFF0F172A) : Colors.white,
+              size: 22,
+            ),
+            Text(
+              'BOUCLIER',
+              style: TextStyle(
+                color: isActive ? const Color(0xFF0F172A) : const Color(0xFF00E5FF),
+                fontSize: 6.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- FIRE BUTTON (HOLD-TO-SHOOT & TAP) ---
+  Widget _buildFireButton() {
+    return Listener(
+      onPointerDown: (_) {
+        controller.setShooting(true);
+        controller.shoot();
+      },
+      onPointerUp: (_) => controller.setShooting(false),
+      onPointerCancel: (_) => controller.setShooting(false),
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const RadialGradient(
+            colors: [Color(0xFFFF2A6D), Color(0xFF880E4F)],
+          ),
+          border: Border.all(
+            color: Colors.white,
+            width: 2.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF2A6D).withValues(alpha: 0.7),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.flash_on_rounded, color: Colors.white, size: 28),
+            Text(
+              'FEU',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -371,7 +517,7 @@ class ArcadeHudOverlay extends StatelessWidget {
   Widget _buildPauseButton() {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: onPause,
+      onTap: widget.onPause,
       child: Container(
         width: 38,
         height: 38,
@@ -470,10 +616,10 @@ class ArcadeHudOverlay extends StatelessWidget {
         border: Border.all(color: const Color(0xFF334155)),
       ),
       child: Text(
-        '⌨️ [WASD / Flèches] Navigation  •  [ESPACE / Clic Gauche] Tirer  •  [E] Bouclier  •  [ÉCHAP] Pause',
+        '⌨️ [WASD / Flèches] Navigation  •  [ESPACE / Clic] Tir  •  [Q / F] Onde EMP  •  [E] Bouclier  •  [F11] Plein écran  •  [ÉCHAP] Pause',
         style: GoogleFonts.inter(
           color: const Color(0xFF94A3B8),
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -525,7 +671,7 @@ class ArcadeHudOverlay extends StatelessWidget {
                 icon: Icons.play_arrow_rounded,
                 style: TactileButtonStyle.primary,
                 height: 48,
-                onPressed: onResume,
+                onPressed: widget.onResume,
               ),
               const SizedBox(height: 12),
               TactileButton(
@@ -533,7 +679,7 @@ class ArcadeHudOverlay extends StatelessWidget {
                 icon: Icons.map_rounded,
                 style: TactileButtonStyle.secondary,
                 height: 46,
-                onPressed: onExitToMap,
+                onPressed: widget.onExitToMap,
               ),
             ],
           ),

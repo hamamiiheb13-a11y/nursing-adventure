@@ -40,6 +40,7 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
 
   final FocusNode _focusNode = FocusNode();
   Offset? _mousePosition;
+  final Set<LogicalKeyboardKey> _pressedKeys = {};
 
   @override
   void initState() {
@@ -98,46 +99,50 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
     _controller.update(dt);
   }
 
-  // --- KEYBOARD CONTROLS (WASD, Arrows, Space, E, Escape) ---
+  // --- KEYBOARD CONTROLS (WASD, Arrows, Space, Q, F, E, Escape) ---
   void _handleKeyEvent(KeyEvent event) {
-    final isDown = event is KeyDownEvent || event is KeyRepeatEvent;
+    if (event is KeyDownEvent) {
+      _pressedKeys.add(event.logicalKey);
+    } else if (event is KeyUpEvent) {
+      _pressedKeys.remove(event.logicalKey);
+    }
 
-    // Shoot (Space)
-    if (event.logicalKey == LogicalKeyboardKey.space && isDown) {
-      _controller.shoot(_mousePosition);
+    // Hold-to-Shoot & Single Fire (Space)
+    if (event.logicalKey == LogicalKeyboardKey.space) {
+      if (event is KeyDownEvent) {
+        _controller.setShooting(true);
+        _controller.shoot(_mousePosition);
+      } else if (event is KeyUpEvent) {
+        _controller.setShooting(false);
+      }
+    }
+
+    // Special Skill EMP (Q, F)
+    if ((event.logicalKey == LogicalKeyboardKey.keyQ ||
+            event.logicalKey == LogicalKeyboardKey.keyF) &&
+        event is KeyDownEvent) {
+      _controller.triggerSpecialSkill();
     }
 
     // Shield (Key E, Shift)
     if ((event.logicalKey == LogicalKeyboardKey.keyE ||
             event.logicalKey == LogicalKeyboardKey.shiftLeft ||
             event.logicalKey == LogicalKeyboardKey.shiftRight) &&
-        isDown) {
+        event is KeyDownEvent) {
       _controller.activateShield();
     }
 
-    // Thrust / Move Up (W, Up Arrow)
-    if (event.logicalKey == LogicalKeyboardKey.keyW ||
-        event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      _controller.setThrust(isDown);
-    }
+    // Continuous 360° Vector Direction from WASD / Arrows
+    final bool isUp = _pressedKeys.contains(LogicalKeyboardKey.keyW) ||
+        _pressedKeys.contains(LogicalKeyboardKey.arrowUp);
+    final bool isDown = _pressedKeys.contains(LogicalKeyboardKey.keyS) ||
+        _pressedKeys.contains(LogicalKeyboardKey.arrowDown);
+    final bool isLeft = _pressedKeys.contains(LogicalKeyboardKey.keyA) ||
+        _pressedKeys.contains(LogicalKeyboardKey.arrowLeft);
+    final bool isRight = _pressedKeys.contains(LogicalKeyboardKey.keyD) ||
+        _pressedKeys.contains(LogicalKeyboardKey.arrowRight);
 
-    // Move Down (S, Down Arrow)
-    if (event.logicalKey == LogicalKeyboardKey.keyS ||
-        event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      _controller.setMoveDown(isDown);
-    }
-
-    // Move Left (A, Left Arrow)
-    if (event.logicalKey == LogicalKeyboardKey.keyA ||
-        event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      _controller.setMoveLeft(isDown);
-    }
-
-    // Move Right (D, Right Arrow)
-    if (event.logicalKey == LogicalKeyboardKey.keyD ||
-        event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      _controller.setMoveRight(isDown);
-    }
+    _controller.updateKeyboardDirection(isUp, isDown, isLeft, isRight);
 
     // Pause / Resume (Escape, P)
     if (event is KeyDownEvent &&
@@ -173,8 +178,17 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
               onPointerDown: (event) {
                 if (event.kind == PointerDeviceKind.mouse) {
                   _mousePosition = event.localPosition;
+                  _controller.setShooting(true);
                   _controller.shoot(_mousePosition);
                 }
+              },
+              onPointerUp: (event) {
+                if (event.kind == PointerDeviceKind.mouse) {
+                  _controller.setShooting(false);
+                }
+              },
+              onPointerCancel: (event) {
+                _controller.setShooting(false);
               },
               child: AnimatedBuilder(
                 animation: _controller,
