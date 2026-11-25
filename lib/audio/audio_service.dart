@@ -138,6 +138,18 @@ class AudioService {
     if (sfxEnabled) _platform.playRevive();
   }
 
+  void playGameStart() {
+    if (sfxEnabled) _platform.playGameStart();
+  }
+
+  void playStageSelect() {
+    if (sfxEnabled) _platform.playStageSelect();
+  }
+
+  void playExplanationOpen() {
+    if (sfxEnabled) _platform.playExplanationOpen();
+  }
+
   void playStageComplete() {
     if (sfxEnabled) _platform.playVictory();
   }

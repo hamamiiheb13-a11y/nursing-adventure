@@ -516,7 +516,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'La grossesse n\'est nullement déconseillée (b) et évolue sans complication majeure dans la grande majorité des cas lorsque la rémission est obtenue (c).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'pregnancy_care',
   ),
   const GastroQuestion(
     id: 20,
@@ -540,7 +540,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'Arrêter tout traitement déclenche des poussées dangereuses (a), une consultation pré-conceptionnelle est essentielle (c) et l\'arrêt du tabac reste impératif (d).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'pregnancy_care',
   ),
   const GastroQuestion(
     id: 21,
@@ -564,7 +564,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'La césarienne n\'est ni interdite (a) ni systématique (b), et la voie basse devient contre-indiquée en cas de lésions périnéales actives pour protéger le sphincter (c).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'pregnancy_care',
   ),
   const GastroQuestion(
     id: 22,
@@ -588,7 +588,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'Une poussée inflammatoire expose au contraire à un petit poids de naissance plutôt qu\'à un gros bébé (a) et favorise la prématurité plutôt qu\'un dépassement de terme (c, d).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'pregnancy_care',
   ),
   const GastroQuestion(
     id: 23,
@@ -614,7 +614,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'Le taux de malformations reste identique à la population générale (a, b fausses), les traitements de fond habituels hors méthotrexate ne sont pas tératogènes (c) et la vaccination n\'est pas un facteur préventif de malformations (d).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'pregnancy_care',
   ),
   const GastroQuestion(
     id: 24,
@@ -638,7 +638,7 @@ final List<GastroQuestion> allGastroQuestions = [
     ],
     whyOthersWrong:
         'L\'allaitement ne transmet pas la MICI (a), des poussées post-partum peuvent survenir (b) et un échange avec l\'équipe médicale permet toujours de sécuriser le choix (d).',
-    diagramType: 'pregnancy_genetics',
+    diagramType: 'breastfeeding_mici',
   ),
 
   // =========================================================================

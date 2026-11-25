@@ -15,13 +15,20 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const CapsuleWarriorsApp());
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 950));
 
     expect(find.text('GASTRO QUEST'), findsWidgets);
     expect(find.text('CAPSULE WARRIORS • EXPÉDITION DIGESTIVE'), findsOneWidget);
-    expect(find.text('🎮 JOUER'), findsOneWidget);
-    expect(find.text('❓ COMMENT JOUER'), findsOneWidget);
-    expect(find.text('⚙ PARAMÈTRES'), findsOneWidget);
-    expect(find.text('🏥 SERVICES HOSPITALIERS'), findsOneWidget);
+    expect(find.text('JOUER'), findsOneWidget);
+    expect(find.text('REPRENDRE'), findsOneWidget);
+    expect(find.text('COMMENT JOUER'), findsOneWidget);
+    expect(find.text('PARAMÈTRES'), findsOneWidget);
+    expect(find.text('PROGRESSION'), findsOneWidget);
+    expect(find.text('SERVICES HOSPITALIERS'), findsOneWidget);
+
+    await tester.tap(find.text('PROGRESSION'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('PROGRESSION & RÉCOMPENSES'), findsOneWidget);
+    expect(find.text('VOIR LES 27 FICHES CLINIQUES'), findsOneWidget);
   });
 }

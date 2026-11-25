@@ -413,13 +413,21 @@
 
     start: function (mode) {
       const targetMode = mode || 'exploration';
-      // Always stop any running track cleanly first (no double-playing music!)
       if (isBgmPlaying && activeTrackMode === targetMode) {
         return;
       }
       BGM.stop();
       activeTrackMode = targetMode;
       if (!bgmEnabled || isMuted) return;
+      const ctx = getAudioContext();
+      if (ctx && bgmGainNode) {
+        try {
+          const targetVol = musicVol * 0.28;
+          bgmGainNode.gain.cancelScheduledValues(ctx.currentTime);
+          bgmGainNode.gain.setValueAtTime(0.001, ctx.currentTime);
+          bgmGainNode.gain.linearRampToValueAtTime(targetVol, ctx.currentTime + 0.45);
+        } catch (_) {}
+      }
       isBgmPlaying = true;
       BGM.noteIdx = 0;
       BGM.playNextNote();
@@ -432,6 +440,23 @@
         bgmTimer = null;
       }
     }
+  };
+
+  SFX.playGameStart = function () {
+    playTone(293.66, 0.00, 0.12, 'triangle', 0.30);
+    playTone(440.00, 0.08, 0.14, 'triangle', 0.32);
+    playTone(587.33, 0.16, 0.18, 'sine', 0.34);
+    playTone(880.00, 0.25, 0.30, 'sine', 0.36);
+  };
+
+  SFX.playStageSelect = function () {
+    playTone(587.33, 0.00, 0.09, 'sine', 0.28);
+    playTone(880.00, 0.06, 0.16, 'triangle', 0.30);
+  };
+
+  SFX.playExplanationOpen = function () {
+    playTone(493.88, 0.00, 0.12, 'sine', 0.22);
+    playTone(659.25, 0.08, 0.18, 'sine', 0.24);
   };
 
   // Global window API for Dart / Flutter
@@ -464,6 +489,9 @@
     playBossAttack: SFX.playBossAttack,
     playBossDefeat: SFX.playBossDefeat,
     playRevive: SFX.playRevive,
+    playGameStart: SFX.playGameStart,
+    playStageSelect: SFX.playStageSelect,
+    playExplanationOpen: SFX.playExplanationOpen,
 
     startBgm: function (stageId) {
       const id = (stageId && stageId >= 1 && stageId <= 7) ? stageId : 1;

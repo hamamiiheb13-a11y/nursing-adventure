@@ -76,6 +76,15 @@ external void _nursingAudioPlayBossDefeat();
 @JS('NursingAudio.playRevive')
 external void _nursingAudioPlayRevive();
 
+@JS('NursingAudio.playGameStart')
+external void _nursingAudioPlayGameStart();
+
+@JS('NursingAudio.playStageSelect')
+external void _nursingAudioPlayStageSelect();
+
+@JS('NursingAudio.playExplanationOpen')
+external void _nursingAudioPlayExplanationOpen();
+
 @JS('NursingAudio.startBgm')
 external void _nursingAudioStartBgm(int stageId);
 
@@ -276,6 +285,27 @@ class AudioPlatformService implements AudioServiceInterface {
   void playRevive() {
     try {
       _nursingAudioPlayRevive();
+    } catch (_) {}
+  }
+
+  @override
+  void playGameStart() {
+    try {
+      _nursingAudioPlayGameStart();
+    } catch (_) {}
+  }
+
+  @override
+  void playStageSelect() {
+    try {
+      _nursingAudioPlayStageSelect();
+    } catch (_) {}
+  }
+
+  @override
+  void playExplanationOpen() {
+    try {
+      _nursingAudioPlayExplanationOpen();
     } catch (_) {}
   }
 

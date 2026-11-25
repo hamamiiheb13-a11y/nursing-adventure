@@ -206,12 +206,12 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateBackgroundErythrocytes() {
     final rand = math.Random(level * 777);
     backgroundCells.clear();
-    for (int i = 0; i < 28; i++) {
+    for (int i = 0; i < 14; i++) {
       backgroundCells.add(
         BackgroundErythrocyte(
           position: Offset(rand.nextDouble() * totalDistance, 80.0 + rand.nextDouble() * 360.0),
-          depth: 0.2 + rand.nextDouble() * 0.5,
-          radius: 12.0 + rand.nextDouble() * 18.0,
+          depth: 0.2 + rand.nextDouble() * 0.45,
+          radius: 10.0 + rand.nextDouble() * 14.0,
           wobblePhase: rand.nextDouble() * math.pi * 2,
           rotation: rand.nextDouble() * math.pi * 2,
         ),
@@ -224,56 +224,55 @@ class ArcadeGameController extends ChangeNotifier {
     final rand = math.Random(level * 333);
     int colId = 1;
 
-    for (double x = 280.0; x < totalDistance - 1050.0; x += 155.0 + rand.nextDouble() * 90.0) {
+    for (double x = 300.0; x < totalDistance - 1050.0; x += 210.0 + rand.nextDouble() * 95.0) {
+      if (checkpoints.any((cp) => (cp.worldX - x).abs() < 130.0)) continue;
+
       final ceilY = tunnel.getCeilingY(x, 0.0);
       final floorY = tunnel.getFloorY(x, 0.0);
       final midY = (ceilY + floorY) / 2;
 
-      final clusterSize = 1 + rand.nextInt(2);
-      for (int c = 0; c < clusterSize; c++) {
-        final roll = rand.nextDouble();
-        CollectibleType type;
-        int xp = 25;
-        int pts = 50;
+      final roll = rand.nextDouble();
+      CollectibleType type;
+      int xp = 25;
+      int pts = 50;
 
-        if (roll < 0.36) {
-          type = CollectibleType.cellBubble;
-          xp = 20;
-          pts = 40;
-        } else if (roll < 0.68) {
-          type = CollectibleType.atpCrystal;
-          xp = 35;
-          pts = 75;
-        } else if (roll < 0.84) {
-          type = CollectibleType.vitaminCapsule;
-          xp = 40;
-          pts = 90;
-        } else if (roll < 0.92) {
-          type = CollectibleType.heartBoost;
-          xp = 60;
-          pts = 120;
-        } else if (roll < 0.97) {
-          type = CollectibleType.shieldBoost;
-          xp = 80;
-          pts = 150;
-        } else {
-          type = CollectibleType.weaponUpgrade;
-          xp = 100;
-          pts = 200;
-        }
-
-        final itemY = midY + (rand.nextDouble() - 0.5) * math.max(60.0, floorY - ceilY - 100.0);
-        collectibles.add(
-          ArcadeCollectible(
-            id: colId++,
-            position: Offset(x + c * 32.0, itemY.clamp(ceilY + 26.0, floorY - 26.0)),
-            type: type,
-            xpValue: xp,
-            scoreValue: pts,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
+      if (roll < 0.34) {
+        type = CollectibleType.cellBubble;
+        xp = 25;
+        pts = 45;
+      } else if (roll < 0.66) {
+        type = CollectibleType.atpCrystal;
+        xp = 40;
+        pts = 80;
+      } else if (roll < 0.82) {
+        type = CollectibleType.vitaminCapsule;
+        xp = 45;
+        pts = 95;
+      } else if (roll < 0.91) {
+        type = CollectibleType.heartBoost;
+        xp = 60;
+        pts = 120;
+      } else if (roll < 0.96) {
+        type = CollectibleType.shieldBoost;
+        xp = 80;
+        pts = 150;
+      } else {
+        type = CollectibleType.weaponUpgrade;
+        xp = 100;
+        pts = 200;
       }
+
+      final itemY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, floorY - ceilY - 120.0);
+      collectibles.add(
+        ArcadeCollectible(
+          id: colId++,
+          position: Offset(x, itemY.clamp(ceilY + 34.0, floorY - 34.0)),
+          type: type,
+          xpValue: xp,
+          scoreValue: pts,
+          animPhase: rand.nextDouble() * math.pi * 2,
+        ),
+      );
     }
   }
 
@@ -282,8 +281,8 @@ class ArcadeGameController extends ChangeNotifier {
     final rand = math.Random(level * 444);
     int obsId = 1;
 
-    for (double x = 420.0; x < totalDistance - 1080.0; x += 240.0 + rand.nextDouble() * 120.0) {
-      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 150.0);
+    for (double x = 460.0; x < totalDistance - 1100.0; x += 360.0 + rand.nextDouble() * 140.0) {
+      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 190.0);
       if (nearCheckpoint) continue;
 
       final ceilY = tunnel.getCeilingY(x, 0.0);
@@ -294,22 +293,22 @@ class ArcadeGameController extends ChangeNotifier {
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
-            position: Offset(x, floorY - 24.0),
-            initialY: floorY - 24.0,
+            position: Offset(x, floorY - 26.0),
+            initialY: floorY - 26.0,
             type: ObstacleType.toothyMicrobe,
-            radius: 23.0,
+            radius: 22.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
       } else if (roll < 0.48) {
-        final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * 65.0;
+        final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * 55.0;
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
             position: Offset(x, midY),
             initialY: midY,
             type: ObstacleType.spikyVirus,
-            radius: 19.0,
+            radius: 18.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
@@ -317,37 +316,37 @@ class ArcadeGameController extends ChangeNotifier {
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
-            position: Offset(x, ceilY + 14.0),
-            initialY: ceilY + 14.0,
+            position: Offset(x, ceilY + 18.0),
+            initialY: ceilY + 18.0,
             type: ObstacleType.acidDroplet,
             radius: 14.0,
-            velocityY: 78.0 + rand.nextDouble() * 45.0,
+            velocityY: 72.0 + rand.nextDouble() * 38.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
       } else if (roll < 0.85) {
         // Luminous Inflammatory Zone (calmed with Special Anti-Inflammatory Wave!)
-        final zoneY = floorY - 28.0 - rand.nextDouble() * math.max(20.0, (floorY - ceilY) * 0.35);
+        final zoneY = floorY - 32.0 - rand.nextDouble() * math.max(20.0, (floorY - ceilY) * 0.32);
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
             position: Offset(x, zoneY),
             initialY: zoneY,
             type: ObstacleType.inflammatoryZone,
-            radius: 28.0,
+            radius: 26.0,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
         );
       } else {
         // Swaying biological mucus filament from ceiling
-        final filHeight = math.min(90.0, (floorY - ceilY) * 0.34);
+        final filHeight = math.min(82.0, (floorY - ceilY) * 0.30);
         obstacles.add(
           ArcadeObstacle(
             id: obsId++,
             position: Offset(x, ceilY + filHeight * 0.5),
             initialY: ceilY + filHeight * 0.5,
             type: ObstacleType.bioFilament,
-            radius: 16.0,
+            radius: 15.0,
             height: filHeight,
             animPhase: rand.nextDouble() * math.pi * 2,
           ),
@@ -361,10 +360,7 @@ class ArcadeGameController extends ChangeNotifier {
     final rand = math.Random(level * 555);
     int enemyId = 1;
 
-    for (double x = 480.0; x < totalDistance - 1100.0; x += 245.0 + rand.nextDouble() * 130.0) {
-      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 155.0);
-      if (nearCheckpoint) continue;
-
+    void addEnemyAt(double x) {
       final ceilY = tunnel.getCeilingY(x, 0.0);
       final floorY = tunnel.getFloorY(x, 0.0);
       final midY = (ceilY + floorY) / 2;
@@ -408,20 +404,40 @@ class ArcadeGameController extends ChangeNotifier {
         xpReward = 25;
       }
 
-      final enemyY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, (floorY - ceilY) * 0.38);
+      final enemyY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, (floorY - ceilY) * 0.36);
       enemies.add(
         ArcadeEnemy(
           id: enemyId++,
-          position: Offset(x, enemyY.clamp(ceilY + 30.0, floorY - 30.0)),
-          velocity: Offset(-42.0 - rand.nextDouble() * 22.0, 0),
+          position: Offset(x, enemyY.clamp(ceilY + 36.0, floorY - 36.0)),
+          velocity: Offset(-36.0 - rand.nextDouble() * 18.0, 0),
           type: eType,
           maxHp: hp,
           radius: radius,
           scoreReward: scoreReward,
           xpReward: xpReward,
-          shootInterval: 2.3 + rand.nextDouble() * 1.4,
+          shootInterval: 2.6 + rand.nextDouble() * 1.4,
         ),
       );
+    }
+
+    for (double x = 520.0; x < totalDistance - 1100.0; x += 290.0 + rand.nextDouble() * 90.0) {
+      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 120.0);
+      bool nearObstacle = obstacles.any((o) => (o.position.dx - x).abs() < 105.0);
+      if (nearCheckpoint || nearObstacle) continue;
+      addEnemyAt(x);
+    }
+
+    // Guarantee enemies appear cleanly mid-way between checkpoints if spacing skipped all candidates
+    if (enemies.length < 2) {
+      for (int i = 0; i < checkpoints.length - 1; i++) {
+        final midX = (checkpoints[i].worldX + checkpoints[i + 1].worldX) * 0.5;
+        if (!obstacles.any((o) => (o.position.dx - midX).abs() < 80.0)) {
+          addEnemyAt(midX);
+        }
+      }
+      if (enemies.isEmpty) {
+        addEnemyAt((totalDistance - 1150.0).clamp(500.0, totalDistance - 1050.0));
+      }
     }
   }
 
@@ -463,7 +479,7 @@ class ArcadeGameController extends ChangeNotifier {
   void start() {
     state = GameState.playing;
     audio.startBgm(level);
-    audio.playClick();
+    audio.playGameStart();
     notifyListeners();
   }
 
@@ -932,39 +948,39 @@ class ArcadeGameController extends ChangeNotifier {
 
     player.animPhase += dt * 4.5;
 
-    // Progressive capsule speed upgrade based on unlocked arsenal!
-    final double speedUpgradeMult = (1.0 + (progress.unlockedWeapons.length - 1) * 0.035).clamp(1.0, 1.25);
-    final double maxSpeed = (player.isBoosted ? 350.0 : 270.0) * speedUpgradeMult * player.joystickSensitivity;
+    // Progressive capsule speed upgrade based on unlocked arsenal (tuned -18% for crisp control!)
+    final double speedUpgradeMult = (1.0 + (progress.unlockedWeapons.length - 1) * 0.03).clamp(1.0, 1.18);
+    final double maxSpeed = (player.isBoosted ? 285.0 : 220.0) * speedUpgradeMult * player.joystickSensitivity;
 
     double targetVx = player.moveInput.dx * maxSpeed;
     double targetVy = player.moveInput.dy * maxSpeed;
 
     // Organ-specific subtle digestive physics cue: Stage 1 gentle esophageal peristaltic lift
     if (level == 1 && state == GameState.playing) {
-      targetVy += math.sin(gameTime * 2.1) * 14.0;
+      targetVy += math.sin(gameTime * 2.0) * 11.0;
     }
 
     if (state == GameState.bossFight) {
       // Arena mode: unrestricted 360° piloting without forced forward drift
     } else {
       if (player.moveInput.dx >= -0.12) {
-        targetVx = math.max(targetVx, (player.isBoosted ? 245.0 : 145.0) * speedUpgradeMult);
+        targetVx = math.max(targetVx, (player.isBoosted ? 195.0 : 118.0) * speedUpgradeMult);
       }
       _checkMidStageSurprises();
     }
 
-    // Immediate snappy feel with smooth fluid damping
+    // Smooth fluid acceleration and organic inertial damping
     double currentVx = player.velocity.dx;
     double currentVy = player.velocity.dy;
-    currentVx += (targetVx - currentVx) * math.min(1.0, 11.5 * dt);
-    currentVy += (targetVy - currentVy) * math.min(1.0, 12.5 * dt);
+    currentVx += (targetVx - currentVx) * math.min(1.0, 8.5 * dt);
+    currentVy += (targetVy - currentVy) * math.min(1.0, 9.5 * dt);
 
     player.velocity = Offset(currentVx, currentVy);
     player.position += player.velocity * dt;
 
     // Gentle pitch banking proportional to vertical velocity
-    final targetAngle = (player.velocity.dy / 320.0).clamp(-0.36, 0.36);
-    player.angle += (targetAngle - player.angle) * math.min(1.0, 10.0 * dt);
+    final targetAngle = (player.velocity.dy / 300.0).clamp(-0.32, 0.32);
+    player.angle += (targetAngle - player.angle) * math.min(1.0, 8.5 * dt);
 
     final currentSpeed = player.velocity.distance;
     final targetFlame = (currentSpeed / 240.0).clamp(0.25, 1.0);
@@ -1668,7 +1684,7 @@ class ArcadeGameController extends ChangeNotifier {
       player.boostTimer = 3.0;
       player.heal();
       audio.playCorrect();
-      _addFloatingText('+30% ARME & -2 PV BOSS !', player.position + const Offset(0, -30), const Color(0xFF34D399));
+      _addFloatingText('+30% ARME • -2 PV BOSS', player.position + const Offset(55, -36), const Color(0xFF35D39A));
     } else {
       wrongAnswersInStage++;
       combo = 0;
@@ -1676,7 +1692,7 @@ class ArcadeGameController extends ChangeNotifier {
       audio.playWrong();
       // Gently shield player briefly on resume instead of harshly killing them
       player.invulnerableTimer = 1.5;
-      _addFloatingText('EXPLICATION ENREGISTRÉE', player.position + const Offset(0, -30), const Color(0xFFFB923C));
+      _addFloatingText('EXPLICATION VALIDÉE', player.position + const Offset(55, -36), const Color(0xFFFFB547));
     }
 
     activeCheckpoint = null;
@@ -1720,8 +1736,8 @@ class ArcadeGameController extends ChangeNotifier {
     bossDefeatTimer = 1.6;
     enemyProjectiles.clear();
     audio.playBossDefeat();
-    _emitVictoryConfetti(burstCount: 65);
-    _addFloatingText('BOSS ÉRADIQUÉ !', boss.position, const Color(0xFFFBBF24));
+    _emitVictoryConfetti(burstCount: 42);
+    _addFloatingText('BOSS ÉRADIQUÉ !', boss.position, const Color(0xFFFFB547));
     notifyListeners();
   }
 
@@ -1758,18 +1774,22 @@ class ArcadeGameController extends ChangeNotifier {
       audio.playRewardUnlock();
     }
 
-    _emitVictoryConfetti(burstCount: 70);
+    _emitVictoryConfetti(burstCount: 45);
     notifyListeners();
   }
 
   void _addFloatingText(String text, Offset pos, Color color) {
+    if (floatingTexts.length >= 2) {
+      floatingTexts.removeAt(0);
+    }
     floatingTexts.add(
       FloatingArcadeText(
         text: text,
         position: pos,
         color: color,
-        life: 1.1,
-        maxLife: 1.1,
+        fontSize: 12.0,
+        life: 0.90,
+        maxLife: 0.90,
       ),
     );
   }

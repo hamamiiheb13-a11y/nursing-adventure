@@ -54,6 +54,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.text('COMMENCER LA MISSION'), findsOneWidget);
+      expect(find.text('APERÇU DU PROCHAIN ENVIRONNEMENT'), findsOneWidget);
 
       await pumpAtSize(
         tester,
@@ -61,9 +62,10 @@ void main() {
         CapsuleWarriorsBriefingScreen(world: world2, stageId: 2, progress: progress),
       );
       expect(tester.takeException(), isNull);
+      expect(find.text('APERÇU DU PROCHAIN ENVIRONNEMENT'), findsOneWidget);
     });
 
-    testWidgets('CheckpointQuestionDialog fits all 4 options cleanly and validates on short landscape screen', (tester) async {
+    testWidgets('CheckpointQuestionDialog fits all 4 options cleanly and validates right/wrong on short landscape', (tester) async {
       final q5 = allGastroQuestions[4]; // 4 options (a..d)
       expect(q5.options.length, 4);
 
@@ -89,20 +91,51 @@ void main() {
         expect(find.textContaining(opt), findsOneWidget);
       }
 
-      // Select the correct option, validate, inspect explanation + whyOthersWrong, then continue
+      // Select the correct option, validate, inspect centered EXPLICATION PÉDAGOGIQUE window, then continue
       await tester.tap(find.textContaining(q5.options[q5.correctOptionIndex]));
       await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(find.text('Valider ma réponse'));
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 350));
       expect(tester.takeException(), isNull);
+      expect(find.text('EXPLICATION PÉDAGOGIQUE'), findsOneWidget);
+      expect(find.text('Bonne réponse'), findsOneWidget);
       expect(find.textContaining(q5.explanation), findsOneWidget);
       expect(find.textContaining('POURQUOI LES AUTRES CHOIX NE CONVIENNENT PAS'), findsOneWidget);
-      expect(find.text('Poursuivre la mission'), findsOneWidget);
+      expect(find.text('CONTINUER LA MISSION'), findsOneWidget);
 
-      await tester.tap(find.text('Poursuivre la mission'));
+      await tester.tap(find.text('CONTINUER LA MISSION'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(validatedIdx, q5.correctOptionIndex);
       expect(validatedCorrect, true);
+
+      // Verify wrong answer shows Réponse incorrecte + exact answer + continues cleanly (never blocks)
+      final wrongIdx = (q5.correctOptionIndex + 1) % q5.options.length;
+      await pumpAtSize(
+        tester,
+        const Size(740, 340),
+        Scaffold(
+          body: CheckpointQuestionDialog(
+            question: q5,
+            checkpointIndex: 2,
+            onAnswerValidated: (idx, isCorrect) {
+              validatedIdx = idx;
+              validatedCorrect = isCorrect;
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.textContaining(q5.options[wrongIdx]));
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(find.text('Valider ma réponse'));
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(tester.takeException(), isNull);
+      expect(find.text('EXPLICATION PÉDAGOGIQUE'), findsOneWidget);
+      expect(find.text('Réponse incorrecte'), findsOneWidget);
+      expect(find.text('BONNE RÉPONSE EXACTE'), findsOneWidget);
+      await tester.tap(find.text('CONTINUER LA MISSION'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(validatedIdx, wrongIdx);
+      expect(validatedCorrect, false);
     });
 
     testWidgets('Review, Final, Settings, Pause, Victory & Tutorial fit portrait & landscape cleanly', (tester) async {

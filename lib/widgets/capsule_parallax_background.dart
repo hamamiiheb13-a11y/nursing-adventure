@@ -88,17 +88,17 @@ class _StomachCosmicPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = progress * math.pi * 2;
 
-    // 1. Base luminous ocean-teal digestive background gradient
+    // 1. Base luminous night-blue digestive background gradient (Section 7 Palette)
     final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final bgPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF0B253C),
-          Color(0xFF103857),
-          Color(0xFF164B70),
-          Color(0xFF0E3454),
+          Color(0xFF071629),
+          Color(0xFF0B2540),
+          Color(0xFF123B5A),
+          Color(0xFF0B2540),
         ],
         stops: [0.0, 0.35, 0.70, 1.0],
       ).createShader(bgRect);
@@ -420,12 +420,18 @@ class _StomachCosmicPainter extends CustomPainter {
     const bodyRect = Rect.fromLTWH(-32, -20, 64, 40);
     final rrect = RRect.fromRectAndRadius(bodyRect, const Radius.circular(20));
 
-    // Outer glow
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-36, -24, 72, 48), const Radius.circular(24)),
+    // Smooth radial halo (lightweight, zero MaskFilter stall)
+    canvas.drawCircle(
+      Offset.zero,
+      46,
       Paint()
-        ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.25)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+        ..shader = RadialGradient(
+          colors: [
+            CapsuleColors.cyanGlow.withValues(alpha: 0.24),
+            CapsuleColors.turquoise.withValues(alpha: 0.08),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: 46)),
     );
 
     // Body Gradient
@@ -434,69 +440,78 @@ class _StomachCosmicPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white,
-          Color(0xFFE2E8F0),
-          Color(0xFF94A3B8),
-          Color(0xFF0F172A),
+          Color(0xFFF4F8FC),
+          Color(0xFFD8E6F3),
+          Color(0xFF8AA8C5),
         ],
       ).createShader(bodyRect);
     canvas.drawRRect(rrect, bodyPaint);
 
-    // Medical Front Shell (Electric Blue / Cyan Glow)
-    final frontClip = Path()
-      ..addRect(const Rect.fromLTWH(0, -22, 36, 44));
+    // Medical Front Shell (Cyan / Turquoise Glow)
+    final frontClip = Path()..addRect(const Rect.fromLTWH(0, -22, 36, 44));
     canvas.save();
     canvas.clipPath(frontClip);
     canvas.drawRRect(
       rrect,
       Paint()
         ..shader = const LinearGradient(
-          colors: [CapsuleColors.cyanGlow, CapsuleColors.electricBlue],
+          colors: [CapsuleColors.cyanGlow, Color(0xFF0E7490)],
         ).createShader(bodyRect),
     );
     canvas.restore();
 
-    // Center divider ring
-    canvas.drawLine(
-      const Offset(0, -20),
-      const Offset(0, 20),
+    // Central luminous medical divider collar + glowing core window
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-3, -20, 6, 40), const Radius.circular(3)),
+      Paint()..color = CapsuleColors.turquoise,
+    );
+    canvas.drawCircle(
+      const Offset(-16, 0),
+      6.5,
       Paint()
-        ..color = CapsuleColors.darkNavy
-        ..strokeWidth = 3.0,
+        ..shader = const RadialGradient(
+          colors: [Colors.white, CapsuleColors.cyanGlow, Color(0xFF071629)],
+        ).createShader(Rect.fromCircle(center: const Offset(-16, 0), radius: 6.5)),
+    );
+
+    // Glossy specular top highlight
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-20, -14, 34, 6), const Radius.circular(3)),
+      Paint()..color = Colors.white.withValues(alpha: 0.68),
     );
 
     // 4. Cockpit Visor / Glass Window
-    const visorRect = Rect.fromLTWH(6, -11, 20, 22);
+    const visorRect = Rect.fromLTWH(7, -11, 19, 22);
     final visorPaint = Paint()
       ..shader = const RadialGradient(
-        colors: [Colors.white, CapsuleColors.cyanGlow, CapsuleColors.electricBlue],
+        colors: [Colors.white, CapsuleColors.cyanGlow, Color(0xFF0E7490)],
       ).createShader(visorRect);
     canvas.drawOval(visorRect, visorPaint);
 
-    // 5. Winglet Fins
+    // 5. Swept Stabilizer Winglet Fins
     final topFin = Path()
-      ..moveTo(-12, -20)
-      ..lineTo(-22, -32)
-      ..lineTo(-6, -20)
+      ..moveTo(-10, -20)
+      ..quadraticBezierTo(-18, -32, -25, -28)
+      ..lineTo(-4, -20)
       ..close();
-    canvas.drawPath(topFin, Paint()..color = CapsuleColors.electricBlue);
+    canvas.drawPath(topFin, Paint()..color = CapsuleColors.cyanGlow);
 
     final botFin = Path()
-      ..moveTo(-12, 20)
-      ..lineTo(-22, 32)
-      ..lineTo(-6, 20)
+      ..moveTo(-10, 20)
+      ..quadraticBezierTo(-18, 32, -25, 28)
+      ..lineTo(-4, 20)
       ..close();
-    canvas.drawPath(botFin, Paint()..color = CapsuleColors.electricBlue);
+    canvas.drawPath(botFin, Paint()..color = CapsuleColors.cyanGlow);
 
     // 6. Laser Cannon Barrel
-    final barrelRect = const Rect.fromLTWH(26, -3, 14, 6);
+    const barrelRect = Rect.fromLTWH(27, -3, 13, 6);
     canvas.drawRRect(
       RRect.fromRectAndRadius(barrelRect, const Radius.circular(2)),
-      Paint()..color = const Color(0xFF64748B),
+      Paint()..color = const Color(0xFF123B5A),
     );
     canvas.drawCircle(
       const Offset(40, 0),
-      3,
+      3.2,
       Paint()..color = CapsuleColors.cyanGlow,
     );
 
@@ -504,11 +519,11 @@ class _StomachCosmicPainter extends CustomPainter {
     final shieldPulse = (math.sin(t * 3.0) + 1.0) * 0.5;
     canvas.drawCircle(
       const Offset(2, 0),
-      38 + shieldPulse * 4.0,
+      40 + shieldPulse * 4.0,
       Paint()
-        ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.15 + 0.1 * shieldPulse)
+        ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.16 + 0.1 * shieldPulse)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+        ..strokeWidth = 1.6,
     );
 
     canvas.restore();

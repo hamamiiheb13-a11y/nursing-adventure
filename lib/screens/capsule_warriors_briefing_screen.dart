@@ -70,10 +70,14 @@ class _CapsuleWarriorsBriefingScreenState
     super.dispose();
   }
 
-  void _selectWeapon(String weaponName) {
+  void _cycleWeapon() {
+    final unlocked = _progress.unlockedWeapons;
+    if (unlocked.length <= 1) return;
     _audio.playClick();
+    final idx = unlocked.indexOf(_progress.equippedWeapon);
+    final nextName = unlocked[(idx + 1) % unlocked.length];
     setState(() {
-      _progress.equipWeapon(weaponName);
+      _progress.equipWeapon(nextName);
     });
     _storage.saveProgress(_progress);
   }
@@ -107,9 +111,10 @@ class _CapsuleWarriorsBriefingScreenState
   @override
   Widget build(BuildContext context) {
     final equippedConfig = WeaponConfig.getByName(_progress.equippedWeapon);
+    final nextWorld = _world.id < 7 ? GastroWorld.getWorldForLevel(_world.id + 1) : null;
 
     return Scaffold(
-      backgroundColor: CapsuleColors.deepOcean,
+      backgroundColor: const Color(0xFF071629),
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: false,
@@ -124,17 +129,17 @@ class _CapsuleWarriorsBriefingScreenState
                   constraints: const BoxConstraints(maxWidth: 960),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: isNarrowPortrait ? 16 : 28,
-                      vertical: isShortLandscape ? 8 : 14,
+                      horizontal: isNarrowPortrait ? 16 : 26,
+                      vertical: isShortLandscape ? 6 : 12,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // 1. Clean Responsive Header (RETOUR + Nom de mission)
+                        // 1. En-tête épuré : Retour • Stage & Monde • Progression
                         _buildTopBar(isNarrowPortrait, isShortLandscape),
-                        SizedBox(height: isShortLandscape ? 8 : 14),
+                        SizedBox(height: isShortLandscape ? 8 : 12),
 
-                        // 2. Clean Main Presentation Card
+                        // 2. Corps principal aéré (Illustration généreuse + blocs synthétiques)
                         Expanded(
                           child: isNarrowPortrait
                               ? SingleChildScrollView(
@@ -142,18 +147,16 @@ class _CapsuleWarriorsBriefingScreenState
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
-                                      _buildEnvironmentBanner(height: 120),
-                                      const SizedBox(height: 12),
-                                      _buildOverviewAndGoalCard(isShortLandscape: false),
-                                      const SizedBox(height: 12),
-                                      _buildKeyInfoRow(equippedConfig, isNarrow: true),
+                                      _buildEnvironmentBanner(height: 145),
                                       const SizedBox(height: 10),
-                                      _buildWeaponSelectorCard(),
-                                      if (_world.id < 7) ...[
+                                      _buildOverviewAndGoalCard(isShortLandscape: false),
+                                      const SizedBox(height: 10),
+                                      _buildKeyInfoRow(isNarrow: true),
+                                      const SizedBox(height: 10),
+                                      _buildCompactLoadoutBar(equippedConfig),
+                                      if (nextWorld != null) ...[
                                         const SizedBox(height: 10),
-                                        _buildNextEnvironmentCard(
-                                          GastroWorld.getWorldForLevel(_world.id + 1),
-                                        ),
+                                        _buildNextEnvironmentCard(nextWorld),
                                       ],
                                     ],
                                   ),
@@ -161,18 +164,18 @@ class _CapsuleWarriorsBriefingScreenState
                               : Row(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    // Left 46%: Animated Environment Preview + Short Intro
+                                    // Colonne Gauche (48%) : Grande illustration anatomique + Présentation
                                     Expanded(
-                                      flex: 46,
+                                      flex: 48,
                                       child: SingleChildScrollView(
                                         physics: const BouncingScrollPhysics(),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: [
                                             _buildEnvironmentBanner(
-                                              height: isShortLandscape ? 105 : 148,
+                                              height: isShortLandscape ? 132 : 178,
                                             ),
-                                            SizedBox(height: isShortLandscape ? 8 : 12),
+                                            SizedBox(height: isShortLandscape ? 8 : 10),
                                             _buildOverviewAndGoalCard(
                                               isShortLandscape: isShortLandscape,
                                             ),
@@ -182,22 +185,20 @@ class _CapsuleWarriorsBriefingScreenState
                                     ),
                                     const SizedBox(width: 16),
 
-                                    // Right 54%: Key Specs (Checkpoints, Boss Reward, Armed Weapon Selector)
+                                    // Colonne Droite (52%) : Infos clés + Arme active (compacte) + Prochain monde
                                     Expanded(
-                                      flex: 54,
+                                      flex: 52,
                                       child: SingleChildScrollView(
                                         physics: const BouncingScrollPhysics(),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: [
-                                            _buildKeyInfoRow(equippedConfig, isNarrow: false),
-                                            SizedBox(height: isShortLandscape ? 8 : 12),
-                                            _buildWeaponSelectorCard(),
-                                            if (_world.id < 7) ...[
-                                              SizedBox(height: isShortLandscape ? 8 : 12),
-                                              _buildNextEnvironmentCard(
-                                                GastroWorld.getWorldForLevel(_world.id + 1),
-                                              ),
+                                            _buildKeyInfoRow(isNarrow: false),
+                                            SizedBox(height: isShortLandscape ? 8 : 10),
+                                            _buildCompactLoadoutBar(equippedConfig),
+                                            if (nextWorld != null) ...[
+                                              SizedBox(height: isShortLandscape ? 8 : 10),
+                                              _buildNextEnvironmentCard(nextWorld),
                                             ],
                                           ],
                                         ),
@@ -206,25 +207,25 @@ class _CapsuleWarriorsBriefingScreenState
                                   ],
                                 ),
                         ),
-                        SizedBox(height: isShortLandscape ? 8 : 14),
+                        SizedBox(height: isShortLandscape ? 8 : 12),
 
-                        // 3. Single Primary CTA Button
+                        // 3. Bouton d'action principal : COMMENCER LA MISSION
                         Center(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 460),
                             child: SizedBox(
                               width: double.infinity,
-                              height: isShortLandscape ? 46 : 52,
+                              height: isShortLandscape ? 44 : 50,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: CapsuleColors.cyanGlow,
-                                  foregroundColor: CapsuleColors.deepOcean,
+                                  backgroundColor: const Color(0xFF20D5E8),
+                                  foregroundColor: const Color(0xFF071629),
                                   elevation: 4,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                icon: const Icon(Icons.rocket_launch_rounded, size: 22),
+                                icon: const Icon(Icons.rocket_launch_rounded, size: 21),
                                 label: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
@@ -263,19 +264,19 @@ class _CapsuleWarriorsBriefingScreenState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+          color: const Color(0xFF0B2540).withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: CapsuleColors.cardBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 17),
+            const Icon(Icons.arrow_back_rounded, color: Color(0xFF20D5E8), size: 17),
             const SizedBox(width: 5),
             Text(
               'RETOUR',
               style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
+                color: const Color(0xFFF4F8FC),
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -285,23 +286,63 @@ class _CapsuleWarriorsBriefingScreenState
       ),
     );
 
+    final progressRatio = (_progress.completedCount / 7.0).clamp(0.0, 1.0);
+    final progressWidget = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CapsuleColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${_progress.completedCount}/7',
+            style: GoogleFonts.orbitron(
+              color: const Color(0xFF20D5E8),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 7),
+          SizedBox(
+            width: isNarrow ? 54 : 76,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progressRatio,
+                minHeight: 6,
+                backgroundColor: const Color(0xFF123B5A),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF35D39A)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
     final titleBlock = Column(
-      crossAxisAlignment: isNarrow ? CrossAxisAlignment.start : CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'MISSION ${_world.id} • ${_world.name}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.plusJakartaSans(
-            fontSize: isNarrow ? 17 : (isShort ? 17 : 21),
+            fontSize: isNarrow ? 16.5 : (isShort ? 16.5 : 20),
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: const Color(0xFFF4F8FC),
           ),
         ),
         Text(
           _world.subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
-            fontSize: 12,
-            color: CapsuleColors.cyanGlow,
+            fontSize: 11.5,
+            color: const Color(0xFF20D5E8),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -312,8 +353,11 @@ class _CapsuleWarriorsBriefingScreenState
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          backBtn,
-          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [backBtn, progressWidget],
+          ),
+          const SizedBox(height: 8),
           titleBlock,
         ],
       );
@@ -324,6 +368,8 @@ class _CapsuleWarriorsBriefingScreenState
         backBtn,
         const SizedBox(width: 14),
         Expanded(child: titleBlock),
+        const SizedBox(width: 10),
+        progressWidget,
       ],
     );
   }
@@ -333,11 +379,11 @@ class _CapsuleWarriorsBriefingScreenState
       height: height,
       decoration: BoxDecoration(
         color: _world.tunnelDeepColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _world.primaryColor.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _world.primaryColor.withValues(alpha: 0.55), width: 1.4),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16.5),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -352,25 +398,55 @@ class _CapsuleWarriorsBriefingScreenState
                 );
               },
             ),
+            // Zone digestive en haut à gauche
             Positioned(
-              left: 12,
-              bottom: 10,
+              left: 10,
+              top: 9,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: CapsuleColors.deepOcean.withValues(alpha: 0.78),
+                  color: const Color(0xFF071629).withValues(alpha: 0.80),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF20D5E8).withValues(alpha: 0.45)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(_world.icon, color: _world.primaryColor, size: 14),
-                    const SizedBox(width: 6),
+                    const Icon(Icons.biotech_rounded, color: Color(0xFF20D5E8), size: 13),
+                    const SizedBox(width: 5),
                     Text(
-                      'BOSS : ${_world.bossName}',
+                      _world.organZone,
                       style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 11,
+                        color: const Color(0xFFF4F8FC),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Boss en bas à gauche
+            Positioned(
+              left: 10,
+              bottom: 9,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF071629).withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _world.primaryColor.withValues(alpha: 0.55)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_world.icon, color: _world.primaryColor, size: 13),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Boss : ${_world.bossName}',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFFF4F8FC),
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -386,68 +462,40 @@ class _CapsuleWarriorsBriefingScreenState
 
   Widget _buildOverviewAndGoalCard({required bool isShortLandscape}) {
     return Container(
-      padding: EdgeInsets.all(isShortLandscape ? 11 : 14),
+      padding: EdgeInsets.all(isShortLandscape ? 10 : 13),
       decoration: BoxDecoration(
-        color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              color: _world.primaryColor.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.biotech_rounded, color: CapsuleColors.cyanGlow, size: 13),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    'ZONE : ${_world.organZone.toUpperCase()}',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: CapsuleColors.cyanGlow,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
           Text(
             _world.description,
             style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: isShortLandscape ? 12 : 13,
+              color: const Color(0xFFF4F8FC),
+              fontSize: isShortLandscape ? 11.8 : 12.8,
               height: 1.38,
             ),
           ),
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: CapsuleColors.deepOcean.withValues(alpha: 0.65),
+              color: const Color(0xFF071629).withValues(alpha: 0.72),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                const Icon(Icons.flag_rounded, color: CapsuleColors.mintGreen, size: 16),
+                const Icon(Icons.flag_rounded, color: Color(0xFF35D39A), size: 15),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    'Objectif : Réussir les $_checkpointCount checkpoints cliniques et vaincre ${_world.bossName}.',
+                    'Objectif : Valider $_checkpointCount checkpoints et vaincre ${_world.bossName}.',
                     style: GoogleFonts.inter(
-                      color: CapsuleColors.mintGreen,
-                      fontSize: 11.5,
+                      color: const Color(0xFF35D39A),
+                      fontSize: 11.2,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -455,117 +503,22 @@ class _CapsuleWarriorsBriefingScreenState
               ],
             ),
           ),
-          if (_world.stageMechanicHint.isNotEmpty) ...[
-            const SizedBox(height: 7),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: CapsuleColors.amberGold.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: CapsuleColors.amberGold.withValues(alpha: 0.4)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.tips_and_updates_rounded, color: CapsuleColors.amberGold, size: 15),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      _world.stageMechanicHint,
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFFFEF3C7),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildNextEnvironmentCard(GastroWorld nextWorld) {
-    return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            CapsuleColors.oceanSurface.withValues(alpha: 0.92),
-            nextWorld.primaryColor.withValues(alpha: 0.24),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: CapsuleColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [nextWorld.primaryColor, nextWorld.secondaryColor],
-              ),
-              border: Border.all(color: Colors.white30),
-            ),
-            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'APERÇU DU PROCHAIN ENVIRONNEMENT',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: CapsuleColors.gold,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.7,
-                  ),
-                ),
-                Text(
-                  'Stage ${nextWorld.id} : ${nextWorld.organZone} — ${nextWorld.name}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  'Boss : ${nextWorld.bossName} • Arme : ${nextWorld.unlockedWeaponName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    color: CapsuleColors.textSubtle,
-                    fontSize: 10.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKeyInfoRow(WeaponConfig equippedConfig, {required bool isNarrow}) {
+  Widget _buildKeyInfoRow({required bool isNarrow}) {
     final checkpointsChip = _buildInfoChip(
       icon: Icons.quiz_rounded,
-      color: CapsuleColors.cyanGlow,
+      color: const Color(0xFF20D5E8),
       label: 'CHECKPOINTS',
       value: '$_checkpointCount Questions MICI',
     );
     final rewardChip = _buildInfoChip(
       icon: Icons.card_giftcard_rounded,
-      color: CapsuleColors.gold,
-      label: 'RÉCOMPENSE STAGE',
+      color: const Color(0xFFFFB547),
+      label: 'RÉCOMPENSE',
       value: _world.unlockedWeaponName,
     );
 
@@ -595,9 +548,9 @@ class _CapsuleWarriorsBriefingScreenState
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.all(11),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.45)),
       ),
@@ -609,7 +562,7 @@ class _CapsuleWarriorsBriefingScreenState
               color: color.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(icon, color: color, size: 17),
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -619,8 +572,8 @@ class _CapsuleWarriorsBriefingScreenState
                 Text(
                   label,
                   style: GoogleFonts.inter(
-                    color: CapsuleColors.textSubtle,
-                    fontSize: 9.5,
+                    color: const Color(0xFFA9BACB),
+                    fontSize: 9.2,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -629,8 +582,8 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 12,
+                    color: const Color(0xFFF4F8FC),
+                    fontSize: 11.8,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -642,79 +595,154 @@ class _CapsuleWarriorsBriefingScreenState
     );
   }
 
-  Widget _buildWeaponSelectorCard() {
+  /// Barre compacte affichant uniquement l'arme active (avec changement rapide si > 1 arme)
+  Widget _buildCompactLoadoutBar(WeaponConfig equippedConfig) {
     final unlocked = _progress.unlockedWeapons;
-    final equippedConfig = WeaponConfig.getByName(_progress.equippedWeapon);
+    final canSwitch = unlocked.length > 1;
+    final idx = math.max(0, unlocked.indexOf(equippedConfig.name));
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: CapsuleColors.cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(equippedConfig.icon, color: equippedConfig.glowColor, size: 17),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  'ARME ÉQUIPÉE : ${equippedConfig.name}',
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: equippedConfig.glowColor.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(equippedConfig.icon, color: equippedConfig.glowColor, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ÉQUIPEMENT ACTIF : ${equippedConfig.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 12,
+                    color: const Color(0xFFF4F8FC),
+                    fontSize: 11.8,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            equippedConfig.description,
-            style: GoogleFonts.inter(
-              color: CapsuleColors.textSubtle,
-              fontSize: 11,
+                Text(
+                  equippedConfig.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFFA9BACB),
+                    fontSize: 10.8,
+                  ),
+                ),
+              ],
             ),
           ),
-          if (unlocked.length > 1) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: unlocked.map((wName) {
-                final cfg = WeaponConfig.getByName(wName);
-                final isSelected = cfg.name == equippedConfig.name;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _selectWeapon(wName),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? cfg.glowColor.withValues(alpha: 0.25)
-                          : CapsuleColors.deepOcean.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? cfg.glowColor : CapsuleColors.cardBorder,
+          if (canSwitch) ...[
+            const SizedBox(width: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(9),
+              onTap: _cycleWeapon,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF123B5A),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: const Color(0xFF20D5E8).withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.swap_horiz_rounded, color: Color(0xFF20D5E8), size: 15),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${idx + 1}/${unlocked.length}',
+                      style: GoogleFonts.orbitron(
+                        color: const Color(0xFF20D5E8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    child: Text(
-                      cfg.shortName,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: isSelected ? Colors.white : CapsuleColors.textSubtle,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                  ],
+                ),
+              ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextEnvironmentCard(GastroWorld nextWorld) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF0B2540).withValues(alpha: 0.92),
+            nextWorld.primaryColor.withValues(alpha: 0.22),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CapsuleColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [nextWorld.primaryColor, nextWorld.secondaryColor],
+              ),
+              border: Border.all(color: Colors.white30),
+            ),
+            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 17),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'APERÇU DU PROCHAIN ENVIRONNEMENT',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFFFFB547),
+                    fontSize: 9.2,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+                Text(
+                  'Stage ${nextWorld.id} : ${nextWorld.organZone} — ${nextWorld.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFFF4F8FC),
+                    fontSize: 11.8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'À découvrir : ${nextWorld.bossName} • ${nextWorld.unlockedWeaponName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFFA9BACB),
+                    fontSize: 10.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -730,53 +758,96 @@ class _MissionEnvironmentPreviewPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final t = anim * math.pi * 2;
-    // Soft digestive corridor walls
-    final wallPaint = Paint()..color = world.tunnelWallColor.withValues(alpha: 0.65);
+
+    // Soft layered mucosal wall contours (smooth waves)
+    final wallPaint = Paint()..color = world.tunnelWallColor.withValues(alpha: 0.58);
+    final rimPaint = Paint()
+      ..color = const Color(0xFF20D5E8).withValues(alpha: 0.40)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
 
     final topPath = Path()..moveTo(0, 0);
-    for (double x = 0; x <= size.width; x += 12) {
-      topPath.lineTo(x, size.height * 0.20 + math.sin(x * 0.03 + t) * 7.0);
+    final topRim = Path();
+    for (double x = 0; x <= size.width; x += 20) {
+      final y = size.height * 0.22 + math.sin(x * 0.025 + t) * 8.0;
+      if (x == 0) {
+        topRim.moveTo(x, y);
+      } else {
+        topRim.lineTo(x, y);
+      }
+      topPath.lineTo(x, y);
     }
     topPath.lineTo(size.width, 0);
     topPath.close();
     canvas.drawPath(topPath, wallPaint);
+    canvas.drawPath(topRim, rimPaint);
 
     final botPath = Path()..moveTo(0, size.height);
-    for (double x = 0; x <= size.width; x += 12) {
-      botPath.lineTo(x, size.height * 0.78 + math.cos(x * 0.03 + t) * 7.0);
+    final botRim = Path();
+    for (double x = 0; x <= size.width; x += 20) {
+      final y = size.height * 0.78 + math.cos(x * 0.025 + t) * 8.0;
+      if (x == 0) {
+        botRim.moveTo(x, y);
+      } else {
+        botRim.lineTo(x, y);
+      }
+      botPath.lineTo(x, y);
     }
     botPath.lineTo(size.width, size.height);
     botPath.close();
     canvas.drawPath(botPath, wallPaint);
+    canvas.drawPath(botRim, rimPaint);
 
-    // Floating bubbles
-    for (int i = 0; i < 6; i++) {
-      final bx = (size.width * ((i + 1) / 7) + math.sin(t + i) * 14.0);
-      final by = size.height * 0.5 + math.cos(t * 1.2 + i * 1.5) * 16.0;
+    // Organ-specific subtle anatomical cues
+    final accentPaint = Paint()
+      ..color = world.secondaryColor.withValues(alpha: 0.36)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    for (int i = 0; i < 4; i++) {
+      final bx = (size.width * ((i + 1) / 5) + math.sin(t + i) * 14.0);
+      final by = size.height * 0.5 + math.cos(t * 1.1 + i * 1.4) * 14.0;
       canvas.drawCircle(
         Offset(bx, by),
-        5.0 + (i % 3) * 3.0,
-        Paint()..color = world.secondaryColor.withValues(alpha: 0.50),
+        5.0 + (i % 3) * 2.5,
+        Paint()..color = world.secondaryColor.withValues(alpha: 0.32),
       );
+      canvas.drawCircle(Offset(bx, by), 7.5 + (i % 2) * 3.0, accentPaint);
     }
 
-    // Mini capsule silhouette swimming smoothly in center-left
-    final capX = size.width * 0.34;
+    // Mini capsule pod gliding through the anatomical canal
+    final capX = size.width * 0.44;
     final capY = size.height * 0.5 + math.sin(t * 2.0) * 6.0;
+    // Soft trail
+    canvas.drawLine(
+      Offset(capX - 38, capY),
+      Offset(capX - 16, capY),
+      Paint()
+        ..color = const Color(0xFF20D5E8).withValues(alpha: 0.50)
+        ..strokeWidth = 4.5
+        ..strokeCap = StrokeCap.round,
+    );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(capX, capY), width: 34, height: 18),
-        const Radius.circular(9),
+        Rect.fromCenter(center: Offset(capX, capY), width: 38, height: 22),
+        const Radius.circular(11),
       ),
-      Paint()..color = Colors.white,
+      Paint()..color = const Color(0xFFF4F8FC),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(capX - 3, capY), width: 5, height: 21),
+        const Radius.circular(2.5),
+      ),
+      Paint()..color = const Color(0xFF20C9B0),
     );
     canvas.drawCircle(
-      Offset(capX + 8, capY),
-      6,
-      Paint()..color = CapsuleColors.cyanGlow,
+      Offset(capX + 10, capY),
+      7.0,
+      Paint()..color = const Color(0xFF20D5E8),
     );
   }
 
   @override
-  bool shouldRepaint(covariant _MissionEnvironmentPreviewPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _MissionEnvironmentPreviewPainter oldDelegate) =>
+      oldDelegate.anim != anim || oldDelegate.world.id != world.id;
 }

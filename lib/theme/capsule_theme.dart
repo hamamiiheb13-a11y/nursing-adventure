@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CapsuleColors {
-  // Core Luminous Ocean Sci-Med Arcade Surfaces (replaces harsh black/maroon)
-  static const Color deepOcean = Color(0xFF0B253C);
-  static const Color oceanSurface = Color(0xFF113552);
-  static const Color cardOcean = Color(0xFF174266);
-  static const Color cardBorder = Color(0x407DD3FC);
+  // Core Luminous Night-Blue Medical Arcade Surfaces (Section 7 Palette)
+  static const Color deepOcean = Color(0xFF071629);
+  static const Color oceanSurface = Color(0xFF0B2540);
+  static const Color cardOcean = Color(0xFF123B5A);
+  static const Color cardBorder = Color(0x4520D5E8);
 
   // Semantic Aliases for clean compatibility across components
   static const Color darkNavy = deepOcean;
@@ -14,25 +14,25 @@ class CapsuleColors {
   static const Color cardNavy = cardOcean;
 
   // Coherent Vibrant Arcade Palette
-  static const Color oceanBlue = Color(0xFF0EA5E9);
-  static const Color electricBlue = oceanBlue;
-  static const Color cyanGlow = Color(0xFF22D3EE);
-  static const Color turquoise = Color(0xFF14B8A6);
-  static const Color mintGreen = Color(0xFF34D399);
+  static const Color oceanBlue = Color(0xFF123B5A);
+  static const Color electricBlue = Color(0xFF0EA5E9);
+  static const Color cyanGlow = Color(0xFF20D5E8);
+  static const Color turquoise = Color(0xFF20C9B0);
+  static const Color mintGreen = Color(0xFF35D39A);
   static const Color mintGlow = mintGreen;
   static const Color softViolet = Color(0xFFA78BFA);
   static const Color purple = Color(0xFF8B5CF6);
-  static const Color coral = Color(0xFFFB7185);
-  static const Color dangerRed = Color(0xFFF43F5E);
-  static const Color dangerOrange = Color(0xFFFB923C);
+  static const Color coral = Color(0xFFF16D78);
+  static const Color dangerRed = Color(0xFFF16D78);
+  static const Color dangerOrange = Color(0xFFFFB547);
   static const Color successGreen = mintGreen;
-  static const Color gold = Color(0xFFFBBF24);
+  static const Color gold = Color(0xFFFFB547);
   static const Color amberGold = gold;
 
   // High-Contrast Crisp Typography
-  static const Color textWhite = Color(0xFFF8FAFC);
-  static const Color textSubtle = Color(0xFFCBD5E1);
-  static const Color textMuted = Color(0xFF94A3B8);
+  static const Color textWhite = Color(0xFFF4F8FC);
+  static const Color textSubtle = Color(0xFFA9BACB);
+  static const Color textMuted = Color(0xFF8398AE);
 }
 
 class CapsuleFonts {

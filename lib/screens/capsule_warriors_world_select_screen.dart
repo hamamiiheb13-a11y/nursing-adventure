@@ -70,7 +70,7 @@ class _CapsuleWarriorsWorldSelectScreenState
   }
 
   void _openStage(GastroWorld world) {
-    _audio.playClick();
+    _audio.playStageSelect();
     Navigator.of(context)
         .push(
           MaterialPageRoute(
@@ -851,10 +851,10 @@ class _StageThumbnailPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Organic lumen curve
+    // Organic double-layered digestive lumen curve (distinct amplitude/frequency per world)
     final lumenPath = Path()..moveTo(0, size.height);
-    for (double x = 0; x <= size.width; x += 8) {
-      final y = size.height * 0.65 + math.sin(x * 0.06 + worldId) * 10.0;
+    for (double x = 0; x <= size.width; x += 10) {
+      final y = size.height * 0.64 + math.sin(x * (0.045 + worldId * 0.006) + worldId * 1.1) * 9.0;
       lumenPath.lineTo(x, y);
     }
     lumenPath.lineTo(size.width, size.height);
@@ -862,24 +862,58 @@ class _StageThumbnailPainter extends CustomPainter {
 
     canvas.drawPath(
       lumenPath,
-      Paint()..color = primaryColor.withValues(alpha: 0.42),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            primaryColor.withValues(alpha: 0.45),
+            const Color(0xFF071629).withValues(alpha: 0.85),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
-    // Floating symbolic bubbles/cells
+    // Subtle glowing organ rim curve
+    final rimPath = Path();
+    for (double x = 0; x <= size.width; x += 10) {
+      final y = size.height * 0.64 + math.sin(x * (0.045 + worldId * 0.006) + worldId * 1.1) * 9.0;
+      if (x == 0) {
+        rimPath.moveTo(x, y);
+      } else {
+        rimPath.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      rimPath,
+      Paint()
+        ..color = secondaryColor.withValues(alpha: 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8,
+    );
+
+    // Distinct anatomical / bio bubbles
     canvas.drawCircle(
-      Offset(size.width * 0.28, size.height * 0.42),
-      9,
-      Paint()..color = secondaryColor.withValues(alpha: 0.65),
+      Offset(size.width * (0.20 + (worldId % 3) * 0.06), size.height * 0.36),
+      8,
+      Paint()..color = secondaryColor.withValues(alpha: 0.48),
     );
     canvas.drawCircle(
-      Offset(size.width * 0.62, size.height * 0.50),
-      13,
-      Paint()..color = primaryColor.withValues(alpha: 0.72),
+      Offset(size.width * 0.68, size.height * 0.42),
+      11,
+      Paint()..color = primaryColor.withValues(alpha: 0.52),
+    );
+    // Miniature capsule icon silhouette swimming through zone
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(size.width * 0.45, size.height * 0.44), width: 24, height: 13),
+        const Radius.circular(6.5),
+      ),
+      Paint()..color = const Color(0xFFF4F8FC).withValues(alpha: 0.85),
     );
     canvas.drawCircle(
-      Offset(size.width * 0.78, size.height * 0.28),
-      6,
-      Paint()..color = Colors.white.withValues(alpha: 0.6),
+      Offset(size.width * 0.45 + 6, size.height * 0.44),
+      4.2,
+      Paint()..color = const Color(0xFF20D5E8),
     );
   }
 

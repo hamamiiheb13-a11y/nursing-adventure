@@ -24,6 +24,9 @@ abstract class AudioServiceInterface {
   void playBossAttack();
   void playBossDefeat();
   void playRevive();
+  void playGameStart();
+  void playStageSelect();
+  void playExplanationOpen();
   void startBgm([int stageId = 1]);
   void startBossBgm();
   void stopBgm();

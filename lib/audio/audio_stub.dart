@@ -52,6 +52,12 @@ class AudioPlatformService implements AudioServiceInterface {
   @override
   void playRevive() {}
   @override
+  void playGameStart() {}
+  @override
+  void playStageSelect() {}
+  @override
+  void playExplanationOpen() {}
+  @override
   void startBgm([int stageId = 1]) {}
   @override
   void startBossBgm() {}

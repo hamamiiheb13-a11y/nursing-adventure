@@ -87,54 +87,52 @@ class ArcadeGamePainter extends CustomPainter {
   }
 
   // ==========================================================================
-  // 2. PARALLAX FLOATING ERYTHROCYTES (RED BLOOD CELLS)
+  // 2. PARALLAX FLOATING BIO-CELLS (SOFT ORGANIC DEPTH)
   // ==========================================================================
   void _drawBackgroundCells(Canvas canvas, Size size) {
+    final tint = controller.world.primaryColor;
     for (final cell in controller.backgroundCells) {
-      // Parallax position
       final screenX = cell.position.dx - (controller.cameraX * (1.0 - cell.depth));
       if (screenX < controller.cameraX - 80 || screenX > controller.cameraX + size.width + 80) {
         continue;
       }
 
-      final cellY = cell.position.dy + math.sin(controller.gameTime * 1.2 + cell.wobblePhase) * 12.0;
+      final cellY = cell.position.dy + math.sin(controller.gameTime * 1.1 + cell.wobblePhase) * 10.0;
 
       canvas.save();
       canvas.translate(cell.position.dx, cellY);
-      canvas.rotate(cell.rotation + controller.gameTime * 0.15);
+      canvas.rotate(cell.rotation + controller.gameTime * 0.12);
 
-      final r = cell.radius * (0.6 + cell.depth * 0.5);
-      final alpha = (0.2 + cell.depth * 0.35).clamp(0.1, 0.7);
+      final r = cell.radius * (0.55 + cell.depth * 0.4);
+      final alpha = (0.12 + cell.depth * 0.22).clamp(0.08, 0.34);
 
-      // Erythrocyte biconcave disc shape
       final outerPaint = Paint()
         ..shader = RadialGradient(
           colors: [
-            const Color(0xFFE11D48).withValues(alpha: alpha),
-            const Color(0xFF881337).withValues(alpha: alpha * 0.7),
+            tint.withValues(alpha: alpha),
+            const Color(0xFF123B5A).withValues(alpha: alpha * 0.5),
           ],
         ).createShader(Rect.fromCircle(center: Offset.zero, radius: r));
 
       canvas.drawCircle(Offset.zero, r, outerPaint);
-
-      // Center indentation shadow
-      final centerPaint = Paint()
-        ..color = const Color(0xFF4C0519).withValues(alpha: alpha * 0.9)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset.zero, r * 0.42, centerPaint);
+      canvas.drawCircle(
+        Offset.zero,
+        r * 0.44,
+        Paint()..color = const Color(0xFF071629).withValues(alpha: alpha * 0.65),
+      );
 
       canvas.restore();
     }
   }
 
   // ==========================================================================
-  // 3. ORGANIC TUNNEL WALLS (CEILING, FLOOR & VILLI FRINGE)
+  // 3. ORGANIC TUNNEL WALLS (SMOOTH BEZIER MUCOSAL FOLDS — ZERO SAWTOOTH)
   // ==========================================================================
   void _drawTunnelWalls(Canvas canvas, Size size) {
     final world = controller.world;
     final startX = (controller.cameraX - 100.0).clamp(0.0, controller.totalDistance);
     final endX = (controller.cameraX + size.width + 100.0).clamp(0.0, controller.totalDistance);
-    const double step = 20.0;
+    const double step = 28.0;
 
     // --- CEILING PATH ---
     final ceilingPath = Path();
@@ -143,20 +141,24 @@ class ArcadeGamePainter extends CustomPainter {
 
     for (double x = startX; x <= endX; x += step) {
       final y = controller.tunnel.getCeilingY(x, controller.gameTime);
-      ceilingPath.lineTo(x, y);
+      final nextX = x + step;
+      final nextY = controller.tunnel.getCeilingY(nextX, controller.gameTime);
+      final midX = (x + nextX) * 0.5;
+      final foldY = (y + nextY) * 0.5 + math.sin(x * 0.045 + controller.gameTime * 1.4) * 5.0;
+      ceilingPath.quadraticBezierTo(midX, foldY, nextX, nextY);
     }
     ceilingPath.lineTo(endX, -50.0);
     ceilingPath.close();
 
-    // Ceiling gradient fill
     final ceilRect = Rect.fromLTRB(startX, -50, endX, 220);
     final ceilPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          world.tunnelDeepColor,
-          world.tunnelWallColor,
+          const Color(0xFF071629),
+          world.tunnelDeepColor.withValues(alpha: 0.92),
+          world.tunnelWallColor.withValues(alpha: 0.80),
         ],
       ).createShader(ceilRect);
     canvas.drawPath(ceilingPath, ceilPaint);
@@ -168,71 +170,97 @@ class ArcadeGamePainter extends CustomPainter {
 
     for (double x = startX; x <= endX; x += step) {
       final y = controller.tunnel.getFloorY(x, controller.gameTime);
-      floorPath.lineTo(x, y);
+      final nextX = x + step;
+      final nextY = controller.tunnel.getFloorY(nextX, controller.gameTime);
+      final midX = (x + nextX) * 0.5;
+      final foldY = (y + nextY) * 0.5 - math.cos(x * 0.045 + controller.gameTime * 1.4) * 5.0;
+      floorPath.quadraticBezierTo(midX, foldY, nextX, nextY);
     }
     floorPath.lineTo(endX, size.height + 50.0);
     floorPath.close();
 
-    // Floor gradient fill
     final floorRect = Rect.fromLTRB(startX, 300, endX, size.height + 50);
     final floorPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
         colors: [
-          world.tunnelDeepColor,
-          world.tunnelWallColor,
+          const Color(0xFF071629),
+          world.tunnelDeepColor.withValues(alpha: 0.92),
+          world.tunnelWallColor.withValues(alpha: 0.80),
         ],
       ).createShader(floorRect);
     canvas.drawPath(floorPath, floorPaint);
 
-    // --- CARTOON VILLI FRINGE (Undulating teeth/villosités from Reference Image 1) ---
+    // --- SMOOTH MUCOSAL FRINGE & ORGAN-SPECIFIC DETAILS ---
     _drawVilliFringe(canvas, startX, endX);
   }
 
   void _drawVilliFringe(Canvas canvas, double startX, double endX) {
     final world = controller.world;
+    final Color fringeTint = Color.lerp(world.tunnelWallColor, world.tunnelFringeColor, 0.55)!;
 
-    final fringePaint = Paint()
-      ..color = world.tunnelFringeColor
+    final fringeFill = Paint()
+      ..color = fringeTint.withValues(alpha: 0.42)
       ..style = PaintingStyle.fill;
 
-    final outlinePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.6)
+    final rimPaint = Paint()
+      ..color = const Color(0xFF20D5E8).withValues(alpha: 0.36)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
 
-    // Ceiling villi (pointing downward)
-    final topVilliPath = Path();
+    // Organ-dependent organic lobe spacing & amplitude (gentle, zero zigzag spikes!)
+    final double lobeWidth = (controller.level == 3 || controller.level == 4) ? 26.0 : 38.0;
+    final double lobeDepth = (controller.level == 3 || controller.level == 4) ? 10.5 : 7.5;
+    final double alignedStart = (startX / lobeWidth).floor() * lobeWidth;
+
+    final topMucosalPath = Path();
+    final topRimPath = Path();
     bool firstTop = true;
-    for (double x = startX; x <= endX; x += 14.0) {
-      final baseY = controller.tunnel.getCeilingY(x, controller.gameTime);
-      final tipY = baseY + 9.0 + math.sin(x * 0.12 + controller.gameTime * 2.5) * 4.0;
+    for (double x = alignedStart; x <= endX + lobeWidth; x += lobeWidth) {
+      final y1 = controller.tunnel.getCeilingY(x, controller.gameTime);
+      final y2 = controller.tunnel.getCeilingY(x + lobeWidth, controller.gameTime);
+      final midX = x + lobeWidth * 0.5;
+      final ctrlY = ((y1 + y2) * 0.5) + lobeDepth + math.sin(x * 0.08 + controller.gameTime * 1.8) * 2.2;
+
       if (firstTop) {
-        topVilliPath.moveTo(x, baseY);
+        topMucosalPath.moveTo(x, y1 - 10);
+        topMucosalPath.lineTo(x, y1);
+        topRimPath.moveTo(x, y1);
         firstTop = false;
       }
-      topVilliPath.lineTo(x + 7.0, tipY);
-      topVilliPath.lineTo(x + 14.0, controller.tunnel.getCeilingY(x + 14.0, controller.gameTime));
+      topMucosalPath.quadraticBezierTo(midX, ctrlY, x + lobeWidth, y2);
+      topRimPath.quadraticBezierTo(midX, ctrlY, x + lobeWidth, y2);
     }
-    canvas.drawPath(topVilliPath, fringePaint);
-    canvas.drawPath(topVilliPath, outlinePaint);
+    topMucosalPath.lineTo(endX + lobeWidth, -40.0);
+    topMucosalPath.close();
+    canvas.drawPath(topMucosalPath, fringeFill);
+    canvas.drawPath(topRimPath, rimPaint);
 
-    // Floor villi (pointing upward)
-    final bottomVilliPath = Path();
-    bool firstBottom = true;
-    for (double x = startX; x <= endX; x += 14.0) {
-      final baseY = controller.tunnel.getFloorY(x, controller.gameTime);
-      final tipY = baseY - 9.0 - math.sin(x * 0.12 + controller.gameTime * 2.5) * 4.0;
-      if (firstBottom) {
-        bottomVilliPath.moveTo(x, baseY);
-        firstBottom = false;
+    // Floor organic undulating mucosal cushion
+    final botMucosalPath = Path();
+    final botRimPath = Path();
+    bool firstBot = true;
+    for (double x = alignedStart; x <= endX + lobeWidth; x += lobeWidth) {
+      final y1 = controller.tunnel.getFloorY(x, controller.gameTime);
+      final y2 = controller.tunnel.getFloorY(x + lobeWidth, controller.gameTime);
+      final midX = x + lobeWidth * 0.5;
+      final ctrlY = ((y1 + y2) * 0.5) - lobeDepth - math.cos(x * 0.08 + controller.gameTime * 1.8) * 2.2;
+
+      if (firstBot) {
+        botMucosalPath.moveTo(x, y1 + 10);
+        botMucosalPath.lineTo(x, y1);
+        botRimPath.moveTo(x, y1);
+        firstBot = false;
       }
-      bottomVilliPath.lineTo(x + 7.0, tipY);
-      bottomVilliPath.lineTo(x + 14.0, controller.tunnel.getFloorY(x + 14.0, controller.gameTime));
+      botMucosalPath.quadraticBezierTo(midX, ctrlY, x + lobeWidth, y2);
+      botRimPath.quadraticBezierTo(midX, ctrlY, x + lobeWidth, y2);
     }
-    canvas.drawPath(bottomVilliPath, fringePaint);
-    canvas.drawPath(bottomVilliPath, outlinePaint);
+    botMucosalPath.lineTo(endX + lobeWidth, 1200.0);
+    botMucosalPath.close();
+    canvas.drawPath(botMucosalPath, fringeFill);
+    canvas.drawPath(botRimPath, rimPaint);
   }
 
   // ==========================================================================
@@ -1343,29 +1371,53 @@ class ArcadeGamePainter extends CustomPainter {
       );
     }
 
-    // --- ION PROPULSION JET TRAIL (NEWEST AT INDEX 0 -> FADES BACKWARD) ---
-    if (p.trailPositions.isNotEmpty) {
-      final int len = p.trailPositions.length;
-      for (int i = 0; i < len; i++) {
-        final pos = p.trailPositions[i];
-        final fraction = ((len - i) / len).clamp(0.0, 1.0);
-        final radius = (p.radius * 0.42 * fraction).clamp(2.0, 8.5);
-        final alpha = (fraction * 0.42).clamp(0.05, 0.45);
-
-        final Color trailCol = p.isMaxSynergy ? const Color(0xFFFBBF24) : const Color(0xFF22D3EE);
-        canvas.drawCircle(pos, radius * 1.3, Paint()..color = trailCol.withValues(alpha: alpha));
-        canvas.drawCircle(pos, radius * 0.5, Paint()..color = Colors.white.withValues(alpha: alpha * 0.85));
+    // --- SMOOTH ION PROPULSION TRAIL RIBBON (Tapering cyan/gold energy flow) ---
+    if (p.trailPositions.length >= 2) {
+      final Color trailCol = p.isMaxSynergy
+          ? const Color(0xFFFFB547)
+          : (p.collectFlashTimer > 0 ? const Color(0xFF35D39A) : const Color(0xFF20D5E8));
+      for (int i = 0; i < p.trailPositions.length - 1; i++) {
+        final fraction = ((p.trailPositions.length - i) / p.trailPositions.length).clamp(0.0, 1.0);
+        final a = p.trailPositions[i];
+        final b = p.trailPositions[i + 1];
+        canvas.drawLine(
+          a,
+          b,
+          Paint()
+            ..color = trailCol.withValues(alpha: fraction * 0.34)
+            ..strokeWidth = (9.0 * fraction).clamp(1.5, 9.0)
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawLine(
+          a,
+          b,
+          Paint()
+            ..color = Colors.white.withValues(alpha: fraction * 0.45)
+            ..strokeWidth = (3.2 * fraction).clamp(0.8, 3.2)
+            ..strokeCap = StrokeCap.round,
+        );
       }
     }
 
-    // --- PICKUP SPARKLE & SHIELD DEFLECTION RINGS ---
+    // --- COLLECT, DAMAGE & SHIELD DEFLECTION FEEDBACK RINGS ---
     if (p.collectFlashTimer > 0) {
       final frac = 1.0 - (p.collectFlashTimer / 0.35);
       canvas.drawCircle(
         p.position,
         p.radius + 10.0 + frac * 22.0,
         Paint()
-          ..color = const Color(0xFFFBBF24).withValues(alpha: ((1.0 - frac) * 0.8).clamp(0.0, 0.8))
+          ..color = const Color(0xFFFFB547).withValues(alpha: ((1.0 - frac) * 0.85).clamp(0.0, 0.85))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0,
+      );
+    }
+    if (p.damageFlashTimer > 0) {
+      final frac = 1.0 - (p.damageFlashTimer / 0.35).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        p.position,
+        p.radius + 8.0 + frac * 20.0,
+        Paint()
+          ..color = const Color(0xFFF16D78).withValues(alpha: ((1.0 - frac) * 0.78).clamp(0.0, 0.78))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.0,
       );
@@ -1376,42 +1428,43 @@ class ArcadeGamePainter extends CustomPainter {
         p.position,
         p.radius + 14.0 + frac * 28.0,
         Paint()
-          ..color = const Color(0xFF22D3EE).withValues(alpha: ((1.0 - frac) * 0.85).clamp(0.0, 0.85))
+          ..color = const Color(0xFF20D5E8).withValues(alpha: ((1.0 - frac) * 0.85).clamp(0.0, 0.85))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.5,
       );
     }
 
-    // Recoil nudge backward on shot
-    final recoilOffset = p.shootRecoilTimer > 0 ? -(p.shootRecoilTimer / 0.10) * 3.5 : 0.0;
+    // Gentle hover bobbing + smooth shot recoil
+    final floatY = math.sin(controller.gameTime * 3.2 + p.animPhase * 0.3) * 2.2;
+    final recoilOffset = p.shootRecoilTimer > 0 ? -(p.shootRecoilTimer / 0.10) * 3.2 : 0.0;
     final int arsenalTier = controller.progress.unlockedWeapons.length;
 
     canvas.save();
-    canvas.translate(p.position.dx + recoilOffset, p.position.dy);
+    canvas.translate(p.position.dx + recoilOffset, p.position.dy + floatY);
     canvas.rotate(p.angle);
 
     // --- MAX SYNERGIE GOLDEN AURA ---
     if (p.isMaxSynergy) {
-      final auraPulse = 1.0 + math.sin(controller.gameTime * 8.0) * 0.08;
+      final auraPulse = 1.0 + math.sin(controller.gameTime * 6.5) * 0.07;
       canvas.drawCircle(
         Offset.zero,
-        (p.radius + 10.0) * auraPulse,
+        (p.radius + 12.0) * auraPulse,
         Paint()
           ..shader = RadialGradient(
             colors: [
-              const Color(0xFFFBBF24).withValues(alpha: 0.35),
+              const Color(0xFFFFB547).withValues(alpha: 0.32),
               Colors.transparent,
             ],
-          ).createShader(Rect.fromCircle(center: Offset.zero, radius: p.radius + 12.0)),
+          ).createShader(Rect.fromCircle(center: Offset.zero, radius: p.radius + 14.0)),
       );
     }
 
-    // --- A. SOFT HEADLIGHT CONE ---
+    // --- A. SOFT BIO-SCAN HEADLIGHT CONE ---
     final conePath = Path()
-      ..moveTo(p.radius * 0.8, -4.0)
-      ..lineTo(p.radius * 0.8 + 220.0, -76.0)
-      ..lineTo(p.radius * 0.8 + 220.0, 76.0)
-      ..lineTo(p.radius * 0.8, 4.0)
+      ..moveTo(p.radius * 0.85, -3.5)
+      ..lineTo(p.radius * 0.85 + 210.0, -68.0)
+      ..lineTo(p.radius * 0.85 + 210.0, 68.0)
+      ..lineTo(p.radius * 0.85, 3.5)
       ..close();
 
     final lightPaint = Paint()
@@ -1419,33 +1472,36 @@ class ArcadeGamePainter extends CustomPainter {
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: [
-          const Color(0xFF22D3EE).withValues(alpha: 0.32),
-          const Color(0xFF22D3EE).withValues(alpha: 0.08),
+          const Color(0xFF20D5E8).withValues(alpha: 0.24),
+          const Color(0xFF20D5E8).withValues(alpha: 0.05),
           Colors.transparent,
         ],
         stops: const [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromLTWH(p.radius * 0.8, -76, 220, 152));
+      ).createShader(Rect.fromLTWH(p.radius * 0.85, -68, 210, 136));
     canvas.drawPath(conePath, lightPaint);
 
-    // --- B. INVULNERABILITY FLASH ---
+    // --- B. INVULNERABILITY PROTECTIVE PULSE ---
     if (p.isInvulnerable && !p.isShieldActive) {
-      final shieldAlpha = (math.sin(controller.gameTime * 18.0) * 0.35 + 0.45).clamp(0.1, 0.75);
-      final shieldPaint = Paint()
-        ..color = const Color(0xFF34D399).withValues(alpha: shieldAlpha)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0;
-      canvas.drawCircle(Offset.zero, p.radius + 7.0, shieldPaint);
+      final shieldAlpha = (math.sin(controller.gameTime * 14.0) * 0.30 + 0.45).clamp(0.15, 0.75);
+      canvas.drawCircle(
+        Offset.zero,
+        p.radius + 7.5,
+        Paint()
+          ..color = const Color(0xFF35D39A).withValues(alpha: shieldAlpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6,
+      );
     }
 
-    // --- C. THRUSTER FLAME NOZZLE ---
+    // --- C. SLEEK MICRO-PROPULSION THRUSTER FLAME ---
     final isFiringThruster = p.isThrusting || p.isBoosted || p.flameIntensity > 0.15 || p.moveInput.dx > 0.1;
     if (isFiringThruster) {
-      final intensity = math.max(p.flameIntensity, p.isBoosted ? 1.4 : (p.isThrusting ? 1.0 : 0.65));
-      final flameLength = (22.0 + math.sin(controller.gameTime * 28.0) * 5.0) * intensity;
+      final intensity = math.max(p.flameIntensity, p.isBoosted ? 1.35 : (p.isThrusting ? 1.0 : 0.65));
+      final flameLength = (19.0 + math.sin(controller.gameTime * 24.0) * 4.0) * intensity;
       final flamePath = Path()
-        ..moveTo(-p.radius * 0.9, -6.0)
-        ..lineTo(-p.radius * 0.9 - flameLength, 0)
-        ..lineTo(-p.radius * 0.9, 6.0)
+        ..moveTo(-p.radius * 1.15, -5.0)
+        ..quadraticBezierTo(-p.radius * 1.15 - flameLength * 0.6, -2.5, -p.radius * 1.15 - flameLength, 0)
+        ..quadraticBezierTo(-p.radius * 1.15 - flameLength * 0.6, 2.5, -p.radius * 1.15, 5.0)
         ..close();
 
       final flamePaint = Paint()
@@ -1453,152 +1509,180 @@ class ArcadeGamePainter extends CustomPainter {
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
           colors: [
-            p.isMaxSynergy ? const Color(0xFFFBBF24) : const Color(0xFF22D3EE),
-            const Color(0xFF38BDF8),
+            p.isMaxSynergy ? const Color(0xFFFFB547) : const Color(0xFF20D5E8),
+            const Color(0xFF20C9B0),
             Colors.transparent,
           ],
-        ).createShader(Rect.fromLTWH(-p.radius - flameLength, -8, flameLength, 16));
+        ).createShader(Rect.fromLTWH(-p.radius * 1.15 - flameLength, -6, flameLength, 12));
       canvas.drawPath(flamePath, flamePaint);
     }
 
-    // --- D. CAPSULE BODY (PEARL WHITE + METALLIC SHADING) ---
-    // Stabilizer mini-wings (top and bottom fins from Reference Image 1)
-    final finWingY = math.sin(p.animPhase * 2.0) * 2.5;
+    // --- D. FUTURISTIC MEDICAL MINI-SUBMARINE CAPSULE ---
+    // Swept organic stabilizer fins
+    final finWave = math.sin(p.animPhase * 1.6) * 2.0;
     final topFin = Path()
-      ..moveTo(-p.radius * 0.4, -p.radius * 0.8)
-      ..lineTo(-p.radius * 0.7, -p.radius * 1.5 + finWingY)
-      ..lineTo(0, -p.radius * 0.9)
+      ..moveTo(-p.radius * 0.35, -p.radius * 0.72)
+      ..quadraticBezierTo(-p.radius * 0.65, -p.radius * 1.38 + finWave, -p.radius * 0.92, -p.radius * 1.18 + finWave)
+      ..lineTo(-p.radius * 0.05, -p.radius * 0.80)
       ..close();
-    final bottomFin = Path()
-      ..moveTo(-p.radius * 0.4, p.radius * 0.8)
-      ..lineTo(-p.radius * 0.7, p.radius * 1.5 - finWingY)
-      ..lineTo(0, p.radius * 0.9)
+    final botFin = Path()
+      ..moveTo(-p.radius * 0.35, p.radius * 0.72)
+      ..quadraticBezierTo(-p.radius * 0.65, p.radius * 1.38 - finWave, -p.radius * 0.92, p.radius * 1.18 - finWave)
+      ..lineTo(-p.radius * 0.05, p.radius * 0.80)
       ..close();
 
-    final finPaint = Paint()..color = const Color(0xFF00E5FF);
+    final finPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF20D5E8), Color(0xFF123B5A)],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: p.radius * 1.4));
     canvas.drawPath(topFin, finPaint);
-    canvas.drawPath(bottomFin, finPaint);
+    canvas.drawPath(botFin, finPaint);
 
-    // Oval Capsule Pod Body (tints cleanly on damage flash, gleams on arsenal evolution!)
-    final podRect = Rect.fromCenter(center: Offset.zero, width: p.radius * 2.3, height: p.radius * 1.8);
-    final podPaint = Paint()
+    // Metallic titanium-pearl capsule hull
+    final hullRRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset.zero, width: p.radius * 2.45, height: p.radius * 1.72),
+      Radius.circular(p.radius * 0.86),
+    );
+    final hullRect = hullRRect.outerRect;
+    final hullPaint = Paint()
       ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
         colors: p.damageFlashTimer > 0
-            ? const [Color(0xFFFDA4AF), Color(0xFFFB7185), Color(0xFFE11D48)]
+            ? const [Color(0xFFFDE2E4), Color(0xFFF16D78), Color(0xFFB91C1C)]
             : arsenalTier >= 4
-                ? const [Color(0xFFFFFFFF), Color(0xFFE0F2FE), Color(0xFF38BDF8)]
-                : const [Color(0xFFFFFFFF), Color(0xFFE2E8F0), Color(0xFF94A3B8)],
-      ).createShader(podRect);
-    canvas.drawOval(podRect, podPaint);
+                ? const [Color(0xFFFFFFFF), Color(0xFFE0F7FA), Color(0xFF67E8F9)]
+                : const [Color(0xFFF8FAFC), Color(0xFFD8E6F3), Color(0xFF8AA8C5)],
+      ).createShader(hullRect);
+    canvas.drawRRect(hullRRect, hullPaint);
 
-    // Medical Stripe (upgrades to Gold trim when 3+ weapons unlocked!)
-    final stripePaint = Paint()
-      ..color = arsenalTier >= 3 ? const Color(0xFFFBBF24) : const Color(0xFF14B8A6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = arsenalTier >= 3 ? 4.0 : 3.5;
-    canvas.drawArc(podRect, -math.pi * 0.35, math.pi * 0.7, false, stripePaint);
+    // Sleek glossy top specular highlight on shell
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(-p.radius * 0.12, -p.radius * 0.44), width: p.radius * 1.45, height: p.radius * 0.34),
+        Radius.circular(p.radius * 0.2),
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.72),
+    );
 
-    // Cockpit Visor / Headlamp Dome (Glowing Cyan Glass)
-    final visorRect = Rect.fromCenter(center: Offset(p.radius * 0.5, 0), width: p.radius * 0.95, height: p.radius * 1.1);
-    final visorPaint = Paint()
-      ..shader = const RadialGradient(
-        colors: [
-          Color(0xFFE0F2FE),
-          Color(0xFF38BDF8),
-          Color(0xFF0284C7),
-        ],
-      ).createShader(visorRect);
-    canvas.drawOval(visorRect, visorPaint);
+    // Central luminous medical collar band & subtle bio-cross emblem
+    final collarColor = arsenalTier >= 3 ? const Color(0xFFFFB547) : const Color(0xFF20C9B0);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(-p.radius * 0.22, 0), width: 6.0, height: p.radius * 1.66),
+        const Radius.circular(3),
+      ),
+      Paint()..color = collarColor,
+    );
 
-    // Visor glass reflection gleam
-    final gleamPaint = Paint()..color = Colors.white.withValues(alpha: 0.85);
-    canvas.drawCircle(Offset(p.radius * 0.6, -3), 2.5, gleamPaint);
+    // Subtle bio-core energy window on aft compartment
+    final corePulse = 0.65 + 0.35 * math.sin(controller.gameTime * 5.0);
+    final coreCenter = Offset(-p.radius * 0.62, 0);
+    canvas.drawCircle(
+      coreCenter,
+      p.radius * 0.34,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.9),
+            const Color(0xFF20D5E8).withValues(alpha: corePulse),
+            const Color(0xFF0B2540),
+          ],
+        ).createShader(Rect.fromCircle(center: coreCenter, radius: p.radius * 0.34)),
+    );
 
-    // Outer outline
-    final outlinePaint = Paint()
-      ..color = p.damageFlashTimer > 0 ? const Color(0xFFFB7185) : const Color(0xFF0B253C)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6;
-    canvas.drawOval(podRect, outlinePaint);
+    // Translucent cyan cockpit canopy dome
+    final visorRect = Rect.fromCenter(
+      center: Offset(p.radius * 0.48, 0),
+      width: p.radius * 1.05,
+      height: p.radius * 1.08,
+    );
+    canvas.drawOval(
+      visorRect,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(-0.25, -0.35),
+          colors: [
+            Color(0xFFE0F7FA),
+            Color(0xFF20D5E8),
+            Color(0xFF0E7490),
+          ],
+        ).createShader(visorRect),
+    );
+    canvas.drawCircle(
+      Offset(p.radius * 0.58, -p.radius * 0.20),
+      2.6,
+      Paint()..color = Colors.white.withValues(alpha: 0.90),
+    );
 
-    // --- E. WEAPON CANNONS & MUZZLE EMITTERS (Visually evolve!) ---
+    // Crisp rim outline
+    canvas.drawRRect(
+      hullRRect,
+      Paint()
+        ..color = p.damageFlashTimer > 0
+            ? const Color(0xFFF16D78)
+            : const Color(0xFF20D5E8).withValues(alpha: 0.72)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+
+    // --- E. WEAPON CANNONS & MUZZLE EMITTERS ---
     final weaponConfig = controller.equippedWeaponConfig;
-    final cannonPaint = Paint()..color = const Color(0xFF1E3A5F);
+    final cannonPaint = Paint()..color = const Color(0xFF123B5A);
+    final muzzlePos = Offset(p.radius * 0.45 + 11, -p.radius * 0.58 + 1.75);
     final muzzleGlow = Paint()
       ..shader = RadialGradient(
         colors: [Colors.white, weaponConfig.glowColor, Colors.transparent],
-      ).createShader(Rect.fromCircle(center: Offset(p.radius * 0.4 + 11, -p.radius * 0.55 + 1.75), radius: p.shootRecoilTimer > 0 ? 11.0 : 5.5));
+      ).createShader(Rect.fromCircle(center: muzzlePos, radius: p.shootRecoilTimer > 0 ? 10.0 : 5.0));
 
-    // Primary Top Cannon
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(p.radius * 0.4, -p.radius * 0.55, 11, 3.5),
+        Rect.fromLTWH(p.radius * 0.45, -p.radius * 0.58, 11, 3.5),
         const Radius.circular(1.5),
       ),
       cannonPaint,
     );
-    canvas.drawCircle(
-      Offset(p.radius * 0.4 + 11, -p.radius * 0.55 + 1.75),
-      p.shootRecoilTimer > 0 ? 8.0 : 3.2,
-      muzzleGlow,
-    );
+    canvas.drawCircle(muzzlePos, p.shootRecoilTimer > 0 ? 7.5 : 3.0, muzzleGlow);
 
-    // Secondary Bottom Cannon (Double shot or unlocked weapon >= 2)
     if (p.hasDoubleShot || weaponConfig.type == WeaponType.doubleLaser || arsenalTier >= 2) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(p.radius * 0.4, p.radius * 0.35, 11, 3.5),
+          Rect.fromLTWH(p.radius * 0.45, p.radius * 0.38, 11, 3.5),
           const Radius.circular(1.5),
         ),
         cannonPaint,
       );
       canvas.drawCircle(
-        Offset(p.radius * 0.4 + 11, p.radius * 0.35 + 1.75),
-        p.shootRecoilTimer > 0 ? 7.0 : 3.0,
+        Offset(p.radius * 0.45 + 11, p.radius * 0.38 + 1.75),
+        p.shootRecoilTimer > 0 ? 6.5 : 2.8,
         Paint()..color = weaponConfig.glowColor,
       );
     }
 
-    // --- F. ACTIVE BIOMAGNETIC ENERGY SHIELD (lightweight glow, zero blur bottleneck!) ---
+    // --- F. TRANSLUCENT BIOMAGNETIC SHIELD ---
     if (p.isShieldActive) {
       final shieldRadius = p.radius + 14.0;
-      final shieldPulse = math.sin(controller.gameTime * 8.0) * 2.0;
+      final shieldPulse = math.sin(controller.gameTime * 6.5) * 1.8;
 
-      // Soft outer halo gradient
       final shieldGlow = Paint()
         ..shader = RadialGradient(
           colors: [
-            const Color(0xFF22D3EE).withValues(alpha: 0.10),
-            const Color(0xFF818CF8).withValues(alpha: 0.36),
+            const Color(0xFF20D5E8).withValues(alpha: 0.08),
+            const Color(0xFF20C9B0).withValues(alpha: 0.30),
             Colors.transparent,
           ],
-          stops: const [0.4, 0.78, 1.0],
-        ).createShader(Rect.fromCircle(center: Offset.zero, radius: shieldRadius + shieldPulse + 8));
-      canvas.drawCircle(Offset.zero, shieldRadius + shieldPulse + 8, shieldGlow);
+          stops: const [0.45, 0.80, 1.0],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: shieldRadius + shieldPulse + 7));
+      canvas.drawCircle(Offset.zero, shieldRadius + shieldPulse + 7, shieldGlow);
 
-      // Pulsing hex border
-      final hexPath = Path();
-      for (int i = 0; i < 6; i++) {
-        final angle = (i * math.pi) / 3 + controller.gameTime * 2.0;
-        final pt = Offset(
-          math.cos(angle) * (shieldRadius + shieldPulse),
-          math.sin(angle) * (shieldRadius + shieldPulse),
-        );
-        if (i == 0) {
-          hexPath.moveTo(pt.dx, pt.dy);
-        } else {
-          hexPath.lineTo(pt.dx, pt.dy);
-        }
-      }
-      hexPath.close();
-
-      final hexPaint = Paint()
-        ..color = const Color(0xFF67E8F9)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2;
-      canvas.drawPath(hexPath, hexPaint);
+      canvas.drawCircle(
+        Offset.zero,
+        shieldRadius + shieldPulse,
+        Paint()
+          ..color = const Color(0xFF20D5E8).withValues(alpha: 0.80)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
     }
 
     canvas.restore();
