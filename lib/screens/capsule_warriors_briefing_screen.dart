@@ -87,8 +87,8 @@ class _CapsuleWarriorsBriefingScreenState
     _storage.saveProgress(_progress);
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (_) => GastroArcadeScreen(
+          buildCapsuleRoute(
+            GastroArcadeScreen(
               stageId: _world.id,
               progress: _progress,
             ),
@@ -114,7 +114,7 @@ class _CapsuleWarriorsBriefingScreenState
     final nextWorld = _world.id < 7 ? GastroWorld.getWorldForLevel(_world.id + 1) : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF071629),
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: false,
@@ -218,8 +218,8 @@ class _CapsuleWarriorsBriefingScreenState
                               height: isShortLandscape ? 44 : 50,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF20D5E8),
-                                  foregroundColor: const Color(0xFF071629),
+                                  backgroundColor: CapsuleColors.cyanGlow,
+                                  foregroundColor: CapsuleColors.inkDark,
                                   elevation: 4,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
@@ -264,19 +264,19 @@ class _CapsuleWarriorsBriefingScreenState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: const Color(0xFF0B2540).withValues(alpha: 0.92),
+          color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: CapsuleColors.cardBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.arrow_back_rounded, color: Color(0xFF20D5E8), size: 17),
+            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 17),
             const SizedBox(width: 5),
             Text(
               'RETOUR',
               style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFFF4F8FC),
+                color: CapsuleColors.textWhite,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -290,7 +290,7 @@ class _CapsuleWarriorsBriefingScreenState
     final progressWidget = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: CapsuleColors.cardBorder),
       ),
@@ -300,7 +300,7 @@ class _CapsuleWarriorsBriefingScreenState
           Text(
             '${_progress.completedCount}/7',
             style: GoogleFonts.orbitron(
-              color: const Color(0xFF20D5E8),
+              color: CapsuleColors.cyanGlow,
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
@@ -313,8 +313,8 @@ class _CapsuleWarriorsBriefingScreenState
               child: LinearProgressIndicator(
                 value: progressRatio,
                 minHeight: 6,
-                backgroundColor: const Color(0xFF123B5A),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF35D39A)),
+                backgroundColor: CapsuleColors.cardOcean,
+                valueColor: const AlwaysStoppedAnimation<Color>(CapsuleColors.mintGreen),
               ),
             ),
           ),
@@ -333,7 +333,7 @@ class _CapsuleWarriorsBriefingScreenState
           style: GoogleFonts.plusJakartaSans(
             fontSize: isNarrow ? 16.5 : (isShort ? 16.5 : 20),
             fontWeight: FontWeight.w900,
-            color: const Color(0xFFF4F8FC),
+            color: CapsuleColors.textWhite,
           ),
         ),
         Text(
@@ -342,7 +342,7 @@ class _CapsuleWarriorsBriefingScreenState
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
             fontSize: 11.5,
-            color: const Color(0xFF20D5E8),
+            color: CapsuleColors.cyanGlow,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -380,7 +380,7 @@ class _CapsuleWarriorsBriefingScreenState
       decoration: BoxDecoration(
         color: _world.tunnelDeepColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _world.primaryColor.withValues(alpha: 0.55), width: 1.4),
+        border: Border.all(color: _world.primaryColor.withValues(alpha: 0.60), width: 1.5),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.5),
@@ -405,19 +405,19 @@ class _CapsuleWarriorsBriefingScreenState
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF071629).withValues(alpha: 0.80),
+                  color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF20D5E8).withValues(alpha: 0.45)),
+                  border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.55)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.biotech_rounded, color: Color(0xFF20D5E8), size: 13),
+                    const Icon(Icons.biotech_rounded, color: CapsuleColors.cyanGlow, size: 13),
                     const SizedBox(width: 5),
                     Text(
                       _world.organZone,
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFFF4F8FC),
+                        color: CapsuleColors.textWhite,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -433,9 +433,9 @@ class _CapsuleWarriorsBriefingScreenState
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF071629).withValues(alpha: 0.82),
+                  color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _world.primaryColor.withValues(alpha: 0.55)),
+                  border: Border.all(color: _world.primaryColor.withValues(alpha: 0.65)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -445,7 +445,7 @@ class _CapsuleWarriorsBriefingScreenState
                     Text(
                       'Boss : ${_world.bossName}',
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFFF4F8FC),
+                        color: CapsuleColors.textWhite,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -464,7 +464,7 @@ class _CapsuleWarriorsBriefingScreenState
     return Container(
       padding: EdgeInsets.all(isShortLandscape ? 10 : 13),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: CapsuleColors.cardBorder),
       ),
@@ -474,7 +474,7 @@ class _CapsuleWarriorsBriefingScreenState
           Text(
             _world.description,
             style: GoogleFonts.inter(
-              color: const Color(0xFFF4F8FC),
+              color: CapsuleColors.textWhite,
               fontSize: isShortLandscape ? 11.8 : 12.8,
               height: 1.38,
             ),
@@ -483,18 +483,18 @@ class _CapsuleWarriorsBriefingScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF071629).withValues(alpha: 0.72),
+              color: CapsuleColors.deepOcean.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                const Icon(Icons.flag_rounded, color: Color(0xFF35D39A), size: 15),
+                const Icon(Icons.flag_rounded, color: CapsuleColors.mintGreen, size: 15),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     'Objectif : Valider $_checkpointCount checkpoints et vaincre ${_world.bossName}.',
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF35D39A),
+                      color: CapsuleColors.mintGreen,
                       fontSize: 11.2,
                       fontWeight: FontWeight.w700,
                     ),
@@ -511,13 +511,13 @@ class _CapsuleWarriorsBriefingScreenState
   Widget _buildKeyInfoRow({required bool isNarrow}) {
     final checkpointsChip = _buildInfoChip(
       icon: Icons.quiz_rounded,
-      color: const Color(0xFF20D5E8),
+      color: CapsuleColors.cyanGlow,
       label: 'CHECKPOINTS',
       value: '$_checkpointCount Questions MICI',
     );
     final rewardChip = _buildInfoChip(
       icon: Icons.card_giftcard_rounded,
-      color: const Color(0xFFFFB547),
+      color: CapsuleColors.gold,
       label: 'RÉCOMPENSE',
       value: _world.unlockedWeaponName,
     );
@@ -550,16 +550,16 @@ class _CapsuleWarriorsBriefingScreenState
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        border: Border.all(color: color.withValues(alpha: 0.55)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
+              color: color.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 17),
@@ -572,7 +572,7 @@ class _CapsuleWarriorsBriefingScreenState
                 Text(
                   label,
                   style: GoogleFonts.inter(
-                    color: const Color(0xFFA9BACB),
+                    color: CapsuleColors.textSubtle,
                     fontSize: 9.2,
                     fontWeight: FontWeight.w800,
                   ),
@@ -582,7 +582,7 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFF4F8FC),
+                    color: CapsuleColors.textWhite,
                     fontSize: 11.8,
                     fontWeight: FontWeight.w800,
                   ),
@@ -604,7 +604,7 @@ class _CapsuleWarriorsBriefingScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B2540).withValues(alpha: 0.90),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: CapsuleColors.cardBorder),
       ),
@@ -628,7 +628,7 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFF4F8FC),
+                    color: CapsuleColors.textWhite,
                     fontSize: 11.8,
                     fontWeight: FontWeight.w800,
                   ),
@@ -638,7 +638,7 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    color: const Color(0xFFA9BACB),
+                    color: CapsuleColors.textSubtle,
                     fontSize: 10.8,
                   ),
                 ),
@@ -653,19 +653,19 @@ class _CapsuleWarriorsBriefingScreenState
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF123B5A),
+                  color: CapsuleColors.cardOcean,
                   borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: const Color(0xFF20D5E8).withValues(alpha: 0.5)),
+                  border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.60)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Color(0xFF20D5E8), size: 15),
+                    const Icon(Icons.swap_horiz_rounded, color: CapsuleColors.cyanGlow, size: 15),
                     const SizedBox(width: 4),
                     Text(
                       '${idx + 1}/${unlocked.length}',
                       style: GoogleFonts.orbitron(
-                        color: const Color(0xFF20D5E8),
+                        color: CapsuleColors.cyanGlow,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
@@ -686,8 +686,8 @@ class _CapsuleWarriorsBriefingScreenState
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF0B2540).withValues(alpha: 0.92),
-            nextWorld.primaryColor.withValues(alpha: 0.22),
+            CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+            nextWorld.primaryColor.withValues(alpha: 0.25),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
@@ -703,7 +703,7 @@ class _CapsuleWarriorsBriefingScreenState
               gradient: LinearGradient(
                 colors: [nextWorld.primaryColor, nextWorld.secondaryColor],
               ),
-              border: Border.all(color: Colors.white30),
+              border: Border.all(color: Colors.white54),
             ),
             child: const Icon(Icons.explore_rounded, color: Colors.white, size: 17),
           ),
@@ -715,7 +715,7 @@ class _CapsuleWarriorsBriefingScreenState
                 Text(
                   'APERÇU DU PROCHAIN ENVIRONNEMENT',
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFFFB547),
+                    color: CapsuleColors.gold,
                     fontSize: 9.2,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.7,
@@ -726,7 +726,7 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFF4F8FC),
+                    color: CapsuleColors.textWhite,
                     fontSize: 11.8,
                     fontWeight: FontWeight.w800,
                   ),
@@ -736,7 +736,7 @@ class _CapsuleWarriorsBriefingScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    color: const Color(0xFFA9BACB),
+                    color: CapsuleColors.textSubtle,
                     fontSize: 10.3,
                   ),
                 ),

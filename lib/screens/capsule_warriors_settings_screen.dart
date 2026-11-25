@@ -32,6 +32,8 @@ class _CapsuleWarriorsSettingsScreenState
   double _masterVolume = 100.0;
   double _musicVolume = 75.0;
   double _sfxVolume = 90.0;
+  bool _musicEnabled = true;
+  bool _sfxEnabled = true;
   bool _isMuted = false;
   bool _isFullscreen = false;
   String _selectedLanguage = 'FR'; // 'FR' or 'EN'
@@ -43,6 +45,8 @@ class _CapsuleWarriorsSettingsScreenState
     _masterVolume = (progress.masterVolume * 100).clamp(0.0, 100.0);
     _musicVolume = (progress.musicVolume * 100).clamp(0.0, 100.0);
     _sfxVolume = (progress.sfxVolume * 100).clamp(0.0, 100.0);
+    _musicEnabled = progress.musicEnabled;
+    _sfxEnabled = progress.sfxEnabled;
     _isMuted = progress.isMuted;
     _isFullscreen = FullscreenUtil.isFullscreen;
     SystemChrome.setPreferredOrientations([
@@ -53,12 +57,23 @@ class _CapsuleWarriorsSettingsScreenState
   }
 
   Future<void> _persistAudio() async {
-    final progress = _storage.currentProgress;
-    progress.masterVolume = (_masterVolume / 100.0).clamp(0.0, 1.0);
-    progress.musicVolume = (_musicVolume / 100.0).clamp(0.0, 1.0);
-    progress.sfxVolume = (_sfxVolume / 100.0).clamp(0.0, 1.0);
-    progress.isMuted = _isMuted;
-    await _storage.saveProgress(progress);
+    final targets = <GameProgress>{
+      _storage.currentProgress,
+      if (widget.progress != null) widget.progress!,
+    };
+    for (final p in targets) {
+      p.masterVolume = (_masterVolume / 100.0).clamp(0.0, 1.0);
+      p.musicVolume = (_musicVolume / 100.0).clamp(0.0, 1.0);
+      p.sfxVolume = (_sfxVolume / 100.0).clamp(0.0, 1.0);
+      p.musicEnabled = _musicEnabled;
+      p.sfxEnabled = _sfxEnabled;
+      p.isMuted = _isMuted;
+    }
+    await _storage.saveProgress(_storage.currentProgress);
+    if (widget.progress != null &&
+        !identical(widget.progress, _storage.currentProgress)) {
+      await _storage.saveProgress(widget.progress!);
+    }
   }
 
   void _toggleFullscreen(bool val) {
@@ -296,31 +311,71 @@ class _CapsuleWarriorsSettingsScreenState
                                   ],
                                 ),
                                 const SizedBox(height: 6),
-                                // Music Volume Slider
+                                // Music Volume Slider & Independent Toggle
                                 Row(
                                   children: [
-                                    const Icon(Icons.music_note_rounded, color: CapsuleColors.turquoise, size: 20),
+                                    Icon(
+                                      _musicEnabled ? Icons.music_note_rounded : Icons.music_off_rounded,
+                                      color: _musicEnabled ? CapsuleColors.turquoise : CapsuleColors.textMuted,
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            'MUSIQUE BIO-GASTRIQUE : ${_musicVolume.toInt()}%',
-                                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  'MUSIQUE BIO-GASTRIQUE : ${_musicEnabled ? "${_musicVolume.toInt()}%" : "DÉSACTIVÉE"}',
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    color: _musicEnabled ? CapsuleColors.textWhite : CapsuleColors.textMuted,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              Transform.scale(
+                                                scale: 0.84,
+                                                child: Switch(
+                                                  key: const Key('music_toggle_switch'),
+                                                  value: _musicEnabled,
+                                                  thumbColor: WidgetStateProperty.resolveWith(
+                                                    (states) => states.contains(WidgetState.selected)
+                                                        ? Colors.white
+                                                        : CapsuleColors.textMuted,
+                                                  ),
+                                                  trackColor: WidgetStateProperty.resolveWith(
+                                                    (states) => states.contains(WidgetState.selected)
+                                                        ? CapsuleColors.cyanGlow.withValues(alpha: 0.65)
+                                                        : CapsuleColors.cardOcean,
+                                                  ),
+                                                  onChanged: (val) {
+                                                    setState(() => _musicEnabled = val);
+                                                    _audio.setBgmEnabled(val);
+                                                    _persistAudio();
+                                                  },
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           Slider(
                                             value: _musicVolume,
                                             min: 0,
                                             max: 100,
-                                            activeColor: CapsuleColors.cyanGlow,
+                                            activeColor: _musicEnabled ? CapsuleColors.cyanGlow : CapsuleColors.textMuted,
                                             inactiveColor: CapsuleColors.cardOcean,
                                             onChanged: (val) {
                                               setState(() {
                                                 _musicVolume = val;
-                                                if (val > 0 && _isMuted) _isMuted = false;
+                                                if (val > 0) {
+                                                  if (_isMuted) _isMuted = false;
+                                                  if (!_musicEnabled) _musicEnabled = true;
+                                                }
                                               });
                                               _audio.setMuted(_isMuted);
+                                              _audio.setBgmEnabled(_musicEnabled);
                                               _audio.setMusicVolume(val / 100.0);
                                             },
                                             onChangeEnd: (_) => _persistAudio(),
@@ -332,36 +387,77 @@ class _CapsuleWarriorsSettingsScreenState
                                 ),
                                 const SizedBox(height: 8),
 
-                                // SFX Volume Slider
+                                // SFX Volume Slider & Independent Toggle
                                 Row(
                                   children: [
-                                    const Icon(Icons.graphic_eq_rounded, color: CapsuleColors.softViolet, size: 20),
+                                    Icon(
+                                      _sfxEnabled ? Icons.graphic_eq_rounded : Icons.volume_off_rounded,
+                                      color: _sfxEnabled ? CapsuleColors.softViolet : CapsuleColors.textMuted,
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            'EFFETS SONORES & TIRS : ${_sfxVolume.toInt()}%',
-                                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  'EFFETS SONORES & TIRS : ${_sfxEnabled ? "${_sfxVolume.toInt()}%" : "DÉSACTIVÉS"}',
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    color: _sfxEnabled ? CapsuleColors.textWhite : CapsuleColors.textMuted,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              Transform.scale(
+                                                scale: 0.84,
+                                                child: Switch(
+                                                  key: const Key('sfx_toggle_switch'),
+                                                  value: _sfxEnabled,
+                                                  thumbColor: WidgetStateProperty.resolveWith(
+                                                    (states) => states.contains(WidgetState.selected)
+                                                        ? Colors.white
+                                                        : CapsuleColors.textMuted,
+                                                  ),
+                                                  trackColor: WidgetStateProperty.resolveWith(
+                                                    (states) => states.contains(WidgetState.selected)
+                                                        ? CapsuleColors.softViolet.withValues(alpha: 0.7)
+                                                        : CapsuleColors.cardOcean,
+                                                  ),
+                                                  onChanged: (val) {
+                                                    setState(() => _sfxEnabled = val);
+                                                    _audio.setSfxEnabled(val);
+                                                    if (val) _audio.playClick();
+                                                    _persistAudio();
+                                                  },
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           Slider(
                                             value: _sfxVolume,
                                             min: 0,
                                             max: 100,
-                                            activeColor: CapsuleColors.softViolet,
+                                            activeColor: _sfxEnabled ? CapsuleColors.softViolet : CapsuleColors.textMuted,
                                             inactiveColor: CapsuleColors.cardOcean,
                                             onChanged: (val) {
                                               setState(() {
                                                 _sfxVolume = val;
-                                                if (val > 0 && _isMuted) _isMuted = false;
+                                                if (val > 0) {
+                                                  if (_isMuted) _isMuted = false;
+                                                  if (!_sfxEnabled) _sfxEnabled = true;
+                                                }
                                               });
                                               _audio.setMuted(_isMuted);
+                                              _audio.setSfxEnabled(_sfxEnabled);
                                               _audio.setSfxVolume(val / 100.0);
                                             },
                                             onChangeEnd: (_) {
                                               _persistAudio();
-                                              _audio.playClick();
+                                              if (_sfxEnabled) _audio.playClick();
                                             },
                                           ),
                                         ],

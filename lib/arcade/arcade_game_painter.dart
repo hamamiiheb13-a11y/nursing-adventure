@@ -118,7 +118,7 @@ class ArcadeGamePainter extends CustomPainter {
       canvas.drawCircle(
         Offset.zero,
         r * 0.44,
-        Paint()..color = const Color(0xFF071629).withValues(alpha: alpha * 0.65),
+        Paint()..color = const Color(0xFF0E4170).withValues(alpha: alpha * 0.65),
       );
 
       canvas.restore();
@@ -156,9 +156,9 @@ class ArcadeGamePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF071629),
-          world.tunnelDeepColor.withValues(alpha: 0.92),
-          world.tunnelWallColor.withValues(alpha: 0.80),
+          const Color(0xFF0E4170),
+          world.tunnelDeepColor.withValues(alpha: 0.90),
+          world.tunnelWallColor.withValues(alpha: 0.78),
         ],
       ).createShader(ceilRect);
     canvas.drawPath(ceilingPath, ceilPaint);
@@ -185,9 +185,9 @@ class ArcadeGamePainter extends CustomPainter {
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
         colors: [
-          const Color(0xFF071629),
-          world.tunnelDeepColor.withValues(alpha: 0.92),
-          world.tunnelWallColor.withValues(alpha: 0.80),
+          const Color(0xFF0E4170),
+          world.tunnelDeepColor.withValues(alpha: 0.90),
+          world.tunnelWallColor.withValues(alpha: 0.78),
         ],
       ).createShader(floorRect);
     canvas.drawPath(floorPath, floorPaint);
@@ -898,7 +898,7 @@ class ArcadeGamePainter extends CustomPainter {
 
     // Eye stalk & pupil
     canvas.drawCircle(Offset(r * 0.4, -r * 0.4), 4.5, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(r * 0.45, -r * 0.4), 2.2, Paint()..color = const Color(0xFF0F172A));
+    canvas.drawCircle(Offset(r * 0.45, -r * 0.4), 2.2, Paint()..color = const Color(0xFF0E4170));
   }
 
   // 2. Spike-Virion (Rotating spiky virus core)
@@ -1199,7 +1199,7 @@ class ArcadeGamePainter extends CustomPainter {
         ? Colors.white
         : Color.lerp(auraCol, Colors.white, 0.36)!;
     final Color coreMid = boss.isHit ? const Color(0xFFFDA4AF) : auraCol;
-    final Color coreDark = Color.lerp(auraCol, const Color(0xFF0B253C), 0.55)!;
+    final Color coreDark = Color.lerp(auraCol, const Color(0xFF165B94), 0.45)!;
     final bodyPaint = Paint()
       ..shader = RadialGradient(
         colors: [coreTop, coreMid, coreDark],
@@ -1316,7 +1316,7 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.drawOval(Rect.fromCenter(center: const Offset(-22, -14), width: 20, height: 22), eyePaint);
     canvas.drawOval(Rect.fromCenter(center: const Offset(16, -14), width: 20, height: 22), eyePaint);
 
-    final pupilPaint = Paint()..color = const Color(0xFF0B253C);
+    final pupilPaint = Paint()..color = const Color(0xFF0E4170);
     canvas.drawCircle(const Offset(-25, -14), 5.5, pupilPaint);
     canvas.drawCircle(const Offset(13, -14), 5.5, pupilPaint);
 
@@ -1586,7 +1586,7 @@ class ArcadeGamePainter extends CustomPainter {
           colors: [
             Colors.white.withValues(alpha: 0.9),
             const Color(0xFF20D5E8).withValues(alpha: corePulse),
-            const Color(0xFF0B2540),
+            const Color(0xFF165B94),
           ],
         ).createShader(Rect.fromCircle(center: coreCenter, radius: p.radius * 0.34)),
     );

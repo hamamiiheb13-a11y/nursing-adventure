@@ -474,9 +474,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
           onTap: () {
             _audio.playClick();
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CapsuleWarriorsReviewScreen(progress: widget.progress),
-              ),
+              buildCapsuleRoute(CapsuleWarriorsReviewScreen(progress: widget.progress)),
             );
           },
         );
@@ -487,9 +485,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
           onTap: () {
             _audio.playClick();
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => CapsuleWarriorsWorldSelectScreen(progress: widget.progress),
-              ),
+              buildCapsuleRoute(CapsuleWarriorsWorldSelectScreen(progress: widget.progress)),
             );
           },
         );

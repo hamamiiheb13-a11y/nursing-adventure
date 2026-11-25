@@ -73,8 +73,8 @@ class _CapsuleWarriorsWorldSelectScreenState
     _audio.playStageSelect();
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (_) => CapsuleWarriorsBriefingScreen(
+          buildCapsuleRoute(
+            CapsuleWarriorsBriefingScreen(
               world: world,
               progress: _progress,
             ),
@@ -240,9 +240,7 @@ class _CapsuleWarriorsWorldSelectScreenState
           onTap: () {
             _audio.playClick();
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CapsuleWarriorsReviewScreen(progress: _progress),
-              ),
+              buildCapsuleRoute(CapsuleWarriorsReviewScreen(progress: _progress)),
             );
           },
           child: Container(
@@ -868,7 +866,7 @@ class _StageThumbnailPainter extends CustomPainter {
           end: Alignment.bottomCenter,
           colors: [
             primaryColor.withValues(alpha: 0.45),
-            const Color(0xFF071629).withValues(alpha: 0.85),
+            CapsuleColors.deepOcean.withValues(alpha: 0.78),
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );

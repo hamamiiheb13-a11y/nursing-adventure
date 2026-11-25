@@ -60,6 +60,8 @@ class GameProgress {
   double masterVolume;
   double musicVolume;
   double sfxVolume;
+  bool musicEnabled;
+  bool sfxEnabled;
   bool isMuted;
   bool hasSeenTutorial;
 
@@ -84,6 +86,8 @@ class GameProgress {
     this.masterVolume = 1.0,
     this.musicVolume = 0.75,
     this.sfxVolume = 0.85,
+    this.musicEnabled = true,
+    this.sfxEnabled = true,
     this.isMuted = false,
     this.hasSeenTutorial = false,
   })  : questionsAnswered = questionsAnswered ?? <int, bool>{},
@@ -318,6 +322,8 @@ class GameProgress {
         'masterVolume': masterVolume,
         'musicVolume': musicVolume,
         'sfxVolume': sfxVolume,
+        'musicEnabled': musicEnabled,
+        'sfxEnabled': sfxEnabled,
         'isMuted': isMuted,
         'hasSeenTutorial': hasSeenTutorial,
       };
@@ -338,6 +344,8 @@ class GameProgress {
       masterVolume: (json['masterVolume'] as num?)?.toDouble() ?? 1.0,
       musicVolume: (json['musicVolume'] as num?)?.toDouble() ?? 0.75,
       sfxVolume: (json['sfxVolume'] as num?)?.toDouble() ?? 0.85,
+      musicEnabled: json['musicEnabled'] as bool? ?? true,
+      sfxEnabled: json['sfxEnabled'] as bool? ?? true,
       isMuted: json['isMuted'] as bool? ?? false,
       hasSeenTutorial: json['hasSeenTutorial'] as bool? ?? false,
     );

@@ -67,8 +67,8 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
       widget.onContinue!();
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => CapsuleWarriorsWorldSelectScreen(
+        buildCapsuleRoute(
+          CapsuleWarriorsWorldSelectScreen(
             progress: widget.progress ?? GameProgress(),
           ),
         ),

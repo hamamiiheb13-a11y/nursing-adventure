@@ -293,8 +293,8 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                       StorageService().saveProgress(_controller.progress);
                                       if (_controller.level < 7) {
                                         Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (_) => CapsuleWarriorsBriefingScreen(
+                                          buildCapsuleRoute(
+                                            CapsuleWarriorsBriefingScreen(
                                               stageId: _controller.level + 1,
                                               progress: _controller.progress,
                                             ),
@@ -302,8 +302,8 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                         );
                                       } else {
                                         Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                            builder: (_) => CapsuleWarriorsFinalScreen(
+                                          buildCapsuleRoute(
+                                            CapsuleWarriorsFinalScreen(
                                               progress: _controller.progress,
                                             ),
                                           ),
@@ -312,8 +312,8 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                     },
                                     onReplay: () {
                                       Navigator.of(context).pushReplacement(
-                                        MaterialPageRoute(
-                                          builder: (_) => GastroArcadeScreen(
+                                        buildCapsuleRoute(
+                                          GastroArcadeScreen(
                                             stageId: _controller.level,
                                             progress: _controller.progress,
                                           ),
@@ -337,8 +337,8 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                     onRestart: () {
                                       _controller.audio.stopBgm();
                                       Navigator.of(context).pushReplacement(
-                                        MaterialPageRoute(
-                                          builder: (_) => GastroArcadeScreen(
+                                        buildCapsuleRoute(
+                                          GastroArcadeScreen(
                                             stageId: _controller.level,
                                             progress: _controller.progress,
                                           ),

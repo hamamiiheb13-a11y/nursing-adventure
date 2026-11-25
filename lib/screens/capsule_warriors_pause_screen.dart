@@ -58,8 +58,8 @@ class _CapsuleWarriorsPauseScreenState extends State<CapsuleWarriorsPauseScreen>
       widget.onSettings!();
     } else {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => CapsuleWarriorsSettingsScreen(
+        buildCapsuleRoute(
+          CapsuleWarriorsSettingsScreen(
             onProgressReset: () {},
           ),
         ),

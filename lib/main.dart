@@ -30,6 +30,8 @@ void main() async {
     masterVolume: initialProgress.masterVolume,
     musicVolume: initialProgress.musicVolume,
     sfxVolume: initialProgress.sfxVolume,
+    musicEnabled: initialProgress.musicEnabled,
+    sfxEnabled: initialProgress.sfxEnabled,
     isMuted: initialProgress.isMuted,
   );
 

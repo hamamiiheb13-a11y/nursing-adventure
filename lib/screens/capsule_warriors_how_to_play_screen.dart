@@ -539,7 +539,7 @@ class _TutorialStepPainter extends CustomPainter {
         final panelRect = Rect.fromCenter(center: center, width: 140, height: 90);
         canvas.drawRRect(
           RRect.fromRectAndRadius(panelRect, const Radius.circular(10)),
-          Paint()..color = const Color(0xFF0F172A),
+          Paint()..color = CapsuleColors.deepOcean,
         );
         canvas.drawRRect(
           RRect.fromRectAndRadius(panelRect, const Radius.circular(10)),

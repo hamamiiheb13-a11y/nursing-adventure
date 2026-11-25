@@ -31,10 +31,14 @@ class AudioService {
     double? musicVolume,
     double? sfxVolume,
     bool? isMuted,
+    bool? musicEnabled,
+    bool? sfxEnabled,
   }) {
     if (masterVolume != null) setMasterVolume(masterVolume);
     if (musicVolume != null) setMusicVolume(musicVolume);
     if (sfxVolume != null) setSfxVolume(sfxVolume);
+    if (musicEnabled != null) setBgmEnabled(musicEnabled);
+    if (sfxEnabled != null) setSfxEnabled(sfxEnabled);
     if (isMuted != null) setMuted(isMuted);
   }
 

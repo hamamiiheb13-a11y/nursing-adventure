@@ -88,19 +88,19 @@ class _StomachCosmicPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = progress * math.pi * 2;
 
-    // 1. Base luminous night-blue digestive background gradient (Section 7 Palette)
+    // 1. Vibrant sunlit oceanic cerulean digestive background gradient
     final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final bgPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF071629),
-          Color(0xFF0B2540),
-          Color(0xFF123B5A),
-          Color(0xFF0B2540),
+          Color(0xFF0E4170),
+          Color(0xFF155B94),
+          Color(0xFF1A78A3),
+          Color(0xFF135289),
         ],
-        stops: [0.0, 0.35, 0.70, 1.0],
+        stops: [0.0, 0.35, 0.72, 1.0],
       ).createShader(bgRect);
     canvas.drawRect(bgRect, bgPaint);
 
@@ -470,7 +470,7 @@ class _StomachCosmicPainter extends CustomPainter {
       6.5,
       Paint()
         ..shader = const RadialGradient(
-          colors: [Colors.white, CapsuleColors.cyanGlow, Color(0xFF071629)],
+          colors: [Colors.white, CapsuleColors.cyanGlow, CapsuleColors.deepOcean],
         ).createShader(Rect.fromCircle(center: const Offset(-16, 0), radius: 6.5)),
     );
 

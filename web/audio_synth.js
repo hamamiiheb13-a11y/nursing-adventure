@@ -175,7 +175,7 @@
     },
 
     playHit: function () {
-      playTone(210, 0.00, 0.18, 'sawtooth', 0.28, 58);
+      playTone(210, 0.00, 0.18, 'triangle', 0.22, 62);
     },
 
     playBossLaser: function () {
@@ -234,18 +234,18 @@
     },
 
     playBossEntrance: function () {
-      playTone(220, 0.00, 0.22, 'sawtooth', 0.26, 330);
-      playTone(196, 0.24, 0.38, 'triangle', 0.32, 146.83);
-      playTone(587.33, 0.26, 0.36, 'sine', 0.24);
+      playTone(220, 0.00, 0.22, 'triangle', 0.22, 330);
+      playTone(196, 0.24, 0.38, 'triangle', 0.28, 146.83);
+      playTone(587.33, 0.26, 0.36, 'sine', 0.22);
     },
 
     playBossAttack: function () {
-      playTone(340, 0.00, 0.14, 'sawtooth', 0.22, 140);
-      playTone(620, 0.03, 0.12, 'triangle', 0.18, 220);
+      playTone(340, 0.00, 0.14, 'triangle', 0.18, 140);
+      playTone(620, 0.03, 0.12, 'sine', 0.16, 220);
     },
 
     playBossDefeat: function () {
-      playTone(320, 0.00, 0.35, 'sawtooth', 0.32, 65);
+      playTone(320, 0.00, 0.35, 'triangle', 0.24, 65);
       playTone(523.25, 0.20, 0.16, 'triangle', 0.36);
       playTone(659.25, 0.34, 0.16, 'triangle', 0.38);
       playTone(783.99, 0.48, 0.20, 'triangle', 0.40);

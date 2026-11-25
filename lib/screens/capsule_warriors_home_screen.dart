@@ -89,14 +89,13 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     if (!_hasSave) {
       Navigator.of(context)
           .push(
-            MaterialPageRoute(
-              builder: (_) => CapsuleWarriorsIntroScreen(
+            buildCapsuleRoute(
+              CapsuleWarriorsIntroScreen(
                 progress: _progress,
                 onContinue: () {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          CapsuleWarriorsWorldSelectScreen(progress: _progress),
+                    buildCapsuleRoute(
+                      CapsuleWarriorsWorldSelectScreen(progress: _progress),
                     ),
                   );
                 },
@@ -107,9 +106,8 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     } else {
       Navigator.of(context)
           .push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  CapsuleWarriorsWorldSelectScreen(progress: _progress),
+            buildCapsuleRoute(
+              CapsuleWarriorsWorldSelectScreen(progress: _progress),
             ),
           )
           .then((_) => _loadSaveData());
@@ -120,9 +118,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     _audio.playClick();
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (_) => CapsuleWarriorsWorldSelectScreen(progress: _progress),
-          ),
+          buildCapsuleRoute(CapsuleWarriorsWorldSelectScreen(progress: _progress)),
         )
         .then((_) => _loadSaveData());
   }
@@ -130,9 +126,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
   void _onHowToPlay() {
     _audio.playClick();
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const CapsuleWarriorsHowToPlayScreen(),
-      ),
+      buildCapsuleRoute(const CapsuleWarriorsHowToPlayScreen()),
     );
   }
 
@@ -140,8 +134,8 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     _audio.playClick();
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (_) => CapsuleWarriorsSettingsScreen(
+          buildCapsuleRoute(
+            CapsuleWarriorsSettingsScreen(
               progress: _progress,
               onProgressReset: _loadSaveData,
             ),
@@ -159,9 +153,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         onOpenFiches: () {
           Navigator.of(dialogCtx).pop();
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CapsuleWarriorsReviewScreen(progress: _progress),
-            ),
+            buildCapsuleRoute(CapsuleWarriorsReviewScreen(progress: _progress)),
           );
         },
       ),

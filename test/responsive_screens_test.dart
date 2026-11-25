@@ -91,19 +91,21 @@ void main() {
         expect(find.textContaining(opt), findsOneWidget);
       }
 
-      // Select the correct option, validate, inspect centered EXPLICATION PÉDAGOGIQUE window, then continue
+      // Select the correct option, validate, inspect centered Comprendre la réponse window, then continue
       await tester.tap(find.textContaining(q5.options[q5.correctOptionIndex]));
       await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(find.text('Valider ma réponse'));
       await tester.pump(const Duration(milliseconds: 350));
       expect(tester.takeException(), isNull);
-      expect(find.text('EXPLICATION PÉDAGOGIQUE'), findsOneWidget);
+      expect(find.text('Comprendre la réponse'), findsOneWidget);
       expect(find.text('Bonne réponse'), findsOneWidget);
+      expect(find.text('RÉPONSE EXACTE'), findsOneWidget);
+      expect(find.text('EXPLICATION SCIENTIFIQUE'), findsOneWidget);
       expect(find.textContaining(q5.explanation), findsOneWidget);
       expect(find.textContaining('POURQUOI LES AUTRES CHOIX NE CONVIENNENT PAS'), findsOneWidget);
-      expect(find.text('CONTINUER LA MISSION'), findsOneWidget);
+      expect(find.text('Poursuivre la mission'), findsOneWidget);
 
-      await tester.tap(find.text('CONTINUER LA MISSION'));
+      await tester.tap(find.text('Poursuivre la mission'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(validatedIdx, q5.correctOptionIndex);
       expect(validatedCorrect, true);
@@ -129,13 +131,36 @@ void main() {
       await tester.tap(find.text('Valider ma réponse'));
       await tester.pump(const Duration(milliseconds: 350));
       expect(tester.takeException(), isNull);
-      expect(find.text('EXPLICATION PÉDAGOGIQUE'), findsOneWidget);
+      expect(find.text('Comprendre la réponse'), findsOneWidget);
       expect(find.text('Réponse incorrecte'), findsOneWidget);
-      expect(find.text('BONNE RÉPONSE EXACTE'), findsOneWidget);
-      await tester.tap(find.text('CONTINUER LA MISSION'));
+      expect(find.text('RÉPONSE EXACTE'), findsOneWidget);
+      await tester.tap(find.text('Poursuivre la mission'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(validatedIdx, wrongIdx);
       expect(validatedCorrect, false);
+    });
+
+    testWidgets('SettingsScreen exposes independent Music & SFX switches and persists flags', (tester) async {
+      final progress = GameProgress();
+      await pumpAtSize(tester, const Size(400, 820), CapsuleWarriorsSettingsScreen(progress: progress));
+      expect(tester.takeException(), isNull);
+
+      final musicSwitch = find.byKey(const Key('music_toggle_switch'));
+      final sfxSwitch = find.byKey(const Key('sfx_toggle_switch'));
+      expect(musicSwitch, findsOneWidget);
+      expect(sfxSwitch, findsOneWidget);
+
+      await tester.tap(musicSwitch);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(find.textContaining('MUSIQUE BIO-GASTRIQUE : DÉSACTIVÉE'), findsOneWidget);
+      expect(find.textContaining('EFFETS SONORES & TIRS : DÉSACTIVÉS'), findsNothing);
+      expect(progress.musicEnabled, false);
+      expect(progress.sfxEnabled, true);
+
+      await tester.tap(sfxSwitch);
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(find.textContaining('EFFETS SONORES & TIRS : DÉSACTIVÉS'), findsOneWidget);
+      expect(progress.sfxEnabled, false);
     });
 
     testWidgets('Review, Final, Settings, Pause, Victory & Tutorial fit portrait & landscape cleanly', (tester) async {

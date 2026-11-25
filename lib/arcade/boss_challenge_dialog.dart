@@ -149,9 +149,9 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
         position: _slideInAnimation,
         child: Stack(
           children: [
-            // Dark vignette backdrop
+            // Luminous Marine Backdrop
             Container(
-              color: Colors.black.withValues(alpha: 0.8),
+              color: const Color(0xFF0E4170).withValues(alpha: 0.78),
             ),
 
             // Attack flash effects
@@ -159,7 +159,7 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
-                    color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                    color: const Color(0xFF22D3EE).withValues(alpha: 0.25),
                   ),
                 ),
               ),
@@ -167,7 +167,7 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                    color: const Color(0xFFFB7185).withValues(alpha: 0.28),
                   ),
                 ),
               ),
@@ -194,22 +194,26 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                 height: isLandscape ? math.min(media.size.height * 0.92, 530) : null,
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF090D16),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF165B94), Color(0xFF0E4170)],
+                  ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: boss.isDefeated
-                        ? const Color(0xFFFFD166)
+                        ? const Color(0xFFFBBF24)
                         : (boss.auraColor),
                     width: 2.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: (boss.isDefeated ? const Color(0xFFFFD166) : boss.auraColor)
-                          .withValues(alpha: 0.45),
-                      blurRadius: 36,
-                      spreadRadius: 3,
+                      color: (boss.isDefeated ? const Color(0xFFFBBF24) : boss.auraColor)
+                          .withValues(alpha: 0.42),
+                      blurRadius: 32,
+                      spreadRadius: 2,
                     ),
-                    const BoxShadow(color: Colors.black, blurRadius: 28),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.30), blurRadius: 22),
                   ],
                 ),
                 child: ClipRRect(
@@ -561,23 +565,23 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
     final bool isSelected = _selectedIndex == index;
     final bool isRightOption = index == q.correctOptionIndex;
 
-    Color cardBg = const Color(0xFF1E293B);
-    Color borderColor = const Color(0xFF334155);
-    Color textColor = Colors.white;
+    Color cardBg = const Color(0xFFF4F9FF);
+    Color borderColor = const Color(0xFF0EA5E9).withValues(alpha: 0.30);
+    Color textColor = const Color(0xFF0C3154);
 
     if (_isValidated) {
       if (isRightOption) {
-        cardBg = const Color(0xFF064E3B);
+        cardBg = const Color(0xFFECFDF5);
         borderColor = const Color(0xFF10B981);
-        textColor = const Color(0xFFA7F3D0);
+        textColor = const Color(0xFF064E3B);
       } else if (isSelected && !isRightOption) {
-        cardBg = const Color(0xFF7F1D1D);
-        borderColor = const Color(0xFFEF4444);
-        textColor = const Color(0xFFFECACA);
+        cardBg = const Color(0xFFFFF1F2);
+        borderColor = const Color(0xFFFB7185);
+        textColor = const Color(0xFF9F1239);
       }
     } else if (isSelected) {
-      cardBg = const Color(0xFF0F766E).withValues(alpha: 0.35);
-      borderColor = const Color(0xFF00E5FF);
+      cardBg = const Color(0xFFE0F7FA);
+      borderColor = const Color(0xFF0284C7);
     }
 
     return Padding(
@@ -587,24 +591,24 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
         onTap: _isValidated ? null : () => setState(() => _selectedIndex = index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: borderColor,
-              width: isSelected || (_isValidated && isRightOption) ? 1.8 : 1.0,
+              width: isSelected || (_isValidated && isRightOption) ? 1.9 : 1.1,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: 25,
+                height: 25,
                 margin: const EdgeInsets.only(right: 10, top: 1),
                 decoration: BoxDecoration(
-                  color: isSelected ? borderColor : const Color(0xFF0F172A),
+                  color: isSelected ? borderColor : const Color(0xFFE6F2FE),
                   shape: BoxShape.circle,
                   border: Border.all(color: borderColor),
                 ),
@@ -612,7 +616,7 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                   child: Text(
                     String.fromCharCode(65 + index),
                     style: GoogleFonts.inter(
-                      color: isSelected ? Colors.black : Colors.white70,
+                      color: isSelected ? Colors.white : const Color(0xFF0E4170),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -624,9 +628,9 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                   opt,
                   style: GoogleFonts.inter(
                     color: textColor,
-                    fontSize: 12.5,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    height: 1.3,
+                    fontSize: 13.0,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    height: 1.32,
                   ),
                 ),
               ),
@@ -639,14 +643,13 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
 
   Widget _buildCombatFeedbackBox(bool isCorrect, GastroQuestion q) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: isCorrect
-            ? const Color(0xFF064E3B).withValues(alpha: 0.6)
-            : const Color(0xFF450A0A).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
+        color: isCorrect ? const Color(0xFFECFDF5) : const Color(0xFFF4F9FF),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+          color: isCorrect ? const Color(0xFF10B981) : const Color(0xFFFB7185),
+          width: 1.5,
         ),
       ),
       child: Column(
@@ -655,19 +658,21 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
           Row(
             children: [
               Icon(
-                isCorrect ? Icons.flash_on_rounded : Icons.shield_outlined,
-                color: isCorrect ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                isCorrect ? Icons.flash_on_rounded : Icons.menu_book_rounded,
+                color: isCorrect ? const Color(0xFF059669) : const Color(0xFFE11D48),
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                isCorrect
-                    ? 'SUPER TIR TOUCHÉ ! (-1 HP AU BOSS)'
-                    : 'RIPOSTE DU BOSS ! (-0.5 CŒUR)',
-                style: GoogleFonts.plusJakartaSans(
-                  color: isCorrect ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  isCorrect
+                      ? 'Comprendre la réponse • SUPER TIR TOUCHÉ (-1 HP)'
+                      : 'Comprendre la réponse • Réponse exacte : ${q.correctOptionText}',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isCorrect ? const Color(0xFF065F46) : const Color(0xFF9F1239),
+                    fontSize: 12.2,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -675,7 +680,11 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
           const SizedBox(height: 6),
           Text(
             q.explanation,
-            style: GoogleFonts.inter(color: const Color(0xFFF1F5F9), fontSize: 11.5, height: 1.4),
+            style: GoogleFonts.inter(
+              color: const Color(0xFF0C3154),
+              fontSize: 12.4,
+              height: 1.42,
+            ),
           ),
         ],
       ),
