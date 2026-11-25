@@ -5,11 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../audio/audio_service.dart';
 import '../models/game_progress.dart';
+import '../models/gastro_question.dart';
 import '../models/gastro_world.dart';
 import '../services/storage_service.dart';
 import '../theme/capsule_theme.dart';
 import '../widgets/capsule_parallax_background.dart';
 import 'capsule_warriors_briefing_screen.dart';
+import 'capsule_warriors_review_screen.dart';
 
 class CapsuleWarriorsWorldSelectScreen extends StatefulWidget {
   final GameProgress progress;
@@ -38,6 +40,7 @@ class _CapsuleWarriorsWorldSelectScreenState
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
     ]);
   }
 
@@ -47,7 +50,7 @@ class _CapsuleWarriorsWorldSelectScreenState
     super.dispose();
   }
 
-  void _reloadProgress() async {
+  Future<void> _reloadProgress() async {
     final updated = await _storage.loadProgress();
     if (mounted) {
       setState(() {
@@ -66,297 +69,430 @@ class _CapsuleWarriorsWorldSelectScreenState
     return count;
   }
 
+  void _openStage(GastroWorld world) {
+    _audio.playClick();
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => CapsuleWarriorsBriefingScreen(
+              world: world,
+              progress: _progress,
+            ),
+          ),
+        )
+        .then((_) => _reloadProgress());
+  }
+
+  void _scrollHorizontal(double delta) {
+    if (!_scrollController.hasClients) return;
+    final target = (_scrollController.offset + delta)
+        .clamp(0.0, _scrollController.position.maxScrollExtent);
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedCount = _completedStagesCount;
     final totalStages = GastroWorld.worlds.length;
-    final completionRatio = totalStages > 0 ? (completedCount / totalStages).clamp(0.0, 1.0) : 0.0;
+    final completionRatio =
+        totalStages > 0 ? (completedCount / totalStages).clamp(0.0, 1.0) : 0.0;
+    final totalQuestionsCount = allGastroQuestions.length;
 
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: true,
         child: SafeArea(
-          child: Column(
-            children: [
-              // 1. Top Header Bar (RETOUR button, Title, Total XP)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  children: [
-                    // RETOUR Button
-                    InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        _audio.playClick();
-                        Navigator.of(context).pop();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              'RETOUR',
-                              style: GoogleFonts.orbitron(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.0,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isNarrowPortrait = constraints.maxWidth < 600;
+              final bool isShortLandscape = constraints.maxHeight < 460;
+
+              return Column(
+                children: [
+                  // 1. RESPONSIVE HEADER (Zero mid-word wrapping on phones!)
+                  _buildHeader(
+                    isNarrowPortrait: isNarrowPortrait,
+                    isShortLandscape: isShortLandscape,
+                    totalQuestionsCount: totalQuestionsCount,
+                  ),
+
+                  // 2. MISSION CARDS DECK (Vertical clean list on Portrait, Horizontal Carousel on Landscape/Desktop)
+                  Expanded(
+                    child: isNarrowPortrait
+                        ? ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: GastroWorld.worlds.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) => _buildPortraitStageCard(
+                              GastroWorld.worlds[index],
+                            ),
+                          )
+                        : Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1260),
+                              child: Row(
+                                children: [
+                                  if (constraints.maxWidth > 720)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 10),
+                                      child: _buildArrowNavButton(
+                                        Icons.chevron_left_rounded,
+                                        () => _scrollHorizontal(-260),
+                                      ),
+                                    ),
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: isShortLandscape ? 228 : 300,
+                                      child: ListView.builder(
+                                        controller: _scrollController,
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                        itemCount: GastroWorld.worlds.length,
+                                        itemBuilder: (context, index) => _buildHorizontalStageCard(
+                                          GastroWorld.worlds[index],
+                                          isShortLandscape,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (constraints.maxWidth > 720)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 10),
+                                      child: _buildArrowNavButton(
+                                        Icons.chevron_right_rounded,
+                                        () => _scrollHorizontal(260),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Title
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'CHOISISSEZ VOTRE MISSION',
-                            style: GoogleFonts.orbitron(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2.2,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  color: CapsuleColors.cyanGlow.withValues(alpha: 0.8),
-                                  blurRadius: 14,
-                                ),
-                              ],
-                            ),
                           ),
-                          Text(
-                            '7 ÉTAPES DU TRACTUS DIGESTIF • 33 QUESTIONS CLINIQUES',
-                            style: GoogleFonts.inter(
-                              color: CapsuleColors.turquoise,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Total XP & Score Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A).withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.6)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.bolt_rounded, color: CapsuleColors.gold, size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${_progress.totalXP} XP',
-                            style: GoogleFonts.orbitron(
-                              color: CapsuleColors.gold,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2. Horizontal Scrollable 7 Stage Cards
-              Expanded(
-                child: Center(
-                  child: SizedBox(
-                    height: 290,
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      itemCount: GastroWorld.worlds.length,
-                      itemBuilder: (context, index) {
-                        final world = GastroWorld.worlds[index];
-                        return _buildStageCard(world);
-                      },
-                    ),
                   ),
-                ),
-              ),
 
-              // 3. Bottom Progress Bar & Stats
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-                child: Row(
-                  children: [
-                    Text(
-                      '$completedCount/7 STAGES COMPLÉTÉS',
-                      style: GoogleFonts.orbitron(
-                        color: CapsuleColors.cyanGlow,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: completionRatio,
-                          backgroundColor: const Color(0xFF1E293B),
-                          valueColor: const AlwaysStoppedAnimation<Color>(CapsuleColors.cyanGlow),
-                          minHeight: 8,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      '${(completionRatio * 100).toInt()}%',
-                      style: GoogleFonts.orbitron(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  // 3. CLEAN BOTTOM GLOBAL PROGRESS BAR
+                  _buildBottomProgressBar(
+                    completedCount: completedCount,
+                    totalStages: totalStages,
+                    completionRatio: completionRatio,
+                    isCompact: isShortLandscape || isNarrowPortrait,
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildStageCard(GastroWorld world) {
+  Widget _buildHeader({
+    required bool isNarrowPortrait,
+    required bool isShortLandscape,
+    required int totalQuestionsCount,
+  }) {
+    final backBtn = InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        _audio.playClick();
+        Navigator.of(context).pop();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isNarrowPortrait ? 12 : 14,
+          vertical: isShortLandscape ? 6 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: CapsuleColors.cardBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              'RETOUR',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final xpPill = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            _audio.playClick();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CapsuleWarriorsReviewScreen(progress: _progress),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: CapsuleColors.turquoise.withValues(alpha: 0.55)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.menu_book_rounded, color: CapsuleColors.turquoise, size: 16),
+                const SizedBox(width: 5),
+                Text(
+                  'FICHES',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.turquoise,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.65)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.bolt_rounded, color: CapsuleColors.gold, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                '${_progress.totalXP} XP',
+                style: GoogleFonts.orbitron(
+                  color: CapsuleColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final titleColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'CHOISISSEZ VOTRE MISSION',
+            maxLines: 1,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isShortLandscape ? 16 : 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '7 ÉTAPES DIGESTIVES • $totalQuestionsCount QUESTIONS CLINIQUES',
+            maxLines: 1,
+            style: GoogleFonts.inter(
+              color: CapsuleColors.cyanGlow,
+              fontSize: isShortLandscape ? 10.5 : 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (isNarrowPortrait) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+        child: Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [backBtn, xpPill],
+              ),
+            ),
+            const SizedBox(height: 12),
+            titleColumn,
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isShortLandscape ? 6 : 12,
+      ),
+      child: Row(
+        children: [
+          backBtn,
+          const SizedBox(width: 14),
+          Expanded(child: Center(child: titleColumn)),
+          const SizedBox(width: 14),
+          xpPill,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArrowNavButton(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: CapsuleColors.cardOcean.withValues(alpha: 0.90),
+          shape: BoxShape.circle,
+          border: Border.all(color: CapsuleColors.cardBorder),
+        ),
+        child: Icon(icon, color: CapsuleColors.cyanGlow, size: 26),
+      ),
+    );
+  }
+
+  /// Landscape / Desktop Card
+  Widget _buildHorizontalStageCard(GastroWorld world, bool isShortLandscape) {
     final isUnlocked = _progress.isWorldUnlocked(world.id);
     final isCompleted = _progress.isWorldCompleted(world.id);
     final stars = _progress.getStars(world.id);
+    final qLabel = world.id == 7 ? 'Révision' : '${world.questionIds.length} Q';
 
     return Container(
-      width: 215,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
+      width: isShortLandscape ? 210 : 238,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: isUnlocked ? 0.90 : 0.55),
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isUnlocked
+              ? [
+                  CapsuleColors.cardOcean,
+                  CapsuleColors.oceanSurface,
+                ]
+              : [
+                  CapsuleColors.deepOcean.withValues(alpha: 0.85),
+                  CapsuleColors.deepOcean.withValues(alpha: 0.70),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isCompleted
-              ? CapsuleColors.successGreen
-              : isUnlocked
-                  ? world.primaryColor.withValues(alpha: 0.8)
-                  : const Color(0xFF334155),
-          width: isUnlocked ? 2.0 : 1.0,
+              ? CapsuleColors.mintGreen
+              : (isUnlocked ? world.primaryColor.withValues(alpha: 0.75) : CapsuleColors.cardBorder),
+          width: isUnlocked ? 1.8 : 1.0,
         ),
-        boxShadow: isUnlocked
-            ? [
-                BoxShadow(
-                  color: world.primaryColor.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: isUnlocked
-              ? () {
-                  _audio.playClick();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CapsuleWarriorsBriefingScreen(
-                        world: world,
-                        progress: _progress,
-                      ),
-                    ),
-                  ).then((_) => _reloadProgress());
-                }
-              : null,
+          borderRadius: BorderRadius.circular(18),
+          onTap: isUnlocked ? () => _openStage(world) : null,
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(isShortLandscape ? 10 : 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top: Stage Number & Badge
+                    // Stage Tag + Question Badge
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'STAGE 0${world.id}',
                           style: GoogleFonts.orbitron(
-                            fontSize: 14,
+                            fontSize: isShortLandscape ? 12 : 13.5,
                             fontWeight: FontWeight.w900,
-                            color: isUnlocked ? world.primaryColor : CapsuleColors.textSubtle,
-                            letterSpacing: 1.2,
+                            color: isUnlocked ? world.primaryColor : CapsuleColors.textMuted,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
+                            color: CapsuleColors.deepOcean.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFF334155)),
                           ),
                           child: Text(
-                            '${world.questionIds.length} Q',
-                            style: GoogleFonts.orbitron(
-                              fontSize: 9.5,
-                              color: CapsuleColors.turquoise,
+                            qLabel,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              color: CapsuleColors.cyanGlow,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: isShortLandscape ? 6 : 8),
 
-                    // Canvas Illustration Thumbnail
-                    Center(
-                      child: Container(
-                        width: 175,
-                        height: 76,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF030712),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: world.primaryColor.withValues(alpha: 0.3)),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: CustomPaint(
-                            painter: _StageThumbnailPainter(worldId: world.id, color: world.primaryColor),
+                    // Bright Environment Illustration Thumbnail
+                    Container(
+                      width: double.infinity,
+                      height: isShortLandscape ? 54 : 78,
+                      decoration: BoxDecoration(
+                        color: world.tunnelDeepColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: world.primaryColor.withValues(alpha: 0.35)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: CustomPaint(
+                          painter: _StageThumbnailPainter(
+                            worldId: world.id,
+                            primaryColor: world.primaryColor,
+                            secondaryColor: world.secondaryColor,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: isShortLandscape ? 6 : 10),
 
-                    // Stage Name & Subtitle
+                    // Title & Subtitle
                     Text(
                       world.name,
-                      style: GoogleFonts.orbitron(
-                        fontSize: 12.5,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: isShortLandscape ? 12.5 : 14,
                         fontWeight: FontWeight.w800,
-                        color: isUnlocked ? Colors.white : CapsuleColors.textSubtle,
+                        color: isUnlocked ? Colors.white : CapsuleColors.textMuted,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -366,59 +502,73 @@ class _CapsuleWarriorsWorldSelectScreenState
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 10.5,
+                          fontSize: isShortLandscape ? 10.5 : 11.5,
                           color: CapsuleColors.textSubtle,
                           height: 1.25,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
 
-                    // Star Rating (1-3 stars)
+                    // Bottom Row: Stars + Launch Indicator
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (starIdx) {
-                        final isEarned = starIdx < stars;
-                        return Icon(
-                          Icons.star_rounded,
-                          size: 18,
-                          color: isEarned ? CapsuleColors.gold : const Color(0xFF334155),
-                        );
-                      }),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(3, (starIdx) {
+                            final isEarned = starIdx < stars;
+                            return Icon(
+                              Icons.star_rounded,
+                              size: isShortLandscape ? 16 : 18,
+                              color: isEarned
+                                  ? CapsuleColors.gold
+                                  : CapsuleColors.textMuted.withValues(alpha: 0.35),
+                            );
+                          }),
+                        ),
+                        if (isUnlocked)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? CapsuleColors.mintGreen.withValues(alpha: 0.22)
+                                  : world.primaryColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isCompleted ? 'REJOUER' : 'JOUER',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: isCompleted ? CapsuleColors.mintGreen : CapsuleColors.deepOcean,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              // Locked Overlay if stage is locked
               if (!isUnlocked)
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(20),
+                      color: CapsuleColors.deepOcean.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock_rounded, color: CapsuleColors.dangerRed, size: 36),
-                          const SizedBox(height: 6),
+                          Icon(Icons.lock_rounded, color: CapsuleColors.textSubtle, size: isShortLandscape ? 26 : 32),
+                          const SizedBox(height: 4),
                           Text(
-                            'VERROUILLÉ',
-                            style: GoogleFonts.orbitron(
-                              color: CapsuleColors.dangerRed,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Finissez le Stage ${world.id - 1}',
-                            style: GoogleFonts.inter(
+                            'STAGE ${world.id - 1} REQUIS',
+                            style: GoogleFonts.plusJakartaSans(
                               color: CapsuleColors.textSubtle,
-                              fontSize: 9.5,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
@@ -432,102 +582,276 @@ class _CapsuleWarriorsWorldSelectScreenState
       ),
     );
   }
+
+  /// Portrait Phone Full-Width Ergonomic Card (Zero clipped letters!)
+  Widget _buildPortraitStageCard(GastroWorld world) {
+    final isUnlocked = _progress.isWorldUnlocked(world.id);
+    final isCompleted = _progress.isWorldCompleted(world.id);
+    final stars = _progress.getStars(world.id);
+    final qLabel = world.id == 7 ? 'Mode Révision' : '${world.questionIds.length} Questions';
+
+    return Opacity(
+      opacity: isUnlocked ? 1.0 : 0.62,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              CapsuleColors.cardOcean,
+              CapsuleColors.oceanSurface,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCompleted
+                ? CapsuleColors.mintGreen
+                : (isUnlocked ? world.primaryColor.withValues(alpha: 0.75) : CapsuleColors.cardBorder),
+            width: isUnlocked ? 1.8 : 1.0,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isUnlocked ? () => _openStage(world) : null,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Thumbnail
+                  Container(
+                    width: 82,
+                    height: 74,
+                    decoration: BoxDecoration(
+                      color: world.tunnelDeepColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: world.primaryColor.withValues(alpha: 0.45)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CustomPaint(
+                            painter: _StageThumbnailPainter(
+                              worldId: world.id,
+                              primaryColor: world.primaryColor,
+                              secondaryColor: world.secondaryColor,
+                            ),
+                          ),
+                          if (!isUnlocked)
+                            Container(
+                              color: CapsuleColors.deepOcean.withValues(alpha: 0.65),
+                              child: const Icon(Icons.lock_rounded, color: Colors.white70, size: 24),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'STAGE 0${world.id}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: isUnlocked ? world.primaryColor : CapsuleColors.textMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: CapsuleColors.deepOcean.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                qLabel,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  color: CapsuleColors.cyanGlow,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          world.name,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          world.subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: CapsuleColors.textSubtle,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(3, (starIdx) {
+                                return Icon(
+                                  Icons.star_rounded,
+                                  size: 16,
+                                  color: starIdx < stars
+                                      ? CapsuleColors.gold
+                                      : CapsuleColors.textMuted.withValues(alpha: 0.35),
+                                );
+                              }),
+                            ),
+                            if (isUnlocked)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isCompleted
+                                      ? CapsuleColors.mintGreen.withValues(alpha: 0.22)
+                                      : world.primaryColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isCompleted ? 'REJOUER' : 'LANCER',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: isCompleted
+                                        ? CapsuleColors.mintGreen
+                                        : CapsuleColors.deepOcean,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomProgressBar({
+    required int completedCount,
+    required int totalStages,
+    required double completionRatio,
+    required bool isCompact,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 16 : 32, vertical: isCompact ? 8 : 12),
+      decoration: BoxDecoration(
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        border: const Border(top: BorderSide(color: CapsuleColors.cardBorder)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '$completedCount/$totalStages MISSIONS',
+            style: GoogleFonts.plusJakartaSans(
+              color: CapsuleColors.cyanGlow,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: completionRatio,
+                backgroundColor: CapsuleColors.oceanSurface,
+                valueColor: const AlwaysStoppedAnimation<Color>(CapsuleColors.mintGreen),
+                minHeight: 7,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${(completionRatio * 100).toInt()}%',
+            style: GoogleFonts.orbitron(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// Canvas painter for stage preview thumbnail illustrations
 class _StageThumbnailPainter extends CustomPainter {
   final int worldId;
-  final Color color;
+  final Color primaryColor;
+  final Color secondaryColor;
 
-  _StageThumbnailPainter({required this.worldId, required this.color});
+  _StageThumbnailPainter({
+    required this.worldId,
+    required this.primaryColor,
+    required this.secondaryColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFF030712);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final pCenter = Offset(size.width / 2, size.height / 2);
-
-    switch (worldId) {
-      case 1:
-        // Stage 1: Anatomical folds & crypts
-        final wavePath = Path()..moveTo(0, size.height * 0.7);
-        for (double x = 0; x <= size.width; x += 15) {
-          final y = size.height * 0.5 + math.sin(x * 0.08) * 12;
-          wavePath.lineTo(x, y);
-        }
-        wavePath.lineTo(size.width, size.height);
-        wavePath.lineTo(0, size.height);
-        wavePath.close();
-        canvas.drawPath(wavePath, Paint()..color = color.withValues(alpha: 0.35));
-        canvas.drawCircle(pCenter, 14, Paint()..color = color.withValues(alpha: 0.6));
-        break;
-
-      case 2:
-        // Stage 2: Inflammatory flames / cytokines
-        final flamePaint = Paint()..color = color.withValues(alpha: 0.5);
-        for (int i = 0; i < 5; i++) {
-          final fx = size.width * (0.2 + i * 0.15);
-          final fy = size.height * 0.7;
-          canvas.drawCircle(Offset(fx, fy - (i % 2 == 0 ? 10 : 0)), 8, flamePaint);
-        }
-        canvas.drawCircle(pCenter, 16, Paint()..color = CapsuleColors.dangerOrange.withValues(alpha: 0.7));
-        break;
-
-      case 3:
-        // Stage 3: Medication / Syringe / Pill
-        final pillRect = Rect.fromCenter(center: pCenter, width: 44, height: 20);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(pillRect, const Radius.circular(10)),
-          Paint()..color = color.withValues(alpha: 0.7),
-        );
-        canvas.drawCircle(pCenter, 5, Paint()..color = Colors.white);
-        break;
-
-      case 4:
-        // Stage 4: Lab / Biomarkers / Microscope flask
-        final flaskPath = Path()
-          ..moveTo(pCenter.dx - 12, pCenter.dy + 14)
-          ..lineTo(pCenter.dx + 12, pCenter.dy + 14)
-          ..lineTo(pCenter.dx + 4, pCenter.dy - 6)
-          ..lineTo(pCenter.dx + 4, pCenter.dy - 14)
-          ..lineTo(pCenter.dx - 4, pCenter.dy - 14)
-          ..lineTo(pCenter.dx - 4, pCenter.dy - 6)
-          ..close();
-        canvas.drawPath(flaskPath, Paint()..color = color.withValues(alpha: 0.75));
-        break;
-
-      case 5:
-        // Stage 5: Lifestyle & Nutrition
-        canvas.drawCircle(pCenter, 18, Paint()..color = color.withValues(alpha: 0.6));
-        canvas.drawCircle(Offset(pCenter.dx + 6, pCenter.dy - 6), 14, Paint()..color = const Color(0xFF030712));
-        break;
-
-      case 6:
-        // Stage 6: Family & DNA Helix
-        final dnaPaint = Paint()
-          ..color = color.withValues(alpha: 0.7)
-          ..strokeWidth = 2.0;
-        for (double x = 20; x <= size.width - 20; x += 10) {
-          final y1 = pCenter.dy + math.sin(x * 0.1) * 12;
-          final y2 = pCenter.dy - math.sin(x * 0.1) * 12;
-          canvas.drawLine(Offset(x, y1), Offset(x, y2), dnaPaint);
-          canvas.drawCircle(Offset(x, y1), 2.5, Paint()..color = Colors.white);
-          canvas.drawCircle(Offset(x, y2), 2.5, Paint()..color = color);
-        }
-        break;
-
-      case 7:
-        // Stage 7: Nursing mission finale (Caduceus / Cross)
-        final crossPaint = Paint()..color = color.withValues(alpha: 0.8);
-        canvas.drawRect(Rect.fromCenter(center: pCenter, width: 34, height: 10), crossPaint);
-        canvas.drawRect(Rect.fromCenter(center: pCenter, width: 10, height: 34), crossPaint);
-        canvas.drawCircle(pCenter, 6, Paint()..color = Colors.white);
-        break;
+    // Organic lumen curve
+    final lumenPath = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 8) {
+      final y = size.height * 0.65 + math.sin(x * 0.06 + worldId) * 10.0;
+      lumenPath.lineTo(x, y);
     }
+    lumenPath.lineTo(size.width, size.height);
+    lumenPath.close();
+
+    canvas.drawPath(
+      lumenPath,
+      Paint()..color = primaryColor.withValues(alpha: 0.42),
+    );
+
+    // Floating symbolic bubbles/cells
+    canvas.drawCircle(
+      Offset(size.width * 0.28, size.height * 0.42),
+      9,
+      Paint()..color = secondaryColor.withValues(alpha: 0.65),
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.62, size.height * 0.50),
+      13,
+      Paint()..color = primaryColor.withValues(alpha: 0.72),
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.78, size.height * 0.28),
+      6,
+      Paint()..color = Colors.white.withValues(alpha: 0.6),
+    );
   }
 
   @override
   bool shouldRepaint(covariant _StageThumbnailPainter oldDelegate) =>
-      oldDelegate.worldId != worldId || oldDelegate.color != color;
+      oldDelegate.worldId != worldId;
 }

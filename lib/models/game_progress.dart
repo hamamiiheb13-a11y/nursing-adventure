@@ -57,6 +57,9 @@ class GameProgress {
   int maxCombo;
   int totalCrystals;
   String equippedWeapon;
+  double musicVolume;
+  double sfxVolume;
+  bool isMuted;
 
   GameProgress({
     this.currentStage = 1,
@@ -76,6 +79,9 @@ class GameProgress {
     this.maxCombo = 0,
     this.totalCrystals = 0,
     this.equippedWeapon = 'Laser Médical MK-I',
+    this.musicVolume = 0.75,
+    this.sfxVolume = 0.85,
+    this.isMuted = false,
   })  : questionsAnswered = questionsAnswered ?? <int, bool>{},
         stageResults = stageResults ?? <int, StageResult>{},
         unlockedWeapons = unlockedWeapons ?? <String>['Laser Médical MK-I'],
@@ -255,16 +261,23 @@ class GameProgress {
       currentStage = stageId + 1;
     }
 
-    // Unlock new weapon corresponding to world
+    // Unlock and auto-equip new weapon corresponding to world
     final world = GastroWorld.worlds.firstWhere(
       (w) => w.id == stageId,
       orElse: () => GastroWorld.worlds.first,
     );
     if (!unlockedWeapons.contains(world.unlockedWeaponName)) {
       unlockedWeapons.add(world.unlockedWeaponName);
+      equippedWeapon = world.unlockedWeaponName;
     }
 
     lastPlayed = DateTime.now();
+  }
+
+  void equipWeapon(String weaponName) {
+    if (unlockedWeapons.contains(weaponName)) {
+      equippedWeapon = weaponName;
+    }
   }
 
   void addToRevision(int questionId) {
@@ -298,6 +311,9 @@ class GameProgress {
         'maxCombo': maxCombo,
         'totalCrystals': totalCrystals,
         'equippedWeapon': equippedWeapon,
+        'musicVolume': musicVolume,
+        'sfxVolume': sfxVolume,
+        'isMuted': isMuted,
       };
 
   factory GameProgress.fromJson(Map<String, dynamic> json) {
@@ -313,6 +329,9 @@ class GameProgress {
       maxCombo: json['maxCombo'] as int? ?? 0,
       totalCrystals: json['totalCrystals'] as int? ?? 0,
       equippedWeapon: json['equippedWeapon'] as String? ?? 'Laser Médical MK-I',
+      musicVolume: (json['musicVolume'] as num?)?.toDouble() ?? 0.75,
+      sfxVolume: (json['sfxVolume'] as num?)?.toDouble() ?? 0.85,
+      isMuted: json['isMuted'] as bool? ?? false,
     );
 
     if (json['questionsAnswered'] is Map) {

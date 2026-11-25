@@ -10,6 +10,7 @@ import '../theme/capsule_theme.dart';
 class CapsuleWarriorsStageVictoryScreen extends StatefulWidget {
   final int stageId;
   final int score;
+  final int? starsOverride;
   final int questionsCorrect;
   final int questionsTotal;
   final int deaths;
@@ -24,6 +25,7 @@ class CapsuleWarriorsStageVictoryScreen extends StatefulWidget {
     super.key,
     required this.stageId,
     required this.score,
+    this.starsOverride,
     this.questionsCorrect = 4,
     this.questionsTotal = 4,
     this.deaths = 0,
@@ -58,19 +60,13 @@ class _CapsuleWarriorsStageVictoryScreenState
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Calculate stars:
-    // 3 stars: >80% questions correct + no deaths
-    // 2 stars: >60% correct OR 1-2 deaths
-    // 1 star: completed but struggled
-    final accuracy = widget.questionsTotal > 0
-        ? (widget.questionsCorrect / widget.questionsTotal)
-        : 1.0;
-    if (accuracy >= 0.8 && widget.deaths == 0) {
+    // Calculate stars: 3 stars if all questions answered cleanly, 2 stars if completed with mistakes
+    if (widget.starsOverride != null) {
+      _starsEarned = widget.starsOverride!.clamp(1, 3);
+    } else if (widget.questionsTotal > 0 && widget.questionsCorrect >= widget.questionsTotal && widget.deaths == 0) {
       _starsEarned = 3;
-    } else if (accuracy >= 0.6 || widget.deaths <= 2) {
-      _starsEarned = 2;
     } else {
-      _starsEarned = 1;
+      _starsEarned = 2;
     }
 
     _particleController = AnimationController(
@@ -103,10 +99,26 @@ class _CapsuleWarriorsStageVictoryScreenState
     final isCompact = media.size.height < 520;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: CapsuleColors.deepOcean,
       body: Stack(
         children: [
-          // 1. Spectacular Animated Particle Explosion Canvas
+          // Luminous Ocean-Teal Gradient Overlay
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.0,
+                  colors: [
+                    CapsuleColors.oceanSurface.withValues(alpha: 0.92),
+                    CapsuleColors.deepOcean,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 1. Animated Particle Confetti Canvas
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _particleController,
@@ -118,27 +130,22 @@ class _CapsuleWarriorsStageVictoryScreenState
             ),
           ),
 
-          // 2. Victory Modal Card
+          // 2. Clean Victory Modal Card
           Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: isCompact ? 10 : 20,
+                horizontal: 16,
+                vertical: isCompact ? 8 : 20,
               ),
               child: Container(
-                width: 520,
-                padding: EdgeInsets.all(isCompact ? 18 : 26),
+                width: math.min(media.size.width * 0.94, 540),
+                padding: EdgeInsets.all(isCompact ? 16 : 24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A).withValues(alpha: 0.94),
-                  borderRadius: BorderRadius.circular(24),
+                  color: CapsuleColors.oceanSurface.withValues(alpha: 0.96),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: CapsuleColors.gold, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CapsuleColors.gold.withValues(alpha: 0.35),
-                      blurRadius: 36,
-                      spreadRadius: 2,
-                    ),
-                    const BoxShadow(color: Colors.black, blurRadius: 28),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black38, blurRadius: 24, offset: Offset(0, 8)),
                   ],
                 ),
                 child: Column(
@@ -209,14 +216,17 @@ class _CapsuleWarriorsStageVictoryScreenState
 
                     // Score Breakdown Stats Grid
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      width: double.infinity,
+                      padding: EdgeInsets.all(isCompact ? 10 : 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF030712).withValues(alpha: 0.7),
+                        color: CapsuleColors.deepOcean.withValues(alpha: 0.78),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF1E293B)),
+                        border: Border.all(color: CapsuleColors.cardBorder),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceAround,
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
                           _buildStatItem('QUESTIONS', '${widget.questionsCorrect}/${widget.questionsTotal}', CapsuleColors.cyanGlow),
                           _buildStatItem('SCORE TOTAL', '${widget.score} PTS', CapsuleColors.gold),
@@ -233,12 +243,12 @@ class _CapsuleWarriorsStageVictoryScreenState
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            CapsuleColors.purple.withValues(alpha: 0.3),
-                            CapsuleColors.electricBlue.withValues(alpha: 0.2),
+                            CapsuleColors.electricBlue.withValues(alpha: 0.28),
+                            CapsuleColors.turquoise.withValues(alpha: 0.18),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.6)),
+                        border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.65)),
                       ),
                       child: Row(
                         children: [
@@ -257,7 +267,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                               children: [
                                 Text(
                                   'NOUVEL ARSENAL DÉBLOQUÉ !',
-                                  style: GoogleFonts.orbitron(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     color: CapsuleColors.cyanGlow,
                                     fontWeight: FontWeight.w800,
@@ -266,9 +276,9 @@ class _CapsuleWarriorsStageVictoryScreenState
                                 ),
                                 Text(
                                   weaponUnlocked,
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.plusJakartaSans(
                                     color: Colors.white,
-                                    fontSize: 12.5,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -304,7 +314,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                           child: _buildActionButton(
                             label: 'REJOUER',
                             icon: Icons.replay_rounded,
-                            accentColor: CapsuleColors.purple,
+                            accentColor: CapsuleColors.softViolet,
                             onTap: () {
                               _audio.playClick();
                               widget.onReplay();
@@ -373,11 +383,11 @@ class _CapsuleWarriorsStageVictoryScreenState
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: isPrimary ? CapsuleColors.electricBlue : const Color(0xFF1E293B),
+        color: isPrimary ? CapsuleColors.electricBlue : CapsuleColors.cardOcean,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isPrimary ? CapsuleColors.cyanGlow : col.withValues(alpha: 0.6),
-          width: isPrimary ? 2.0 : 1.2,
+          color: isPrimary ? CapsuleColors.cyanGlow : col.withValues(alpha: 0.65),
+          width: isPrimary ? 2.0 : 1.3,
         ),
         boxShadow: isPrimary
             ? [
@@ -393,21 +403,30 @@ class _CapsuleWarriorsStageVictoryScreenState
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 16),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: GoogleFonts.orbitron(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 16),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-/// Palette configuration for each of the 7 stages
+/// Luminous biological palette configuration for each of the 7 digestive stages
 class StageBackgroundTheme {
-  final Color deepBg;
+  final Color topSkyBg;
+  final Color midLumenBg;
   final Color vesselColor;
   final Color cellColor;
   final Color wallColor;
@@ -12,7 +13,8 @@ class StageBackgroundTheme {
   final Color particleGlow;
 
   const StageBackgroundTheme({
-    required this.deepBg,
+    required this.topSkyBg,
+    required this.midLumenBg,
     required this.vesselColor,
     required this.cellColor,
     required this.wallColor,
@@ -21,86 +23,92 @@ class StageBackgroundTheme {
     required this.particleGlow,
   });
 
-  /// Factory by stage ID (1-7)
+  /// Factory by stage ID (1-7) — bright, colorful, clean contrast (zero black voids!)
   factory StageBackgroundTheme.forStage(int stageId) {
     switch (stageId) {
-      case 1: // Stage 1: Red / Maroon (Anatomy & mucosal lesions)
+      case 1: // Stage 1: Estomac & Muqueuse — Coral, Warm Salmon & Golden Dew
         return const StageBackgroundTheme(
-          deepBg: Color(0xFF150408),
-          vesselColor: Color(0xFF4A0E17),
-          cellColor: Color(0xFF9E2A2B),
-          wallColor: Color(0xFFC1121F),
-          villiColor: Color(0xFFE63946),
-          bubbleColor: Color(0xFFFF758F),
-          particleGlow: Color(0xFFFFB3C1),
-        );
-      case 2: // Stage 2: Purple / Orange (Symptoms & manifestations)
-        return const StageBackgroundTheme(
-          deepBg: Color(0xFF14081E),
-          vesselColor: Color(0xFF3B125B),
-          cellColor: Color(0xFF6B21A8),
-          wallColor: Color(0xFF9333EA),
-          villiColor: Color(0xFFEA580C),
-          bubbleColor: Color(0xFFF97316),
-          particleGlow: Color(0xFFFDBA74),
-        );
-      case 3: // Stage 3: Blue / Teal (Pharmacology & treatments)
-        return const StageBackgroundTheme(
-          deepBg: Color(0xFF04141E),
-          vesselColor: Color(0xFF083344),
-          cellColor: Color(0xFF0E7490),
-          wallColor: Color(0xFF06B6D4),
-          villiColor: Color(0xFF14B8A6),
-          bubbleColor: Color(0xFF2DD4BF),
-          particleGlow: Color(0xFF67E8F9),
-        );
-      case 4: // Stage 4: Emerald / Green (Lab exams & markers)
-        return const StageBackgroundTheme(
-          deepBg: Color(0xFF04170E),
-          vesselColor: Color(0xFF064E3B),
-          cellColor: Color(0xFF047857),
-          wallColor: Color(0xFF059669),
-          villiColor: Color(0xFF10B981),
-          bubbleColor: Color(0xFF34D399),
-          particleGlow: Color(0xFF6EE7B7),
-        );
-      case 5: // Stage 5: Gold / Amber / Coral (Lifestyle & nutrition)
-        return const StageBackgroundTheme(
-          deepBg: Color(0xFF1C1304),
-          vesselColor: Color(0xFF451A03),
-          cellColor: Color(0xFF78350F),
-          wallColor: Color(0xFFD97706),
-          villiColor: Color(0xFFF59E0B),
-          bubbleColor: Color(0xFFFBBF24),
+          topSkyBg: Color(0xFF471A30),
+          midLumenBg: Color(0xFF6E2744),
+          vesselColor: Color(0xFF9D3456),
+          cellColor: Color(0xFFFB7185),
+          wallColor: Color(0xFFE15B72),
+          villiColor: Color(0xFFFDA4AF),
+          bubbleColor: Color(0xFFFED7AA),
           particleGlow: Color(0xFFFDE68A),
         );
-      case 6: // Stage 6: Violet / Rose (Heredity, genetics & pregnancy)
+      case 2: // Stage 2: Intestin Grêle — Ocean Teal & Warm Orange Villi
         return const StageBackgroundTheme(
-          deepBg: Color(0xFF1A051A),
-          vesselColor: Color(0xFF4A044E),
-          cellColor: Color(0xFF86198F),
-          wallColor: Color(0xFFC026D3),
-          villiColor: Color(0xFFDB2777),
-          bubbleColor: Color(0xFFF472B6),
-          particleGlow: Color(0xFFFBCFE8),
+          topSkyBg: Color(0xFF103754),
+          midLumenBg: Color(0xFF185378),
+          vesselColor: Color(0xFF1E6B94),
+          cellColor: Color(0xFF38BDF8),
+          wallColor: Color(0xFF0E7490),
+          villiColor: Color(0xFFFB923C),
+          bubbleColor: Color(0xFFFDBA74),
+          particleGlow: Color(0xFF7DD3FC),
         );
-      case 7: // Stage 7: Electric Cyan / Deep Navy (Nursing mission finale)
+      case 3: // Stage 3: Iléon Terminal — Turquoise & Mint Emerald Therapy
+        return const StageBackgroundTheme(
+          topSkyBg: Color(0xFF0C3C42),
+          midLumenBg: Color(0xFF135C63),
+          vesselColor: Color(0xFF0F766E),
+          cellColor: Color(0xFF2DD4BF),
+          wallColor: Color(0xFF14B8A6),
+          villiColor: Color(0xFF6EE7B7),
+          bubbleColor: Color(0xFFA7F3D0),
+          particleGlow: Color(0xFF5EEAD4),
+        );
+      case 4: // Stage 4: Côlon Transverse — Azure Sky & Probiotic Green
+        return const StageBackgroundTheme(
+          topSkyBg: Color(0xFF0F3159),
+          midLumenBg: Color(0xFF1A4F8A),
+          vesselColor: Color(0xFF0369A1),
+          cellColor: Color(0xFF38BDF8),
+          wallColor: Color(0xFF0EA5E9),
+          villiColor: Color(0xFF34D399),
+          bubbleColor: Color(0xFF7DD3FC),
+          particleGlow: Color(0xFFA78BFA),
+        );
+      case 5: // Stage 5: Zone Vasculaire & Grossesse — Soft Violet & Coral Rose
+        return const StageBackgroundTheme(
+          topSkyBg: Color(0xFF2E225C),
+          midLumenBg: Color(0xFF47338A),
+          vesselColor: Color(0xFF6D28D9),
+          cellColor: Color(0xFFA78BFA),
+          wallColor: Color(0xFF8B5CF6),
+          villiColor: Color(0xFFFB7185),
+          bubbleColor: Color(0xFFFBCFE8),
+          particleGlow: Color(0xFFC4B5FD),
+        );
+      case 6: // Stage 6: Secteur Soins Aigus — Cobalt Clinical Blue & Sunny Gold
+        return const StageBackgroundTheme(
+          topSkyBg: Color(0xFF0E2C54),
+          midLumenBg: Color(0xFF194982),
+          vesselColor: Color(0xFF1D4ED8),
+          cellColor: Color(0xFF60A5FA),
+          wallColor: Color(0xFF2563EB),
+          villiColor: Color(0xFFFBBF24),
+          bubbleColor: Color(0xFF93C5FD),
+          particleGlow: Color(0xFFFDE047),
+        );
+      case 7: // Stage 7: Sanctuaire Immunitaire — Golden Dawn & Radiant Cyan
       default:
         return const StageBackgroundTheme(
-          deepBg: Color(0xFF030A1A),
-          vesselColor: Color(0xFF0C2461),
-          cellColor: Color(0xFF1E3799),
-          wallColor: Color(0xFF4A69BD),
-          villiColor: Color(0xFF00E5FF),
-          bubbleColor: Color(0xFF00D2D3),
-          particleGlow: Color(0xFF81ECEC),
+          topSkyBg: Color(0xFF0C3A4E),
+          midLumenBg: Color(0xFF165C73),
+          vesselColor: Color(0xFF0E7490),
+          cellColor: Color(0xFF22D3EE),
+          wallColor: Color(0xFF06B6D4),
+          villiColor: Color(0xFFFBBF24),
+          bubbleColor: Color(0xFF67E8F9),
+          particleGlow: Color(0xFFFEF08A),
         );
     }
   }
 }
 
-/// 3-Layer Parallax Background System
-/// All drawn purely via Flutter Canvas API with 0 image assets.
+/// Clean 3-Layer Biological Parallax Background System
 class ParallaxBackgroundSystem {
   final int stageId;
   late final StageBackgroundTheme theme;
@@ -109,205 +117,137 @@ class ParallaxBackgroundSystem {
     theme = StageBackgroundTheme.forStage(stageId);
   }
 
-  /// Draw complete 3-layer parallax background
-  /// [scrollX] is the camera horizontal distance
-  /// [time] is the elapsed game time in seconds
-  void render(Canvas canvas, Size size, double scrollX, double time) {
-    // 0. Base deep ambient biological gradient
-    _renderDeepGradient(canvas, size);
+  void render(Canvas canvas, Size size, double scrollX, double time, {double bossMix = 0.0}) {
+    // 0. Luminous Lumen Gradient (shifts warmly in Boss Arena)
+    _renderLumenGradient(canvas, size, bossMix);
 
-    // Layer 1 (speed x 0.2): Large organic cells & branching vascular vessel patterns
+    // Layer 1 (speed x 0.2): Soft Translucent Blood Vessels & Distant Cells
     _renderLayer1DeepVesselsAndCells(canvas, size, scrollX * 0.2, time);
 
-    // Layer 2 (speed x 0.5): Gastric wall folds, mucosal villi, tissue texture
-    _renderLayer2GastricFoldsAndVilli(canvas, size, scrollX * 0.5, time);
+    // Layer 2 (speed x 0.5): Mucosal Tissue Silhouette Ridges
+    _renderLayer2MucosalFolds(canvas, size, scrollX * 0.5, time);
 
-    // Layer 3 (speed x 1.0): Foreground micro-particles, glowing acid bubbles & flares
-    _renderLayer3ForegroundParticlesAndBubbles(canvas, size, scrollX * 1.0, time);
+    // Layer 3 (speed x 0.9): Light Buoyant Bio-Bubbles (clean, sparse, non-cluttered)
+    _renderLayer3BuoyantBubbles(canvas, size, scrollX * 0.9, time);
   }
 
-  // --------------------------------------------------------------------------
-  // LAYER 0: BASE GRADIENT
-  // --------------------------------------------------------------------------
-  void _renderDeepGradient(Canvas canvas, Size size) {
+  void _renderLumenGradient(Canvas canvas, Size size, double bossMix) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final topColor = Color.lerp(theme.topSkyBg, const Color(0xFF3E1938), bossMix * 0.5)!;
+    final midColor = Color.lerp(theme.midLumenBg, const Color(0xFF5A2348), bossMix * 0.45)!;
+
     final paint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          theme.deepBg,
-          theme.vesselColor.withValues(alpha: 0.4),
-          theme.deepBg,
-        ],
+        colors: [topColor, midColor, topColor],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, paint);
   }
 
-  // --------------------------------------------------------------------------
-  // LAYER 1 (speed x 0.2): Large Organic Cells & Blood Vessel Patterns
-  // --------------------------------------------------------------------------
   void _renderLayer1DeepVesselsAndCells(Canvas canvas, Size size, double offset, double time) {
     final vesselPaint = Paint()
-      ..color = theme.vesselColor.withValues(alpha: 0.35)
+      ..color = theme.vesselColor.withValues(alpha: 0.24)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 24.0
+      ..strokeWidth = 22.0
       ..strokeCap = StrokeCap.round;
 
-    final cellPaint = Paint()
-      ..style = PaintingStyle.fill;
-
-    final cellRimPaint = Paint()
+    final cellFill = Paint()..style = PaintingStyle.fill;
+    final cellRim = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
+      ..strokeWidth = 2.0;
 
-    // Draw 3 continuous branching blood vessels
-    final step = 380.0;
+    const step = 420.0;
     final startIdx = (offset / step).floor() - 1;
     final endIdx = ((offset + size.width) / step).ceil() + 1;
 
     for (int i = startIdx; i <= endIdx; i++) {
       final baseX = (i * step) - offset;
 
-      // Deep vessel branch
       final path = Path()
-        ..moveTo(baseX - 60, -30)
+        ..moveTo(baseX - 40, -20)
         ..cubicTo(
-          baseX + 100, size.height * 0.35 + math.sin(i * 1.5) * 40,
-          baseX + 220, size.height * 0.65 + math.cos(i * 1.7) * 40,
-          baseX + step + 60, size.height + 30,
+          baseX + 120,
+          size.height * 0.32 + math.sin(i * 1.4) * 35,
+          baseX + 260,
+          size.height * 0.68 + math.cos(i * 1.6) * 35,
+          baseX + step + 40,
+          size.height + 20,
         );
       canvas.drawPath(path, vesselPaint);
 
-      // Large organic erythrocytes / cells (biconcave disc look)
-      final cellX = baseX + 140.0 + math.sin(i * 3.1 + time * 0.5) * 20.0;
-      final cellY = (size.height * 0.25) + ((i * 73) % (size.height * 0.55).toInt()) +
-          math.cos(i * 2.3 + time * 0.6) * 15.0;
-      final radius = 28.0 + ((i * 17) % 20);
+      // Soft biconcave background cells (low opacity so foreground stands out!)
+      final cellX = baseX + 160.0 + math.sin(i * 2.7 + time * 0.4) * 18.0;
+      final cellY = (size.height * 0.28) +
+          ((i.abs() * 67) % math.max(1, (size.height * 0.44).toInt())) +
+          math.cos(i * 2.1 + time * 0.5) * 14.0;
+      final radius = 22.0 + ((i.abs() * 13) % 16);
 
-      // Outer cell body
-      cellPaint.color = theme.cellColor.withValues(alpha: 0.22);
-      canvas.drawCircle(Offset(cellX, cellY), radius, cellPaint);
-
-      // Inner biconcave center dimple
-      cellPaint.color = theme.deepBg.withValues(alpha: 0.35);
-      canvas.drawCircle(Offset(cellX, cellY), radius * 0.45, cellPaint);
-
-      // Cell border
-      cellRimPaint.color = theme.cellColor.withValues(alpha: 0.45);
-      canvas.drawCircle(Offset(cellX, cellY), radius, cellRimPaint);
+      cellFill.color = theme.cellColor.withValues(alpha: 0.14);
+      canvas.drawCircle(Offset(cellX, cellY), radius, cellFill);
+      cellFill.color = theme.topSkyBg.withValues(alpha: 0.16);
+      canvas.drawCircle(Offset(cellX, cellY), radius * 0.44, cellFill);
+      cellRim.color = theme.cellColor.withValues(alpha: 0.25);
+      canvas.drawCircle(Offset(cellX, cellY), radius, cellRim);
     }
   }
 
-  // --------------------------------------------------------------------------
-  // LAYER 2 (speed x 0.5): Gastric Wall Folds, Villi & Tissue Texture
-  // --------------------------------------------------------------------------
-  void _renderLayer2GastricFoldsAndVilli(Canvas canvas, Size size, double offset, double time) {
+  void _renderLayer2MucosalFolds(Canvas canvas, Size size, double offset, double time) {
     final foldPaint = Paint()
-      ..color = theme.wallColor.withValues(alpha: 0.30)
+      ..color = theme.wallColor.withValues(alpha: 0.20)
       ..style = PaintingStyle.fill;
 
-    final villiPaint = Paint()
-      ..color = theme.villiColor.withValues(alpha: 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-
-    final step = 240.0;
+    const step = 280.0;
     final startIdx = (offset / step).floor() - 1;
     final endIdx = ((offset + size.width) / step).ceil() + 1;
 
-    // Top and Bottom undulating mucosal wall folds
-    final topFold = Path()..moveTo(-50, 0);
-    final bottomFold = Path()..moveTo(-50, size.height);
+    final topFold = Path()..moveTo(-60, 0);
+    final bottomFold = Path()..moveTo(-60, size.height);
 
     for (int i = startIdx; i <= endIdx; i++) {
       final x = (i * step) - offset;
-      final topWave = 35.0 + math.sin(i * 1.8 + time * 0.8) * 18.0;
-      final bottomWave = size.height - 35.0 - math.cos(i * 1.8 + time * 0.8) * 18.0;
+      final topWave = size.height * 0.12 + math.sin(i * 1.6 + time * 0.6) * 14.0;
+      final bottomWave = size.height * 0.88 - math.cos(i * 1.6 + time * 0.6) * 14.0;
 
       topFold.lineTo(x, topWave);
       bottomFold.lineTo(x, bottomWave);
-
-      // Micro Villi finger-like protrusions
-      for (int v = 0; v < 4; v++) {
-        final vx = x + (v * (step / 4));
-        final vh = 16.0 + math.sin(vx * 0.05 + time * 1.5) * 8.0;
-
-        // Top villi hanging down
-        canvas.drawLine(Offset(vx, 0), Offset(vx + math.sin(time + vx) * 4, topWave + vh), villiPaint);
-
-        // Bottom villi sticking up
-        canvas.drawLine(
-          Offset(vx, size.height),
-          Offset(vx + math.cos(time + vx) * 4, bottomWave - vh),
-          villiPaint,
-        );
-      }
     }
 
-    topFold.lineTo(size.width + 50, 0);
+    topFold.lineTo(size.width + 60, 0);
     topFold.close();
-    bottomFold.lineTo(size.width + 50, size.height);
+    bottomFold.lineTo(size.width + 60, size.height);
     bottomFold.close();
 
     canvas.drawPath(topFold, foldPaint);
     canvas.drawPath(bottomFold, foldPaint);
   }
 
-  // --------------------------------------------------------------------------
-  // LAYER 3 (speed x 1.0): Foreground Micro-Particles, Acid Bubbles & Glow Flares
-  // --------------------------------------------------------------------------
-  void _renderLayer3ForegroundParticlesAndBubbles(
-      Canvas canvas, Size size, double offset, double time) {
+  void _renderLayer3BuoyantBubbles(Canvas canvas, Size size, double offset, double time) {
     final bubbleFill = Paint()..style = PaintingStyle.fill;
-    final bubbleHighlight = Paint()
-      ..color = Colors.white.withValues(alpha: 0.75)
-      ..style = PaintingStyle.fill;
     final bubbleStroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 1.2;
+    final shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.55);
 
-    final particlePaint = Paint()..style = PaintingStyle.fill;
-
-    final step = 160.0;
+    const step = 210.0;
     final startIdx = (offset / step).floor() - 1;
     final endIdx = ((offset + size.width) / step).ceil() + 1;
 
     for (int i = startIdx; i <= endIdx; i++) {
-      // Acid Bubble (Floating upward with wobble)
-      final rawX = (i * step) + ((i * 37) % 80);
+      final rawX = (i * step) + ((i.abs() * 41) % 100);
       final bx = rawX - offset;
-      final phase = (time * 1.8 + (i * 1.3)) % 1.0;
-      final by = size.height - (phase * (size.height + 60.0));
-      final bubbleRadius = 6.0 + ((i * 13) % 10);
+      final phase = (time * 0.18 + (i.abs() * 0.37)) % 1.0;
+      final by = size.height - (phase * (size.height + 50.0));
+      final r = 5.0 + ((i.abs() * 7) % 8);
 
-      // Bubble Body
-      bubbleFill.color = theme.bubbleColor.withValues(alpha: 0.28);
-      canvas.drawCircle(Offset(bx, by), bubbleRadius, bubbleFill);
+      bubbleFill.color = theme.bubbleColor.withValues(alpha: 0.16);
+      canvas.drawCircle(Offset(bx, by), r, bubbleFill);
 
-      // Bubble Rim
-      bubbleStroke.color = theme.bubbleColor.withValues(alpha: 0.75);
-      canvas.drawCircle(Offset(bx, by), bubbleRadius, bubbleStroke);
+      bubbleStroke.color = theme.bubbleColor.withValues(alpha: 0.38);
+      canvas.drawCircle(Offset(bx, by), r, bubbleStroke);
 
-      // Bubble Specular Reflection Dot
-      canvas.drawCircle(
-        Offset(bx - bubbleRadius * 0.35, by - bubbleRadius * 0.35),
-        bubbleRadius * 0.25,
-        bubbleHighlight,
-      );
-
-      // Bioluminescent Foreground Micro-particle (Glowing spark)
-      final px = (i * step * 0.7 + math.sin(time * 2.0 + i) * 30.0) - offset;
-      final py = ((i * 89) % size.height.toInt()) + math.cos(time * 1.5 + i) * 20.0;
-
-      particlePaint.color = theme.particleGlow.withValues(alpha: 0.55);
-      canvas.drawCircle(Offset(px, py), 2.5, particlePaint);
-
-      // Subtle particle halo
-      particlePaint.color = theme.particleGlow.withValues(alpha: 0.15);
-      canvas.drawCircle(Offset(px, py), 6.5, particlePaint);
+      canvas.drawCircle(Offset(bx - r * 0.35, by - r * 0.35), r * 0.22, shinePaint);
     }
   }
 }

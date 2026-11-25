@@ -72,8 +72,13 @@ class ArcadeEnemy {
         break;
 
       case EnemyType.spikeVirion:
-        // Circling / homing slight drift
-        position += velocity * dt;
+        // Tracking viral capsule: glides steadily left while adjusting toward player altitude
+        final dy = (playerPos.dy - position.dy).clamp(-65.0, 65.0);
+        final trackY = (position.dx - playerPos.dx).abs() < 420 ? dy * 1.15 : 0.0;
+        position = Offset(
+          position.dx + velocity.dx * dt,
+          position.dy + trackY * dt,
+        );
         break;
 
       case EnemyType.cytokineBlob:

@@ -46,19 +46,21 @@ class _CapsuleParallaxBackgroundState extends State<CapsuleParallaxBackground>
     return Stack(
       children: [
         Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return CustomPaint(
-                painter: _StomachCosmicPainter(
-                  progress: _controller.value,
-                  showHeroCapsule: widget.showHeroCapsule,
-                  showEnemySilhouettes: widget.showEnemySilhouettes,
-                  capsuleScale: widget.capsuleScale,
-                  capsuleFraction: widget.capsuleCenterFraction ?? const Offset(0.78, 0.45),
-                ),
-              );
-            },
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _StomachCosmicPainter(
+                    progress: _controller.value,
+                    showHeroCapsule: widget.showHeroCapsule,
+                    showEnemySilhouettes: widget.showEnemySilhouettes,
+                    capsuleScale: widget.capsuleScale,
+                    capsuleFraction: widget.capsuleCenterFraction ?? const Offset(0.78, 0.45),
+                  ),
+                );
+              },
+            ),
           ),
         ),
         if (widget.child != null) widget.child!,
@@ -86,123 +88,114 @@ class _StomachCosmicPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = progress * math.pi * 2;
 
-    // 1. Base deep space-like cosmic stomach background gradient
+    // 1. Base luminous ocean-teal digestive background gradient
     final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final bgPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          CapsuleColors.darkNavy,
-          Color(0xFF0F172A),
-          Color(0xFF1E1035), // Deep purple tint
-          Color(0xFF2A0815), // Deep organic crimson
-          CapsuleColors.darkNavy,
+          Color(0xFF0B253C),
+          Color(0xFF103857),
+          Color(0xFF164B70),
+          Color(0xFF0E3454),
         ],
-        stops: [0.0, 0.3, 0.6, 0.85, 1.0],
+        stops: [0.0, 0.35, 0.70, 1.0],
       ).createShader(bgRect);
     canvas.drawRect(bgRect, bgPaint);
 
-    // 2. Pulsing Glow Spheres in the background
-    final pulse1 = (math.sin(t * 1.5) + 1.0) * 0.5; // 0..1
+    // 2. Soft Turquoise & Mint Glow Spheres
+    final pulse1 = (math.sin(t * 1.5) + 1.0) * 0.5;
     final pulse2 = (math.cos(t * 2.0) + 1.0) * 0.5;
 
     final glowPaint1 = Paint()
       ..shader = RadialGradient(
         colors: [
-          CapsuleColors.purple.withValues(alpha: 0.18 + 0.1 * pulse1),
+          CapsuleColors.turquoise.withValues(alpha: 0.16 + 0.08 * pulse1),
           Colors.transparent,
         ],
       ).createShader(Rect.fromCircle(
-        center: Offset(size.width * 0.25, size.height * 0.35),
-        radius: size.width * 0.35,
+        center: Offset(size.width * 0.25, size.height * 0.30),
+        radius: size.width * 0.40,
       ));
-    canvas.drawCircle(Offset(size.width * 0.25, size.height * 0.35), size.width * 0.35, glowPaint1);
+    canvas.drawCircle(Offset(size.width * 0.25, size.height * 0.30), size.width * 0.40, glowPaint1);
 
     final glowPaint2 = Paint()
       ..shader = RadialGradient(
         colors: [
-          CapsuleColors.cyanGlow.withValues(alpha: 0.12 + 0.08 * pulse2),
+          CapsuleColors.cyanGlow.withValues(alpha: 0.14 + 0.06 * pulse2),
           Colors.transparent,
         ],
       ).createShader(Rect.fromCircle(
-        center: Offset(size.width * 0.75, size.height * 0.65),
-        radius: size.width * 0.4,
+        center: Offset(size.width * 0.78, size.height * 0.65),
+        radius: size.width * 0.42,
       ));
-    canvas.drawCircle(Offset(size.width * 0.75, size.height * 0.65), size.width * 0.4, glowPaint2);
+    canvas.drawCircle(Offset(size.width * 0.78, size.height * 0.65), size.width * 0.42, glowPaint2);
 
-    // 3. Floating particle system (small cosmic/digestive dots moving randomly)
+    // 3. Light Buoyant Bio-particles (sparse and clean)
     final rand = math.Random(42);
     final particlePaint = Paint()..style = PaintingStyle.fill;
-    for (int i = 0; i < 45; i++) {
+    for (int i = 0; i < 24; i++) {
       final seedX = rand.nextDouble();
       final seedY = rand.nextDouble();
-      final speed = 0.05 + rand.nextDouble() * 0.15;
-      final sizeDot = 1.0 + rand.nextDouble() * 2.8;
+      final speed = 0.05 + rand.nextDouble() * 0.12;
+      final sizeDot = 1.4 + rand.nextDouble() * 2.2;
 
-      final px = (seedX * size.width + math.sin(t * speed * 3 + i) * 35.0) % size.width;
+      final px = (seedX * size.width + math.sin(t * speed * 3 + i) * 30.0) % size.width;
       final py = (seedY * size.height - progress * size.height * speed * 2 + size.height) % size.height;
 
-      final alpha = (0.2 + 0.5 * math.sin(t + i)).clamp(0.15, 0.75);
-      final isCyan = i % 2 == 0;
-      particlePaint.color = (isCyan ? CapsuleColors.cyanGlow : CapsuleColors.turquoise).withValues(alpha: alpha);
+      final alpha = (0.18 + 0.35 * math.sin(t + i)).clamp(0.12, 0.55);
+      final isMint = i % 2 == 0;
+      particlePaint.color = (isMint ? CapsuleColors.mintGreen : CapsuleColors.cyanGlow).withValues(alpha: alpha);
       canvas.drawCircle(Offset(px, py), sizeDot, particlePaint);
     }
 
-    // 4. Floating bubbles rising from bottom
-    final bubblePaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2;
-    for (int b = 0; b < 18; b++) {
+    // 4. Buoyant Organic Bubbles rising cleanly
+    final bubblePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (int b = 0; b < 14; b++) {
       final bSeedX = rand.nextDouble();
       final bSeedY = rand.nextDouble();
-      final bRadius = 5.0 + rand.nextDouble() * 14.0;
-      final bSpeed = 0.2 + rand.nextDouble() * 0.4;
+      final bRadius = 5.0 + rand.nextDouble() * 12.0;
+      final bSpeed = 0.18 + rand.nextDouble() * 0.30;
 
-      final bx = (bSeedX * size.width + math.sin(t * 2.0 + b) * 25.0) % size.width;
+      final bx = (bSeedX * size.width + math.sin(t * 2.0 + b) * 20.0) % size.width;
       final by = (size.height - ((progress * bSpeed * size.height * 1.5 + bSeedY * size.height) % (size.height + 60))) - 20;
 
-      final bAlpha = (0.15 + 0.25 * math.sin(t + b)).clamp(0.1, 0.45);
+      final bAlpha = (0.14 + 0.20 * math.sin(t + b)).clamp(0.10, 0.36);
       bubblePaint.color = CapsuleColors.cyanGlow.withValues(alpha: bAlpha);
       canvas.drawCircle(Offset(bx, by), bRadius, bubblePaint);
 
-      // Bubble highlight shine
       final shinePaint = Paint()..color = Colors.white.withValues(alpha: bAlpha * 0.7);
       canvas.drawCircle(Offset(bx - bRadius * 0.35, by - bRadius * 0.35), bRadius * 0.25, shinePaint);
     }
 
-    // 5. Drifting Organic Cells (erythrocytes and biological vesicles)
-    for (int c = 0; c < 14; c++) {
+    // 5. Soft Coral Biological Cells drifting gently
+    for (int c = 0; c < 8; c++) {
       final cSeedX = rand.nextDouble();
       final cSeedY = rand.nextDouble();
-      final depth = 0.3 + rand.nextDouble() * 0.7;
-      final cellR = (16.0 + rand.nextDouble() * 26.0) * depth;
+      final depth = 0.35 + rand.nextDouble() * 0.55;
+      final cellR = (15.0 + rand.nextDouble() * 20.0) * depth;
 
-      final cx = (cSeedX * size.width + progress * size.width * (0.2 + depth * 0.3)) % (size.width + 120) - 60;
-      final cy = cSeedY * size.height + math.sin(t * 1.2 + c * 2.0) * 24.0;
+      final cx = (cSeedX * size.width + progress * size.width * (0.18 + depth * 0.25)) % (size.width + 120) - 60;
+      final cy = cSeedY * size.height + math.sin(t * 1.1 + c * 2.0) * 20.0;
 
-      // Cell outer rim
       final cellPaint = Paint()
-        ..color = Color(0xFFEF4444).withValues(alpha: 0.12 * depth)
+        ..color = CapsuleColors.coral.withValues(alpha: 0.12 * depth)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(cx, cy), cellR, cellPaint);
 
-      // Cell biconcave inner dent
       final dentPaint = Paint()
-        ..color = Color(0xFF7F1D1D).withValues(alpha: 0.18 * depth)
+        ..color = const Color(0xFF0E3454).withValues(alpha: 0.15 * depth)
         ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(cx, cy), cellR * 0.48, dentPaint);
-
-      // Subtle cyan bio-fluorescence border
-      final rimPaint = Paint()
-        ..color = CapsuleColors.purple.withValues(alpha: 0.15 * depth)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0;
-      canvas.drawCircle(Offset(cx, cy), cellR, rimPaint);
+      canvas.drawCircle(Offset(cx, cy), cellR * 0.45, dentPaint);
     }
 
-    // 6. Stomach Peristaltic Wall Contours (Organic gastric ridges at top & bottom)
+    // 6. Soft Translucent Gastric & Mucosal Wall Contours
     _drawGastricWalls(canvas, size, t);
 
-    // 7. Enemy silhouettes gliding in background
+    // 7. Enemy silhouettes gliding softly
     if (showEnemySilhouettes) {
       _drawEnemySilhouettes(canvas, size, t);
     }
@@ -210,19 +203,18 @@ class _StomachCosmicPainter extends CustomPainter {
     // 8. Animated Hero Capsule
     if (showHeroCapsule) {
       final capX = size.width * capsuleFraction.dx;
-      final capY = size.height * capsuleFraction.dy + math.sin(t * 1.5) * 16.0;
+      final capY = size.height * capsuleFraction.dy + math.sin(t * 1.5) * 14.0;
       _drawCapsuleHero(canvas, Offset(capX, capY), t, capsuleScale);
     }
   }
 
   void _drawGastricWalls(Canvas canvas, Size size, double t) {
-    // Upper organic wall
     final topWall = Path()..moveTo(0, 0);
-    topWall.lineTo(0, size.height * 0.12 + math.sin(t * 0.8) * 12.0);
-    for (double x = 0; x <= size.width; x += 30) {
-      final y = size.height * 0.11 +
-          math.sin(t + x * 0.008) * 14.0 +
-          math.cos(t * 0.5 + x * 0.015) * 8.0;
+    topWall.lineTo(0, size.height * 0.10 + math.sin(t * 0.8) * 10.0);
+    for (double x = 0; x <= size.width; x += 32) {
+      final y = size.height * 0.09 +
+          math.sin(t + x * 0.008) * 11.0 +
+          math.cos(t * 0.5 + x * 0.014) * 6.0;
       topWall.lineTo(x, y);
     }
     topWall.lineTo(size.width, 0);
@@ -233,20 +225,18 @@ class _StomachCosmicPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFF881337).withValues(alpha: 0.45),
-          Color(0xFF4C0519).withValues(alpha: 0.20),
+          CapsuleColors.turquoise.withValues(alpha: 0.24),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.2));
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.16));
     canvas.drawPath(topWall, wallPaintTop);
 
-    // Lower organic wall with subtle glowing gastric fluid edge
     final botWall = Path()..moveTo(0, size.height);
-    botWall.lineTo(0, size.height * 0.88 + math.sin(t + 1.5) * 14.0);
-    for (double x = 0; x <= size.width; x += 30) {
-      final y = size.height * 0.89 +
-          math.cos(t * 0.9 + x * 0.007) * 14.0 +
-          math.sin(t * 0.4 + x * 0.014) * 8.0;
+    botWall.lineTo(0, size.height * 0.90 + math.sin(t + 1.5) * 10.0);
+    for (double x = 0; x <= size.width; x += 32) {
+      final y = size.height * 0.91 +
+          math.cos(t * 0.9 + x * 0.007) * 11.0 +
+          math.sin(t * 0.4 + x * 0.014) * 6.0;
       botWall.lineTo(x, y);
     }
     botWall.lineTo(size.width, size.height);
@@ -257,11 +247,10 @@ class _StomachCosmicPainter extends CustomPainter {
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
         colors: [
-          Color(0xFF4C0519).withValues(alpha: 0.5),
-          Color(0xFF1E1035).withValues(alpha: 0.25),
+          CapsuleColors.coral.withValues(alpha: 0.22),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromLTWH(0, size.height * 0.8, size.width, size.height * 0.2));
+      ).createShader(Rect.fromLTWH(0, size.height * 0.84, size.width, size.height * 0.16));
     canvas.drawPath(botWall, wallPaintBot);
   }
 

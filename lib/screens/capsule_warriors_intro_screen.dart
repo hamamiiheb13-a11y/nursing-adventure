@@ -147,8 +147,17 @@ class _CinematicIntroPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Background space/stomach
-    final bgPaint = Paint()..color = CapsuleColors.darkNavy;
+    // Luminous ocean-teal biological backdrop
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          CapsuleColors.deepOcean,
+          CapsuleColors.oceanSurface,
+          Color(0xFF154E70),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
     final t = progress * 6.1; // Elapsed seconds
@@ -360,7 +369,7 @@ class _CinematicIntroPainter extends CustomPainter {
     _drawCapsuleBody(canvas, Offset(size.width * 0.65, size.height * 0.5), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
 
     // Fullscreen Wipe Overlay
-    final wipePaint = Paint()..color = CapsuleColors.darkNavy.withValues(alpha: stepProgress);
+    final wipePaint = Paint()..color = CapsuleColors.deepOcean.withValues(alpha: stepProgress);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), wipePaint);
 
     // Cyan wipe scanline
@@ -397,7 +406,7 @@ class _CinematicIntroPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF881337), Color(0xFF4C0519)],
+        colors: [Color(0xFFFB7185), Color(0xFFBE185D)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     canvas.drawPath(topPath, wallPaint);

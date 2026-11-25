@@ -152,31 +152,36 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     }
 
     final size = MediaQuery.of(context).size;
+    final isPortraitMobile = size.width < 680 && size.height > size.width;
     final isCompact = size.height < 650 || size.width < 850;
 
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: true,
         showEnemySilhouettes: true,
-        capsuleScale: isCompact ? 1.05 : 1.35,
-        capsuleCenterFraction: isCompact ? const Offset(0.82, 0.5) : const Offset(0.76, 0.45),
+        capsuleScale: isPortraitMobile ? 0.92 : (isCompact ? 1.05 : 1.35),
+        capsuleCenterFraction: isPortraitMobile
+            ? const Offset(0.78, 0.16)
+            : (isCompact ? const Offset(0.82, 0.5) : const Offset(0.76, 0.45)),
         child: SafeArea(
           child: Stack(
             children: [
               // Left / Center Main Game Arcade Menu
               Positioned.fill(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 24 : 48,
-                    vertical: isCompact ? 12 : 24,
+                  padding: EdgeInsets.fromLTRB(
+                    isPortraitMobile ? 20 : (isCompact ? 24 : 48),
+                    isCompact ? 12 : 24,
+                    isPortraitMobile ? 20 : (isCompact ? 24 : 48),
+                    isCompact ? 32 : 40,
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Menu Column
                       Expanded(
-                        flex: isCompact ? 6 : 5,
+                        flex: isPortraitMobile ? 10 : (isCompact ? 6 : 5),
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,11 +199,12 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
                         ),
                       ),
 
-                      // Spacer for the hero capsule area on the right
-                      Expanded(
-                        flex: isCompact ? 4 : 5,
-                        child: const SizedBox.shrink(),
-                      ),
+                      // Spacer for the hero capsule area on landscape/desktop
+                      if (!isPortraitMobile)
+                        Expanded(
+                          flex: isCompact ? 4 : 5,
+                          child: const SizedBox.shrink(),
+                        ),
                     ],
                   ),
                 ),
@@ -206,16 +212,18 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
               // Bottom footer watermark
               Positioned(
-                bottom: 12,
-                left: 0,
-                right: 0,
+                bottom: 10,
+                left: 16,
+                right: 16,
                 child: Center(
                   child: Text(
                     'v2.0 | Éducation Médicale MICI • ISSIT PFE',
-                    style: GoogleFonts.orbitron(
-                      color: CapsuleColors.textSubtle.withValues(alpha: 0.6),
-                      fontSize: 10.5,
-                      letterSpacing: 1.5,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: CapsuleColors.textSubtle.withValues(alpha: 0.72),
+                      fontSize: 11,
+                      letterSpacing: 1.0,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -232,12 +240,12 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: CapsuleColors.purple.withValues(alpha: 0.25),
+        color: CapsuleColors.electricBlue.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.6), width: 1.2),
+        border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.7), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: CapsuleColors.cyanGlow.withValues(alpha: 0.2),
+            color: CapsuleColors.cyanGlow.withValues(alpha: 0.22),
             blurRadius: 10,
           ),
         ],

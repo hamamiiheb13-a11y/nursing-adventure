@@ -61,20 +61,23 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
   }
 
   String _calculateGrade(int correctCount) {
-    if (correctCount >= 28) return 'MAJOR DE PROMOTION • MENTION TRÈS BIEN';
-    if (correctCount >= 22) return 'CERTIFIÉ AVEC ÉLOGES • MENTION BIEN';
-    if (correctCount >= 16) return 'VALIDÉ AVEC SUCCÈS • MENTION ASSEZ BIEN';
+    final total = allGastroQuestions.length;
+    final ratio = total > 0 ? correctCount / total : 0.0;
+    if (ratio >= 0.85) return 'MAJOR DE PROMOTION • MENTION TRÈS BIEN';
+    if (ratio >= 0.70) return 'CERTIFIÉ AVEC ÉLOGES • MENTION BIEN';
+    if (ratio >= 0.50) return 'VALIDÉ AVEC SUCCÈS • MENTION ASSEZ BIEN';
     return 'ADMIS EN SOINS INFIRMIERS GASTRO-ENTÉROLOGIE';
   }
 
   void _onShare() {
     _audio.playClick();
     final correct = _correctQuestionsCount;
-    final text = 'J\'ai terminé CAPSULE WARRIORS avec ${widget.progress.totalScore} PTS et $correct/33 questions correctes !';
+    final total = allGastroQuestions.length;
+    final text = 'J\'ai terminé CAPSULE WARRIORS avec ${widget.progress.totalScore} PTS et $correct/$total questions correctes !';
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: CapsuleColors.cardNavy,
+        backgroundColor: CapsuleColors.oceanSurface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -82,7 +85,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
         ),
         content: Text(
           'Résultats copiés dans le presse-papier !',
-          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700),
+          style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -96,7 +99,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
     final grade = _calculateGrade(correctCount);
 
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: Stack(
         children: [
           // 1. Massive Celebration Particle Burst Canvas
@@ -115,7 +118,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 18 : 36,
+                horizontal: isCompact || media.size.width < 600 ? 16 : 36,
                 vertical: isCompact ? 12 : 24,
               ),
               child: Center(
@@ -155,18 +158,21 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
   Widget _buildHeaderBanner(String grade, bool isCompact) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 6,
           children: [
-            const Icon(Icons.school_rounded, color: CapsuleColors.gold, size: 28),
-            const SizedBox(width: 10),
+            const Icon(Icons.school_rounded, color: CapsuleColors.gold, size: 26),
             Text(
               'ISSIT TUNIS • DIPLÔME OFFICIEL DE FIN D\'ÉTUDES',
-              style: GoogleFonts.orbitron(
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
                 color: CapsuleColors.gold,
-                fontSize: isCompact ? 11 : 13,
+                fontSize: isCompact ? 11.5 : 13.5,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 1.5,
+                letterSpacing: 0.9,
               ),
             ),
           ],
@@ -175,34 +181,35 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
         Text(
           'FÉLICITATIONS DOCTEUR !',
           textAlign: TextAlign.center,
-          style: GoogleFonts.orbitron(
-            fontSize: isCompact ? 24 : 36,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: isCompact ? 24 : 34,
             fontWeight: FontWeight.w900,
-            letterSpacing: 3.5,
+            letterSpacing: 2.0,
             color: Colors.white,
             shadows: [
               Shadow(
-                color: CapsuleColors.cyanGlow.withValues(alpha: 0.8),
-                blurRadius: 20,
+                color: CapsuleColors.cyanGlow.withValues(alpha: 0.7),
+                blurRadius: 18,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
-            color: CapsuleColors.purple.withValues(alpha: 0.25),
+            color: CapsuleColors.softViolet.withValues(alpha: 0.25),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: CapsuleColors.purple),
+            border: Border.all(color: CapsuleColors.softViolet),
           ),
           child: Text(
             grade,
-            style: GoogleFonts.orbitron(
-              color: CapsuleColors.turquoise,
-              fontSize: isCompact ? 10 : 12,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              color: CapsuleColors.mintGlow,
+              fontSize: isCompact ? 11 : 12.5,
               fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
+              letterSpacing: 0.8,
             ),
           ),
         ),
@@ -211,46 +218,65 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
   }
 
   Widget _buildMetricsAndTrophy(int correctCount, bool isCompact) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.8), width: 1.8),
-        boxShadow: [
-          BoxShadow(
-            color: CapsuleColors.gold.withValues(alpha: 0.2),
-            blurRadius: 24,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Canvas Drawn Trophy / Medal
-          SizedBox(
-            width: 88,
-            height: 88,
-            child: CustomPaint(
-              painter: _TrophyMedalPainter(correctCount: correctCount),
-            ),
-          ),
-          const SizedBox(width: 20),
+    final totalQuestions = allGastroQuestions.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+        final statsWrap = Wrap(
+          alignment: WrapAlignment.spaceAround,
+          spacing: 16,
+          runSpacing: 12,
+          children: [
+            _buildStatColumn('SCORE GLOBAL', '${widget.progress.totalScore} PTS', CapsuleColors.gold),
+            _buildStatColumn('XP TOTAL', '${widget.progress.totalXP} XP', CapsuleColors.cyanGlow),
+            _buildStatColumn('RÉPONSES CORRECTES', '$correctCount / $totalQuestions', CapsuleColors.successGreen),
+            _buildStatColumn('STAGES VALIDÉS', '7 / 7 COMPLÉTÉS', CapsuleColors.turquoise),
+          ],
+        );
 
-          // Summary Stats
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.spaceAround,
-              runSpacing: 12,
-              children: [
-                _buildStatColumn('SCORE GLOBAL', '${widget.progress.totalScore} PTS', CapsuleColors.gold),
-                _buildStatColumn('XP TOTAL', '${widget.progress.totalXP} XP', CapsuleColors.cyanGlow),
-                _buildStatColumn('RÉPONSES CORRECTES', '$correctCount / 33', CapsuleColors.successGreen),
-                _buildStatColumn('STAGES VALIDÉS', '7 / 7 COMPLÉTÉS', CapsuleColors.turquoise),
-              ],
-            ),
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isNarrow ? 16 : 20),
+          decoration: BoxDecoration(
+            color: CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.85), width: 1.8),
+            boxShadow: [
+              BoxShadow(
+                color: CapsuleColors.gold.withValues(alpha: 0.2),
+                blurRadius: 24,
+              ),
+            ],
           ),
-        ],
-      ),
+          child: isNarrow
+              ? Column(
+                  children: [
+                    SizedBox(
+                      width: 78,
+                      height: 78,
+                      child: CustomPaint(
+                        painter: _TrophyMedalPainter(correctCount: correctCount),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    statsWrap,
+                  ],
+                )
+              : Row(
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      height: 88,
+                      child: CustomPaint(
+                        painter: _TrophyMedalPainter(correctCount: correctCount),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(child: statsWrap),
+                  ],
+                ),
+        );
+      },
     );
   }
 
@@ -306,10 +332,10 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
                 margin: const EdgeInsets.only(right: 10),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
+                  color: CapsuleColors.oceanSurface.withValues(alpha: 0.94),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isDone ? world.primaryColor : const Color(0xFF334155),
+                    color: isDone ? world.primaryColor : CapsuleColors.cardBorder,
                   ),
                 ),
                 child: Column(
@@ -356,17 +382,18 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
 
   Widget _buildRevisionTopicsSection() {
     final revisionIds = widget.progress.revisionQueue;
+    final totalQuestions = allGastroQuestions.length;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: revisionIds.isNotEmpty
-              ? CapsuleColors.dangerOrange.withValues(alpha: 0.5)
-              : CapsuleColors.successGreen.withValues(alpha: 0.5),
+              ? CapsuleColors.dangerOrange.withValues(alpha: 0.55)
+              : CapsuleColors.successGreen.withValues(alpha: 0.55),
         ),
       ),
       child: Column(
@@ -380,15 +407,17 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                revisionIds.isNotEmpty
-                    ? 'POINTS CLINIQUES RECOMMANDÉS POUR RÉVISION (${revisionIds.length})'
-                    : 'MAÎTRISE CLINIQUE TOTALE • AUCUNE RÉVISION REQUISE',
-                style: GoogleFonts.orbitron(
-                  color: revisionIds.isNotEmpty ? CapsuleColors.dangerOrange : CapsuleColors.successGreen,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
+              Expanded(
+                child: Text(
+                  revisionIds.isNotEmpty
+                      ? 'POINTS CLINIQUES RECOMMANDÉS POUR RÉVISION (${revisionIds.length})'
+                      : 'MAÎTRISE CLINIQUE TOTALE • AUCUNE RÉVISION REQUISE',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: revisionIds.isNotEmpty ? CapsuleColors.dangerOrange : CapsuleColors.successGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
@@ -397,7 +426,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
           if (revisionIds.isNotEmpty) ...[
             Text(
               'Les questions suivantes nécessitent une consolidation avant l\'exercice pratique :',
-              style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 11.5),
+              style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 12),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -410,13 +439,13 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
                   decoration: BoxDecoration(
                     color: CapsuleColors.dangerRed.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: CapsuleColors.dangerRed.withValues(alpha: 0.4)),
+                    border: Border.all(color: CapsuleColors.dangerRed.withValues(alpha: 0.45)),
                   ),
                   child: Text(
                     'Q$qId: ${q.anatomicalTheme}',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.plusJakartaSans(
                       color: const Color(0xFFFCA5A5),
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -425,8 +454,8 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
             ),
           ] else ...[
             Text(
-              'Félicitations, vous avez validé avec succès l\'ensemble des 33 compétences cliniques en soins infirmiers MICI.',
-              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+              'Félicitations, vous avez validé avec succès l\'ensemble des $totalQuestions compétences cliniques en soins infirmiers MICI.',
+              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12.5),
             ),
           ],
         ],
@@ -435,54 +464,69 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        // RÉVISER MES RÉPONSES
-        Expanded(
-          child: _buildFinalButton(
-            label: 'RÉVISER MES RÉPONSES',
-            icon: Icons.menu_book_rounded,
-            color: CapsuleColors.cyanGlow,
-            onTap: () {
-              _audio.playClick();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => CapsuleWarriorsReviewScreen(progress: widget.progress),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 560;
+        final reviewBtn = _buildFinalButton(
+          label: 'RÉVISER MES RÉPONSES',
+          icon: Icons.menu_book_rounded,
+          color: CapsuleColors.cyanGlow,
+          onTap: () {
+            _audio.playClick();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CapsuleWarriorsReviewScreen(progress: widget.progress),
+              ),
+            );
+          },
+        );
+        final replayBtn = _buildFinalButton(
+          label: 'REJOUER',
+          icon: Icons.replay_rounded,
+          color: CapsuleColors.softViolet,
+          onTap: () {
+            _audio.playClick();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => CapsuleWarriorsWorldSelectScreen(progress: widget.progress),
+              ),
+            );
+          },
+        );
+        final shareBtn = _buildFinalButton(
+          label: 'PARTAGER',
+          icon: Icons.share_rounded,
+          color: CapsuleColors.gold,
+          onTap: _onShare,
+        );
 
-        // REJOUER
-        Expanded(
-          child: _buildFinalButton(
-            label: 'REJOUER',
-            icon: Icons.replay_rounded,
-            color: CapsuleColors.purple,
-            onTap: () {
-              _audio.playClick();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => CapsuleWarriorsWorldSelectScreen(progress: widget.progress),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              reviewBtn,
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: replayBtn),
+                  const SizedBox(width: 10),
+                  Expanded(child: shareBtn),
+                ],
+              ),
+            ],
+          );
+        }
 
-        // PARTAGER
-        Expanded(
-          child: _buildFinalButton(
-            label: 'PARTAGER',
-            icon: Icons.share_rounded,
-            color: CapsuleColors.gold,
-            onTap: _onShare,
-          ),
-        ),
-      ],
+        return Row(
+          children: [
+            Expanded(flex: 3, child: reviewBtn),
+            const SizedBox(width: 12),
+            Expanded(flex: 2, child: replayBtn),
+            const SizedBox(width: 12),
+            Expanded(flex: 2, child: shareBtn),
+          ],
+        );
+      },
     );
   }
 
@@ -495,7 +539,7 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: CapsuleColors.cardOcean,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color, width: 1.5),
         boxShadow: [
@@ -510,21 +554,30 @@ class _CapsuleWarriorsFinalScreenState extends State<CapsuleWarriorsFinalScreen>
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.orbitron(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

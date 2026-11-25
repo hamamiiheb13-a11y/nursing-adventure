@@ -1,9 +1,12 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'arcade_game_controller.dart';
-import '../widgets/virtual_joystick.dart';
-import '../widgets/tactile_button.dart';
+
+import '../theme/capsule_theme.dart';
 import '../utils/fullscreen_util.dart';
+import '../widgets/tactile_button.dart';
+import '../widgets/virtual_joystick.dart';
+import 'arcade_game_controller.dart';
 
 class ArcadeHudOverlay extends StatefulWidget {
   final ArcadeGameController controller;
@@ -26,348 +29,167 @@ class ArcadeHudOverlay extends StatefulWidget {
 }
 
 class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
+  bool _firePressed = false;
+  bool _shieldPressed = false;
+  bool _specialPressed = false;
+
   ArcadeGameController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final isMobile = media.size.width < 850 || widget.isMobileTouch;
+    final isMobile = media.size.width < 920 || widget.isMobileTouch;
+    final isTightHeight = media.size.height < 420;
     final int progressPercent = (controller.progressFraction * 100).clamp(0, 100).toInt();
+    final bool isBossActive = controller.state == GameState.bossIntro ||
+        controller.state == GameState.bossFight ||
+        controller.state == GameState.bossDefeatAnim;
 
-    return Stack(
-      children: [
-        // ====================================================================
-        // 1. TOP LEFT: 3 HEARTS (Red hearts, grey when lost)
-        // ====================================================================
-        Positioned(
-          top: 12,
-          left: 14,
-          child: _buildHearts(),
-        ),
-
-        // ====================================================================
-        // 2. TOP LEFT SUB-BAR: Active Weapon Badge (docked below hearts)
-        // ====================================================================
-        Positioned(
-          top: 48,
-          left: 14,
-          child: _buildWeaponBadge(),
-        ),
-
-        // ====================================================================
-        // 3. TOP CENTER: Stage name + Progress bar (% completed)
-        // ====================================================================
-        Positioned(
-          top: 12,
-          left: 150,
-          right: 200,
-          child: Center(
-            child: _buildStageProgress(progressPercent),
-          ),
-        ),
-
-        // ====================================================================
-        // 4. TOP RIGHT: Score + XP counter
-        // ====================================================================
-        Positioned(
-          top: 12,
-          right: 96,
-          child: _buildScoreAndXp(),
-        ),
-
-        // ====================================================================
-        // 5. TOP RIGHT ACTIONS: Fullscreen + Pause Button
-        // ====================================================================
-        Positioned(
-          top: 12,
-          right: 14,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildFullscreenButton(),
-              const SizedBox(width: 8),
-              _buildPauseButton(),
-            ],
-          ),
-        ),
-
-        // ====================================================================
-        // 6. KEYBOARD CONTROLS HINT (PC only, bottom center)
-        // ====================================================================
-        if (!isMobile)
+    return SafeArea(
+      child: Stack(
+        children: [
+          // ====================================================================
+          // TOP BAR: HEARTS + STAGE / BOSS BAR + SCORE/XP + ACTIONS
+          // ====================================================================
           Positioned(
-            bottom: 14,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: _buildKeyboardHint(),
-            ),
-          ),
-
-        // ====================================================================
-        // 7. BOTTOM CONTROLS (Mobile Touch: Analog Joystick Left + Skills/Fire Right)
-        // ====================================================================
-        if (isMobile)
-          Positioned(
-            bottom: 6,
-            left: 8,
-            right: 8,
+            top: isTightHeight ? 6 : 10,
+            left: 12,
+            right: 12,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left Virtual Analog Joystick (Analog vector 360°)
-                VirtualAnalogJoystick(
-                  radius: 56,
-                  knobRadius: 26,
-                  onMove: (vector) => controller.setMoveVector(vector),
+                // 1. TOP LEFT: Hearts + Active Weapon & Knowledge Multiplier
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHearts(isTightHeight),
+                    const SizedBox(height: 5),
+                    _buildWeaponBadge(isTightHeight),
+                  ],
                 ),
+                const SizedBox(width: 10),
 
-                // Right Action Buttons (EMP Skill + Shield + Continuous Fire)
+                // 2. TOP CENTER: Mission Progress OR Live Boss Health Bar
+                Expanded(
+                  child: Center(
+                    child: isBossActive
+                        ? _buildBossHpHeader(isTightHeight)
+                        : _buildStageProgress(progressPercent, isTightHeight),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // 3. TOP RIGHT: Score + XP + Fullscreen + Pause
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // EMP Shockwave Special Skill Button
-                    _buildEmpSkillButton(),
-                    const SizedBox(width: 10),
-
-                    // Energy Shield Button
-                    _buildShieldButton(),
-                    const SizedBox(width: 12),
-
-                    // Continuous Fire Button (Hold-to-shoot & Tap)
-                    _buildFireButton(),
+                    _buildScoreAndXp(isTightHeight),
+                    const SizedBox(width: 6),
+                    _buildIconCircleButton(
+                      icon: FullscreenUtil.isFullscreen
+                          ? Icons.fullscreen_exit_rounded
+                          : Icons.fullscreen_rounded,
+                      iconColor: CapsuleColors.cyanGlow,
+                      onTap: () {
+                        FullscreenUtil.toggle();
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    _buildIconCircleButton(
+                      icon: Icons.pause_rounded,
+                      iconColor: Colors.white,
+                      onTap: widget.onPause,
+                    ),
                   ],
                 ),
               ],
             ),
           ),
 
-        // ====================================================================
-        // 8. PAUSE MODAL OVERLAY
-        // ====================================================================
-        if (controller.state == GameState.paused)
-          _buildPauseModal(context),
-      ],
-    );
-  }
-
-  // --- FULLSCREEN TOGGLE BUTTON ---
-  Widget _buildFullscreenButton() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        FullscreenUtil.toggle();
-        setState(() {});
-      },
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF334155)),
-          boxShadow: const [
-            BoxShadow(color: Colors.black45, blurRadius: 8),
-          ],
-        ),
-        child: Icon(
-          FullscreenUtil.isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-          color: const Color(0xFF38BDF8),
-          size: 20,
-        ),
-      ),
-    );
-  }
-
-  // --- EMP SPECIAL SKILL BUTTON ---
-  Widget _buildEmpSkillButton() {
-    final cd = controller.player.specialSkillCooldown;
-    final maxCd = controller.player.specialSkillMaxCooldown;
-    final isReady = cd <= 0;
-    final progress = isReady ? 1.0 : (1.0 - (cd / maxCd)).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: isReady ? controller.triggerSpecialSkill : null,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isReady
-                  ? const Color(0xFF3B0764).withValues(alpha: 0.9)
-                  : const Color(0xFF1E1B4B).withValues(alpha: 0.75),
-              border: Border.all(
-                color: isReady ? const Color(0xFFA855F7) : const Color(0xFF4C1D95),
-                width: 2.0,
+          // ====================================================================
+          // DESKTOP KEYBOARD / MOUSE HINT (Bottom Center, unobtrusive)
+          // ====================================================================
+          if (!isMobile)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _buildKeyboardHint(),
               ),
-              boxShadow: isReady
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFFA855F7).withValues(alpha: 0.5),
-                        blurRadius: 14,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : null,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.electric_bolt_rounded,
-                  color: isReady ? const Color(0xFFE9D5FF) : const Color(0xFF6B7280),
-                  size: 22,
-                ),
-                Text(
-                  isReady ? 'EMP' : '${cd.toStringAsFixed(0)}s',
-                  style: GoogleFonts.inter(
-                    color: isReady ? const Color(0xFFE9D5FF) : const Color(0xFF9CA3AF),
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w800,
+
+          // ====================================================================
+          // TOUCH CONTROLS (Mobile / Tablet: Analog Joystick + Special / Shield / Fire)
+          // ====================================================================
+          if (isMobile)
+            Positioned(
+              bottom: isTightHeight ? 4 : 10,
+              left: 8,
+              right: 10,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Ergonomic 360° Responsive Analog Joystick
+                  VirtualAnalogJoystick(
+                    radius: isTightHeight ? 46 : 54,
+                    knobRadius: isTightHeight ? 21 : 25,
+                    onMove: (vector) => controller.setMoveVector(vector),
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (!isReady)
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 2.5,
-                color: const Color(0xFFA855F7),
-                backgroundColor: Colors.transparent,
+
+                  // Action Cluster: Special (Anti-Inflammatory) + Defense Shield + Fire
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildSpecialSkillButton(isTightHeight),
+                      const SizedBox(width: 10),
+                      _buildShieldButton(isTightHeight),
+                      const SizedBox(width: 12),
+                      _buildFireButton(isTightHeight),
+                    ],
+                  ),
+                ],
               ),
             ),
+
+          // ====================================================================
+          // BOSS INTRO WARNING BANNER
+          // ====================================================================
+          if (controller.state == GameState.bossIntro)
+            _buildBossIntroBanner(),
+
+          // ====================================================================
+          // PAUSE MODAL (Fallback when HUD renders directly)
+          // ====================================================================
+          if (controller.state == GameState.paused)
+            _buildPauseModal(context),
         ],
       ),
     );
   }
 
-  // --- SHIELD BUTTON ---
-  Widget _buildShieldButton() {
-    final isActive = controller.player.isShieldActive;
-    return GestureDetector(
-      onTap: controller.activateShield,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isActive
-              ? const Color(0xFF00E5FF).withValues(alpha: 0.85)
-              : const Color(0xFF0B192C).withValues(alpha: 0.85),
-          border: Border.all(
-            color: const Color(0xFF00E5FF),
-            width: 2.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF00E5FF).withValues(alpha: isActive ? 0.75 : 0.35),
-              blurRadius: isActive ? 16 : 10,
-              spreadRadius: isActive ? 2 : 0,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shield_rounded,
-              color: isActive ? const Color(0xFF0F172A) : Colors.white,
-              size: 22,
-            ),
-            Text(
-              'BOUCLIER',
-              style: TextStyle(
-                color: isActive ? const Color(0xFF0F172A) : const Color(0xFF00E5FF),
-                fontSize: 6.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- FIRE BUTTON (HOLD-TO-SHOOT & TAP) ---
-  Widget _buildFireButton() {
-    return Listener(
-      onPointerDown: (_) {
-        controller.setShooting(true);
-        controller.shoot();
-      },
-      onPointerUp: (_) => controller.setShooting(false),
-      onPointerCancel: (_) => controller.setShooting(false),
-      child: Container(
-        width: 68,
-        height: 68,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            colors: [Color(0xFFFF2A6D), Color(0xFF880E4F)],
-          ),
-          border: Border.all(
-            color: Colors.white,
-            width: 2.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF2A6D).withValues(alpha: 0.7),
-              blurRadius: 18,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.flash_on_rounded, color: Colors.white, size: 28),
-            Text(
-              'FEU',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- 1. HEARTS WIDGET ---
-  Widget _buildHearts() {
+  Widget _buildHearts(bool isTight) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: EdgeInsets.symmetric(horizontal: isTight ? 8 : 11, vertical: isTight ? 4 : 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 10),
-        ],
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(controller.player.maxHearts, (index) {
           final isFull = index < controller.player.hearts;
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Icon(
               isFull ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: isFull ? const Color(0xFFEF4444) : const Color(0xFF475569),
-              size: 22,
+              color: isFull ? CapsuleColors.coral : CapsuleColors.textMuted.withValues(alpha: 0.45),
+              size: isTight ? 18 : 21,
             ),
           );
         }),
@@ -375,18 +197,72 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     );
   }
 
-  // --- 2. STAGE PROGRESS WIDGET ---
-  Widget _buildStageProgress(int percent) {
+  Widget _buildWeaponBadge(bool isTight) {
+    final weapon = controller.equippedWeaponConfig;
+    final dmgMult = controller.player.knowledgeDamageMultiplier;
+    final hasPowerBonus = dmgMult > 1.05;
+
     return Container(
-      constraints: const BoxConstraints(maxWidth: 340),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: isTight ? 8 : 10, vertical: isTight ? 4 : 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 10),
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: controller.player.isMaxSynergy
+              ? CapsuleColors.gold
+              : weapon.glowColor.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            weapon.icon,
+            color: controller.player.isMaxSynergy ? CapsuleColors.gold : weapon.glowColor,
+            size: isTight ? 14 : 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            weapon.shortName,
+            style: GoogleFonts.plusJakartaSans(
+              color: CapsuleColors.textWhite,
+              fontSize: isTight ? 10.5 : 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (hasPowerBonus) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: controller.player.isMaxSynergy
+                    ? CapsuleColors.gold
+                    : CapsuleColors.mintGreen,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'x${dmgMult.toStringAsFixed(1)}',
+                style: GoogleFonts.orbitron(
+                  color: CapsuleColors.deepOcean,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildStageProgress(int percent, bool isTight) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTight ? 5 : 7),
+      decoration: BoxDecoration(
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -394,20 +270,81 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'STAGE ${controller.level} : ${controller.world.title.toUpperCase()}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF00E5FF),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+              Flexible(
+                child: Text(
+                  controller.world.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.cyanGlow,
+                    fontSize: isTight ? 10 : 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '$percent%',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFFFFD166),
-                  fontSize: 10.5,
+                style: GoogleFonts.orbitron(
+                  color: CapsuleColors.gold,
+                  fontSize: isTight ? 10 : 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: controller.progressFraction.clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: CapsuleColors.oceanSurface,
+              valueColor: const AlwaysStoppedAnimation<Color>(CapsuleColors.mintGreen),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBossHpHeader(bool isTight) {
+    final boss = controller.boss;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 360),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: isTight ? 5 : 7),
+      decoration: BoxDecoration(
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.dangerOrange,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  '${boss.name.toUpperCase()} • ${boss.isPhase2 ? "PHASE 2" : "DANGER ${boss.dangerLevel}"}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.gold,
+                    fontSize: isTight ? 10 : 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${boss.currentHp}/${boss.maxHp}',
+                style: GoogleFonts.orbitron(
+                  color: Colors.white,
+                  fontSize: isTight ? 10 : 11,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -415,26 +352,13 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
           ),
           const SizedBox(height: 5),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              height: 6,
-              color: const Color(0xFF1E293B),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: controller.progressFraction.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00E5FF), Color(0xFF38BDF8), Color(0xFFFFD166)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.6),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                ),
+            borderRadius: BorderRadius.circular(5),
+            child: LinearProgressIndicator(
+              value: boss.healthRatio,
+              minHeight: 7,
+              backgroundColor: CapsuleColors.oceanSurface,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.dangerOrange,
               ),
             ),
           ),
@@ -443,22 +367,17 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     );
   }
 
-  // --- 3. SCORE & XP WIDGET ---
-  Widget _buildScoreAndXp() {
+  Widget _buildScoreAndXp(bool isTight) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: isTight ? 9 : 11, vertical: isTight ? 4 : 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 10),
-        ],
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Score
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -466,46 +385,36 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
               Text(
                 'SCORE',
                 style: GoogleFonts.inter(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
+                  color: CapsuleColors.textSubtle,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 '${controller.score}',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.orbitron(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: isTight ? 11.5 : 13,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 12),
-
-          // XP
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD166).withValues(alpha: 0.15),
+              color: CapsuleColors.gold.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFFFD166).withValues(alpha: 0.5)),
+              border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.5)),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.bolt_rounded, color: Color(0xFFFFD166), size: 14),
-                const SizedBox(width: 2),
-                Text(
-                  '+${controller.earnedXp} XP',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFFFD166),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+            child: Text(
+              '+${controller.earnedXp} XP',
+              style: GoogleFonts.plusJakartaSans(
+                color: CapsuleColors.gold,
+                fontSize: isTight ? 10 : 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -513,112 +422,269 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     );
   }
 
-  // --- 4. PAUSE BUTTON (||) ---
-  Widget _buildPauseButton() {
+  Widget _buildIconCircleButton({
+    required IconData icon,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: widget.onPause,
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
-          color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF334155)),
-          boxShadow: const [
-            BoxShadow(color: Colors.black45, blurRadius: 10),
-          ],
+          color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: CapsuleColors.cardBorder),
         ),
-        child: const Icon(Icons.pause_rounded, color: Colors.white, size: 20),
+        child: Icon(icon, color: iconColor, size: 19),
       ),
     );
   }
 
-  // --- 5. WEAPON & AMMO BADGE ---
-  Widget _buildWeaponBadge() {
-    final weapon = controller.equippedWeaponConfig;
+  Widget _buildSpecialSkillButton(bool isTight) {
+    final cd = controller.player.specialSkillCooldown;
+    final maxCd = math.max(1.0, controller.player.specialSkillMaxCooldown);
+    final isReady = cd <= 0;
+    final progress = isReady ? 1.0 : (1.0 - (cd / maxCd)).clamp(0.0, 1.0);
+    final double size = isTight ? 46 : 52;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0E1A).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: weapon.glowColor.withValues(alpha: 0.6)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 10),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(weapon.icon, color: weapon.glowColor, size: 18),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'ARME ACTIVE',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 8,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        if (isReady) {
+          setState(() => _specialPressed = true);
+          controller.triggerSpecialSkill();
+        }
+      },
+      onPointerUp: (_) => setState(() => _specialPressed = false),
+      onPointerCancel: (_) => setState(() => _specialPressed = false),
+      child: AnimatedScale(
+        scale: _specialPressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isReady
+                    ? CapsuleColors.mintGreen.withValues(alpha: 0.25)
+                    : CapsuleColors.deepOcean.withValues(alpha: 0.80),
+                border: Border.all(
+                  color: isReady ? CapsuleColors.mintGreen : CapsuleColors.textMuted.withValues(alpha: 0.4),
+                  width: 2.0,
                 ),
               ),
-              Row(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(
+                    Icons.waves_rounded,
+                    color: isReady ? CapsuleColors.mintGreen : CapsuleColors.textMuted,
+                    size: isTight ? 19 : 22,
+                  ),
                   Text(
-                    weapon.name,
+                    isReady ? 'SPÉCIAL' : '${cd.ceil()}s',
                     style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 12,
+                      color: isReady ? Colors.white : CapsuleColors.textMuted,
+                      fontSize: 7.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (controller.player.hasDoubleShot) ...[
-                    const SizedBox(width: 5),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF38BDF8),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '2X',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
-            ],
-          ),
-          const SizedBox(width: 8),
-          // Infinity Ammo symbol
-          const Icon(Icons.all_inclusive_rounded, color: Color(0xFF38BDF8), size: 16),
-        ],
+            ),
+            if (!isReady)
+              SizedBox(
+                width: size,
+                height: size,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 2.5,
+                  color: CapsuleColors.mintGreen,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  // --- 6. KEYBOARD CONTROLS HINT ---
+  Widget _buildShieldButton(bool isTight) {
+    final isActive = controller.player.isShieldActive;
+    final double size = isTight ? 46 : 52;
+
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        setState(() => _shieldPressed = true);
+        controller.activateShield();
+      },
+      onPointerUp: (_) => setState(() => _shieldPressed = false),
+      onPointerCancel: (_) => setState(() => _shieldPressed = false),
+      child: AnimatedScale(
+        scale: _shieldPressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive
+                ? CapsuleColors.cyanGlow
+                : CapsuleColors.deepOcean.withValues(alpha: 0.82),
+            border: Border.all(
+              color: CapsuleColors.cyanGlow,
+              width: 2.0,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.shield_rounded,
+                color: isActive ? CapsuleColors.deepOcean : Colors.white,
+                size: isTight ? 19 : 22,
+              ),
+              Text(
+                isActive ? '${controller.player.shieldTimer.ceil()}s' : 'DÉFENSE',
+                style: GoogleFonts.plusJakartaSans(
+                  color: isActive ? CapsuleColors.deepOcean : CapsuleColors.cyanGlow,
+                  fontSize: 7.2,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFireButton(bool isTight) {
+    final double size = isTight ? 62 : 70;
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        setState(() => _firePressed = true);
+        controller.setShooting(true);
+        controller.shoot();
+      },
+      onPointerUp: (_) {
+        setState(() => _firePressed = false);
+        controller.setShooting(false);
+      },
+      onPointerCancel: (_) {
+        setState(() => _firePressed = false);
+        controller.setShooting(false);
+      },
+      child: AnimatedScale(
+        scale: _firePressed ? 0.91 : 1.0,
+        duration: const Duration(milliseconds: 70),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [Color(0xFFFB7185), Color(0xFFF97316)],
+            ),
+            border: Border.all(
+              color: Colors.white,
+              width: 2.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFB7185).withValues(alpha: _firePressed ? 0.8 : 0.45),
+                blurRadius: _firePressed ? 16 : 10,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.flash_on_rounded, color: Colors.white, size: isTight ? 25 : 29),
+              const Text(
+                'TIRER',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBossIntroBanner() {
+    final boss = controller.boss;
+    return IgnorePointer(
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          decoration: BoxDecoration(
+            color: CapsuleColors.deepOcean.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: CapsuleColors.dangerOrange, width: 2),
+            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 18)],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'ALERTE PATHOGÈNE • DANGER : ${boss.dangerLevel}',
+                style: GoogleFonts.plusJakartaSans(
+                  color: CapsuleColors.gold,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                boss.name.toUpperCase(),
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                'Votre puissance : x${controller.player.knowledgeDamageMultiplier.toStringAsFixed(1)}',
+                style: GoogleFonts.inter(
+                  color: CapsuleColors.mintGreen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildKeyboardHint() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0E1A).withValues(alpha: 0.8),
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.80),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Text(
-        '⌨️ [WASD / Flèches] Navigation  •  [ESPACE / Clic] Tir  •  [Q / F] Onde EMP  •  [E] Bouclier  •  [F11] Plein écran  •  [ÉCHAP] Pause',
+        '⌨️ [WASD / Flèches] Piloter  •  [ESPACE / Clic] Tir continu  •  [Q / F] Arme Spéciale  •  [E] Bouclier  •  [ÉCHAP] Pause',
         style: GoogleFonts.inter(
-          color: const Color(0xFF94A3B8),
+          color: CapsuleColors.textSubtle,
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
@@ -626,59 +692,51 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     );
   }
 
-  // --- 8. PAUSE MODAL ---
   Widget _buildPauseModal(BuildContext context) {
     return Container(
-      color: Colors.black.withValues(alpha: 0.82),
+      color: CapsuleColors.deepOcean.withValues(alpha: 0.80),
       child: Center(
         child: Container(
-          width: 380,
-          padding: const EdgeInsets.all(24),
+          width: 360,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: CapsuleColors.oceanSurface,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFF00E5FF), width: 1.8),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
-                blurRadius: 30,
-              ),
-              const BoxShadow(color: Colors.black87, blurRadius: 24),
-            ],
+            border: Border.all(color: CapsuleColors.cyanGlow, width: 1.8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.pause_circle_filled_rounded, color: Color(0xFF00E5FF), size: 54),
-              const SizedBox(height: 10),
+              const Icon(Icons.pause_circle_filled_rounded, color: CapsuleColors.cyanGlow, size: 48),
+              const SizedBox(height: 8),
               Text(
                 'PARTIE EN PAUSE',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Stage ${controller.level} • Score : ${controller.score}',
-                style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13),
+                style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 13),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               TactileButton(
                 label: 'Reprendre la partie',
                 icon: Icons.play_arrow_rounded,
                 style: TactileButtonStyle.primary,
-                height: 48,
+                height: 46,
                 onPressed: widget.onResume,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               TactileButton(
                 label: 'Quitter vers la carte',
                 icon: Icons.map_rounded,
                 style: TactileButtonStyle.secondary,
-                height: 46,
+                height: 44,
                 onPressed: widget.onExitToMap,
               ),
             ],

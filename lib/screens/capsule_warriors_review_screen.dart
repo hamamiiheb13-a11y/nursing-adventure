@@ -75,172 +75,208 @@ class _CapsuleWarriorsReviewScreenState
     final revisionCount = _progress.revisionQueue.length;
     final questions = _filteredQuestions;
 
+    final totalQuestions = allGastroQuestions.length;
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: false,
         child: SafeArea(
-          child: Column(
-            children: [
-              // 1. Top Bar: RETOUR button + Title + Progress Header (X mastered, Y to review)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Row(
-                  children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        _audio.playClick();
-                        Navigator.of(context).pop();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
-                        ),
-                        child: Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 680;
+              return Column(
+                children: [
+                  // 1. Top Bar: RETOUR + Title + Progress Header
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 10),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              'RETOUR',
-                              style: GoogleFonts.orbitron(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                _audio.playClick();
+                                Navigator.of(context).pop();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: CapsuleColors.oceanSurface.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.6)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'RETOUR',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                'FICHES & RÉVISION ($totalQuestions QUESTIONS)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: isCompact || isNarrow ? 13 : 16,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      'RÉVISION DES 33 QUESTIONS CLINIQUES',
-                      style: GoogleFonts.orbitron(
-                        fontSize: isCompact ? 13 : 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Spacer(),
-                    // Progress Header: X mastered, Y to review
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF1E293B)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: CapsuleColors.successGreen, size: 15),
-                          const SizedBox(width: 5),
-                          Text(
-                            '$masteredCount maîtrisées',
-                            style: GoogleFonts.orbitron(
-                              color: CapsuleColors.successGreen,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        // Progress Header: X mastered, Y to review
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: CapsuleColors.oceanSurface.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: CapsuleColors.cardBorder),
                           ),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.warning_amber_rounded, color: CapsuleColors.dangerOrange, size: 15),
-                          const SizedBox(width: 5),
-                          Text(
-                            '$revisionCount à réviser',
-                            style: GoogleFonts.orbitron(
-                              color: CapsuleColors.dangerOrange,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: CapsuleColors.successGreen, size: 15),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '$masteredCount maîtrisées',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: CapsuleColors.successGreen,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: CapsuleColors.dangerOrange, size: 15),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '$revisionCount à réviser',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: CapsuleColors.dangerOrange,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-
-              // 2. Filter Bar (ALL / CORRECT / TO REVIEW + Stage filter chips)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0F172A),
-                  border: Border(
-                    top: BorderSide(color: Color(0xFF1E293B)),
-                    bottom: BorderSide(color: Color(0xFF1E293B)),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    // Filter Mode
-                    _buildFilterButton('ALL', 'TOUTES (33)', Icons.list_alt_rounded),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('CORRECT', 'CORRECTES ($masteredCount)', Icons.check_circle_outline_rounded, activeColor: CapsuleColors.successGreen),
-                    const SizedBox(width: 8),
-                    _buildFilterButton('TO_REVIEW', 'À RÉVISER ($revisionCount)', Icons.replay_rounded, activeColor: CapsuleColors.dangerOrange),
 
-                    const Spacer(),
-
-                    // Stage Selector Dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedWorldFilter,
-                          dropdownColor: const Color(0xFF0F172A),
-                          isDense: true,
-                          style: GoogleFonts.orbitron(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                          items: [
-                            const DropdownMenuItem(value: 0, child: Text('Tous les Stages')),
-                            ...GastroWorld.worlds.map((w) => DropdownMenuItem(value: w.id, child: Text('Stage ${w.id}'))),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedWorldFilter = val);
-                          },
-                        ),
+                  // 2. Filter Bar (ALL / CORRECT / TO REVIEW + Stage dropdown)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
+                      border: Border(
+                        top: BorderSide(color: CapsuleColors.cardBorder),
+                        bottom: BorderSide(color: CapsuleColors.cardBorder),
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              // 3. Question List with Expandable Clinical Explanation
-              Expanded(
-                child: questions.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            const Icon(Icons.search_off_rounded, color: CapsuleColors.textSubtle, size: 40),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Aucune question pour ce filtre.',
-                              style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 13),
-                            ),
+                            _buildFilterButton('ALL', 'TOUTES ($totalQuestions)', Icons.list_alt_rounded),
+                            _buildFilterButton('CORRECT', 'CORRECTES ($masteredCount)', Icons.check_circle_outline_rounded, activeColor: CapsuleColors.successGreen),
+                            _buildFilterButton('TO_REVIEW', 'À RÉVISER ($revisionCount)', Icons.replay_rounded, activeColor: CapsuleColors.dangerOrange),
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        itemCount: questions.length,
-                        itemBuilder: (context, idx) {
-                          final q = questions[idx];
-                          return _buildQuestionTile(q);
-                        },
-                      ),
-              ),
-            ],
+                        // Stage Selector Dropdown
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: CapsuleColors.cardOcean,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: CapsuleColors.cardBorder),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _selectedWorldFilter,
+                              dropdownColor: CapsuleColors.oceanSurface,
+                              isDense: true,
+                              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                              items: [
+                                const DropdownMenuItem(value: 0, child: Text('Tous les Stages')),
+                                ...GastroWorld.worlds.map((w) => DropdownMenuItem(value: w.id, child: Text('Stage ${w.id}'))),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _selectedWorldFilter = val);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 3. Question List with Expandable Clinical Explanation
+                  Expanded(
+                    child: questions.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.search_off_rounded, color: CapsuleColors.textSubtle, size: 40),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Aucune question pour ce filtre.',
+                                  style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 24, vertical: 12),
+                            itemCount: questions.length,
+                            itemBuilder: (context, idx) {
+                              final q = questions[idx];
+                              return _buildQuestionTile(q);
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -257,9 +293,9 @@ class _CapsuleWarriorsReviewScreenState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.2) : const Color(0xFF1E293B),
+          color: isSelected ? color.withValues(alpha: 0.22) : CapsuleColors.cardOcean,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isSelected ? color : const Color(0xFF334155)),
+          border: Border.all(color: isSelected ? color : CapsuleColors.cardBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -268,10 +304,10 @@ class _CapsuleWarriorsReviewScreenState
             const SizedBox(width: 6),
             Text(
               label,
-              style: GoogleFonts.orbitron(
+              style: GoogleFonts.plusJakartaSans(
                 color: isSelected ? Colors.white : CapsuleColors.textSubtle,
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               ),
             ),
           ],
@@ -305,28 +341,24 @@ class _CapsuleWarriorsReviewScreenState
 
     final world = GastroWorld.getWorldForLevel(q.id);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusColor.withValues(alpha: hasAnswered ? 0.6 : 0.25),
-          width: hasAnswered ? 1.5 : 1.0,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+        elevation: hasAnswered ? 3 : 1,
+        shadowColor: hasAnswered ? statusColor.withValues(alpha: 0.25) : Colors.black26,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: statusColor.withValues(alpha: hasAnswered ? 0.65 : 0.35),
+            width: hasAnswered ? 1.5 : 1.0,
+          ),
         ),
-        boxShadow: hasAnswered
-            ? [
-                BoxShadow(
-                  color: statusColor.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                ),
-              ]
-            : null,
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           leading: Container(
             width: 36,
             height: 36,
@@ -337,7 +369,10 @@ class _CapsuleWarriorsReviewScreenState
             ),
             child: Icon(statusIcon, color: statusColor, size: 20),
           ),
-          title: Row(
+          title: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -347,50 +382,47 @@ class _CapsuleWarriorsReviewScreenState
                 ),
                 child: Text(
                   'Q${q.id} • STAGE ${q.worldId}',
-                  style: GoogleFonts.orbitron(
+                  style: GoogleFonts.plusJakartaSans(
                     color: world.primaryColor,
-                    fontSize: 9.5,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  q.anatomicalTheme,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    color: CapsuleColors.textSubtle,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
+                  color: statusColor.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   statusText,
-                  style: GoogleFonts.orbitron(
+                  style: GoogleFonts.plusJakartaSans(
                     color: statusColor,
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
+                ),
+              ),
+              Text(
+                q.anatomicalTheme,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: CapsuleColors.textSubtle,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               q.questionText,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
-                fontSize: 13,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -401,7 +433,7 @@ class _CapsuleWarriorsReviewScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(color: Color(0xFF1E293B)),
+                  Divider(color: CapsuleColors.cardBorder),
                   const SizedBox(height: 6),
 
                   // Options list showing student selection vs correct option
@@ -409,14 +441,14 @@ class _CapsuleWarriorsReviewScreenState
                     final isOptionCorrect = optIdx == q.correctOptionIndex;
                     final isStudentSelected = optIdx == studentSelectedIdx;
 
-                    Color optBg = const Color(0xFF1E293B).withValues(alpha: 0.5);
-                    Color optBorder = const Color(0xFF334155);
+                    Color optBg = CapsuleColors.cardOcean.withValues(alpha: 0.65);
+                    Color optBorder = CapsuleColors.cardBorder;
 
                     if (isOptionCorrect) {
-                      optBg = CapsuleColors.successGreen.withValues(alpha: 0.15);
+                      optBg = CapsuleColors.successGreen.withValues(alpha: 0.16);
                       optBorder = CapsuleColors.successGreen;
                     } else if (isStudentSelected && !isOptionCorrect) {
-                      optBg = CapsuleColors.dangerRed.withValues(alpha: 0.15);
+                      optBg = CapsuleColors.dangerRed.withValues(alpha: 0.16);
                       optBorder = CapsuleColors.dangerRed;
                     }
 
@@ -436,16 +468,16 @@ class _CapsuleWarriorsReviewScreenState
                                 : (isStudentSelected ? Icons.cancel_rounded : Icons.radio_button_unchecked_rounded),
                             color: isOptionCorrect
                                 ? CapsuleColors.successGreen
-                                : (isStudentSelected ? CapsuleColors.dangerRed : const Color(0xFF64748B)),
+                                : (isStudentSelected ? CapsuleColors.dangerRed : const Color(0xFF94A3B8)),
                             size: 16,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               q.options[optIdx],
-                              style: GoogleFonts.inter(
-                                color: isOptionCorrect ? Colors.white : const Color(0xFFCBD5E1),
-                                fontSize: 12,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: isOptionCorrect ? Colors.white : const Color(0xFFE2E8F0),
+                                fontSize: 12.5,
                                 fontWeight: isOptionCorrect ? FontWeight.w700 : FontWeight.w500,
                               ),
                             ),
@@ -459,7 +491,7 @@ class _CapsuleWarriorsReviewScreenState
                               ),
                               child: Text(
                                 'BONNE RÉPONSE',
-                                style: GoogleFonts.orbitron(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
                               ),
                             ),
                           if (isStudentSelected && !isOptionCorrect)
@@ -472,7 +504,7 @@ class _CapsuleWarriorsReviewScreenState
                               ),
                               child: Text(
                                 'VOTRE RÉPONSE',
-                                style: GoogleFonts.orbitron(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
                               ),
                             ),
                         ],
@@ -486,9 +518,9 @@ class _CapsuleWarriorsReviewScreenState
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: CapsuleColors.electricBlue.withValues(alpha: 0.12),
+                      color: CapsuleColors.electricBlue.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: CapsuleColors.electricBlue.withValues(alpha: 0.4)),
+                      border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.45)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,22 +533,38 @@ class _CapsuleWarriorsReviewScreenState
                             children: [
                               Text(
                                 'EXPLICATION CLINIQUE OFFICIELLE (PFE ISSIT) :',
-                                style: GoogleFonts.orbitron(
+                                style: GoogleFonts.plusJakartaSans(
                                   color: CapsuleColors.cyanGlow,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 q.explanation,
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFFE2E8F0),
-                                  fontSize: 11.5,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: const Color(0xFFF1F5F9),
+                                  fontSize: 12,
                                   height: 1.45,
                                 ),
                               ),
+                              if (q.fichePoints.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                ...q.fichePoints.map(
+                                  (pt) => Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      '• $pt',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: CapsuleColors.mintGlow,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -527,6 +575,7 @@ class _CapsuleWarriorsReviewScreenState
               ),
             ),
           ],
+        ),
         ),
       ),
     );

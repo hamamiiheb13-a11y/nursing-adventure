@@ -165,18 +165,19 @@ class _CapsuleWarriorsHowToPlayScreenState
     final isLast = _currentPage == _tutorialSteps.length - 1;
     final media = MediaQuery.of(context);
     final isCompact = media.size.height < 520;
+    final isNarrow = media.size.width < 620;
 
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: false,
         child: SafeArea(
           child: Column(
             children: [
-              // 1. Top Bar: RETOUR button + Header + Skip/Commencer
+              // 1. Top Bar: RETOUR button + Header + Commencer
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 20, vertical: 10),
                 child: Row(
                   children: [
                     InkWell(
@@ -186,21 +187,22 @@ class _CapsuleWarriorsHowToPlayScreenState
                         Navigator.of(context).pop();
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.6)),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 5),
                             Text(
                               'RETOUR',
-                              style: GoogleFonts.orbitron(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -208,38 +210,42 @@ class _CapsuleWarriorsHowToPlayScreenState
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Text(
-                      'COMMENT JOUER • GUIDE DU PILOTE',
-                      style: GoogleFonts.orbitron(
-                        fontSize: isCompact ? 14 : 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: CapsuleColors.cyanGlow.withValues(alpha: 0.7),
-                            blurRadius: 10,
-                          ),
-                        ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isNarrow ? 'COMMENT JOUER' : 'COMMENT JOUER • GUIDE DU PILOTE',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: isCompact || isNarrow ? 14 : 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: CapsuleColors.cyanGlow.withValues(alpha: 0.6),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     // Direct "COMMENCER" CTA top-right
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: CapsuleColors.cyanGlow,
-                        foregroundColor: Colors.black,
+                        foregroundColor: CapsuleColors.deepOcean,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 16, vertical: 8),
                       ),
                       onPressed: _finishTutorial,
                       child: Text(
                         'COMMENCER',
-                        style: GoogleFonts.orbitron(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -257,111 +263,118 @@ class _CapsuleWarriorsHowToPlayScreenState
                     itemCount: _tutorialSteps.length,
                     itemBuilder: (context, index) {
                       final step = _tutorialSteps[index];
-                      return Center(
-                        child: Container(
-                          width: double.infinity,
-                          constraints: const BoxConstraints(maxWidth: 780),
-                          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-                          padding: EdgeInsets.all(isCompact ? 16 : 24),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: (step['color'] as Color).withValues(alpha: 0.6),
-                              width: 1.8,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (step['color'] as Color).withValues(alpha: 0.2),
-                                blurRadius: 24,
-                              ),
-                            ],
+                      final stepColor = step['color'] as Color;
+                      final illustrationBox = Container(
+                        height: isNarrow ? 145 : (isCompact ? 160 : 210),
+                        decoration: BoxDecoration(
+                          color: CapsuleColors.deepOcean,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: CapsuleColors.cardBorder),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: AnimatedBuilder(
+                            animation: _animController,
+                            builder: (context, _) {
+                              return CustomPaint(
+                                painter: _TutorialStepPainter(
+                                  stepIndex: index,
+                                  progress: _animController.value,
+                                  color: stepColor,
+                                ),
+                              );
+                            },
                           ),
-                          child: Row(
-                            children: [
-                              // Left: Animated Illustration Canvas
-                              Expanded(
-                                flex: 5,
-                                child: Container(
-                                  height: isCompact ? 170 : 210,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF030712),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFF1E293B)),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: AnimatedBuilder(
-                                      animation: _animController,
-                                      builder: (context, _) {
-                                        return CustomPaint(
-                                          painter: _TutorialStepPainter(
-                                            stepIndex: index,
-                                            progress: _animController.value,
-                                            color: step['color'] as Color,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 20),
+                        ),
+                      );
 
-                              // Right: Description & Text
-                              Expanded(
-                                flex: 6,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: (step['color'] as Color).withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        step['badge'] as String,
-                                        style: GoogleFonts.orbitron(
-                                          color: step['color'] as Color,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 1.0,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      step['title'] as String,
-                                      style: GoogleFonts.orbitron(
-                                        fontSize: isCompact ? 15 : 18,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                    Text(
-                                      step['subtitle'] as String,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: step['color'] as Color,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      step['desc'] as String,
-                                      style: GoogleFonts.inter(
-                                        fontSize: isCompact ? 11.5 : 13,
-                                        color: CapsuleColors.textSubtle,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                      final textCol = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: stepColor.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              step['badge'] as String,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: stepColor,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
                               ),
-                            ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            step['title'] as String,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: isCompact || isNarrow ? 16 : 19,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            step['subtitle'] as String,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: stepColor,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            step['desc'] as String,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: isCompact ? 12 : 13,
+                              color: CapsuleColors.textSubtle,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      );
+
+                      return Center(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.symmetric(horizontal: isNarrow ? 14 : 24, vertical: 6),
+                          child: Container(
+                            width: double.infinity,
+                            constraints: const BoxConstraints(maxWidth: 780),
+                            padding: EdgeInsets.all(isCompact || isNarrow ? 16 : 24),
+                            decoration: BoxDecoration(
+                              color: CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: stepColor.withValues(alpha: 0.65),
+                                width: 1.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: stepColor.withValues(alpha: 0.18),
+                                  blurRadius: 24,
+                                ),
+                              ],
+                            ),
+                            child: isNarrow
+                                ? Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(width: double.infinity, child: illustrationBox),
+                                      const SizedBox(height: 14),
+                                      textCol,
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(flex: 5, child: illustrationBox),
+                                      const SizedBox(width: 20),
+                                      Expanded(flex: 6, child: textCol),
+                                    ],
+                                  ),
                           ),
                         ),
                       );
@@ -372,33 +385,37 @@ class _CapsuleWarriorsHowToPlayScreenState
 
               // 3. Bottom Controls: Prev, Dots Indicator, Next / Commencer
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: isNarrow ? 14 : 32, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Previous Button
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFF334155)),
+                        side: BorderSide(color: CapsuleColors.cardBorder),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 14, vertical: 8),
                       ),
                       onPressed: _currentPage > 0 ? _prevPage : null,
-                      icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                      label: Text('PRÉCÉDENT', style: GoogleFonts.orbitron(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                      icon: const Icon(Icons.arrow_back_ios_rounded, size: 13),
+                      label: Text(
+                        isNarrow ? 'PRÉC.' : 'PRÉCÉDENT',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800),
+                      ),
                     ),
 
                     // Dot Indicators
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: List.generate(_tutorialSteps.length, (i) {
                         final isActive = i == _currentPage;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: isActive ? 24 : 8,
-                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: isActive ? 20 : 7,
+                          height: 7,
                           decoration: BoxDecoration(
-                            color: isActive ? CapsuleColors.cyanGlow : const Color(0xFF334155),
+                            color: isActive ? CapsuleColors.cyanGlow : CapsuleColors.cardBorder,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         );
@@ -409,15 +426,15 @@ class _CapsuleWarriorsHowToPlayScreenState
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isLast ? CapsuleColors.cyanGlow : CapsuleColors.electricBlue,
-                        foregroundColor: isLast ? Colors.black : Colors.white,
+                        foregroundColor: isLast ? CapsuleColors.deepOcean : Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        padding: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 18, vertical: 10),
                       ),
                       onPressed: _nextPage,
-                      icon: Icon(isLast ? Icons.rocket_launch_rounded : Icons.arrow_forward_ios_rounded, size: 14),
+                      icon: Icon(isLast ? Icons.rocket_launch_rounded : Icons.arrow_forward_ios_rounded, size: 13),
                       label: Text(
                         isLast ? 'COMMENCER' : 'SUIVANT',
-                        style: GoogleFonts.orbitron(fontSize: 11, fontWeight: FontWeight.w900),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w900),
                       ),
                     ),
                   ],

@@ -10,125 +10,137 @@ class AudioService {
 
   bool _sfxEnabled = true;
   bool _bgmEnabled = true;
+  bool _isMuted = false;
+  double _masterVolume = 1.0;
+  double _musicVolume = 0.75;
+  double _sfxVolume = 0.85;
 
-  bool get sfxEnabled => _sfxEnabled;
-  bool get bgmEnabled => _bgmEnabled;
+  bool get sfxEnabled => _sfxEnabled && !_isMuted;
+  bool get bgmEnabled => _bgmEnabled && !_isMuted;
+  bool get isMuted => _isMuted;
+  double get masterVolume => _masterVolume;
+  double get musicVolume => _musicVolume;
+  double get sfxVolume => _sfxVolume;
 
   void init() {
     _platform.init();
   }
 
+  void applySettings({
+    double? musicVolume,
+    double? sfxVolume,
+    bool? isMuted,
+  }) {
+    if (musicVolume != null) setMusicVolume(musicVolume);
+    if (sfxVolume != null) setSfxVolume(sfxVolume);
+    if (isMuted != null) setMuted(isMuted);
+  }
+
   void playClick() {
-    if (_sfxEnabled) {
-      _platform.playClick();
-    }
+    if (sfxEnabled) _platform.playClick();
   }
 
   void playDice() {
-    if (_sfxEnabled) {
-      _platform.playDice();
-    }
+    if (sfxEnabled) _platform.playDice();
   }
 
   void playStep(int stepIndex) {
-    if (_sfxEnabled) {
-      _platform.playStep(stepIndex);
-    }
+    if (sfxEnabled) _platform.playStep(stepIndex);
   }
 
   void playLadder() {
-    if (_sfxEnabled) {
-      _platform.playLadder();
-    }
+    if (sfxEnabled) _platform.playLadder();
   }
 
   void playSnake() {
-    if (_sfxEnabled) {
-      _platform.playSnake();
-    }
+    if (sfxEnabled) _platform.playSnake();
   }
 
   void playVictory() {
-    if (_sfxEnabled) {
-      _platform.playVictory();
-    }
+    if (sfxEnabled) _platform.playVictory();
   }
 
   void playCorrect() {
-    if (_sfxEnabled) {
-      _platform.playCorrect();
-    }
+    if (sfxEnabled) _platform.playCorrect();
   }
 
   void playWrong() {
-    if (_sfxEnabled) {
-      _platform.playWrong();
-    }
+    if (sfxEnabled) _platform.playWrong();
   }
 
   void playStar() {
-    if (_sfxEnabled) {
-      _platform.playStar();
-    }
+    if (sfxEnabled) _platform.playStar();
   }
 
   void playWorldUnlock() {
-    if (_sfxEnabled) {
-      _platform.playWorldUnlock();
-    }
+    if (sfxEnabled) _platform.playWorldUnlock();
   }
 
   void playPagerBeep() {
-    if (_sfxEnabled) {
-      _platform.playPagerBeep();
-    }
+    if (sfxEnabled) _platform.playPagerBeep();
   }
 
   void playTargetLock() {
-    if (_sfxEnabled) {
-      _platform.playTargetLock();
-    }
+    if (sfxEnabled) _platform.playTargetLock();
   }
 
   void playCrystal() {
-    if (_sfxEnabled) {
-      _platform.playCrystal();
-    }
+    if (sfxEnabled) _platform.playCrystal();
   }
 
   void playThruster() {
-    if (_sfxEnabled) {
-      _platform.playThruster();
-    }
+    if (sfxEnabled) _platform.playThruster();
   }
 
   void playHit() {
-    if (_sfxEnabled) {
-      _platform.playHit();
-    }
+    if (sfxEnabled) _platform.playHit();
   }
 
   void playBossLaser() {
-    if (_sfxEnabled) {
-      _platform.playBossLaser();
-    }
+    if (sfxEnabled) _platform.playBossLaser();
   }
 
   void playCombo() {
-    if (_sfxEnabled) {
-      _platform.playCombo();
-    }
+    if (sfxEnabled) _platform.playCombo();
+  }
+
+  void playWeaponShot(int weaponIndex) {
+    if (sfxEnabled) _platform.playWeaponShot(weaponIndex);
+  }
+
+  void playSpecialSkill() {
+    if (sfxEnabled) _platform.playSpecialSkill();
+  }
+
+  void playShieldActivate() {
+    if (sfxEnabled) _platform.playShieldActivate();
+  }
+
+  void playBossEntrance() {
+    if (sfxEnabled) _platform.playBossEntrance();
+  }
+
+  void playBossDefeat() {
+    if (sfxEnabled) _platform.playBossDefeat();
+  }
+
+  void playRevive() {
+    if (sfxEnabled) _platform.playRevive();
   }
 
   void playStageComplete() {
-    if (_sfxEnabled) {
-      _platform.playVictory();
-    }
+    if (sfxEnabled) _platform.playVictory();
   }
 
   void startBgm() {
-    if (_bgmEnabled) {
+    if (bgmEnabled) {
       _platform.startBgm();
+    }
+  }
+
+  void startBossBgm() {
+    if (bgmEnabled) {
+      _platform.startBossBgm();
     }
   }
 
@@ -138,21 +150,43 @@ class AudioService {
 
   void toggleBgm() {
     _bgmEnabled = !_bgmEnabled;
-    _platform.setBgmEnabled(_bgmEnabled);
+    _platform.setBgmEnabled(_bgmEnabled && !_isMuted);
   }
 
   void toggleSfx() {
     _sfxEnabled = !_sfxEnabled;
-    _platform.setSfxEnabled(_sfxEnabled);
+    _platform.setSfxEnabled(_sfxEnabled && !_isMuted);
   }
 
   void setBgmEnabled(bool value) {
     _bgmEnabled = value;
-    _platform.setBgmEnabled(value);
+    _platform.setBgmEnabled(value && !_isMuted);
   }
 
   void setSfxEnabled(bool value) {
     _sfxEnabled = value;
-    _platform.setSfxEnabled(value);
+    _platform.setSfxEnabled(value && !_isMuted);
+  }
+
+  void setMasterVolume(double value) {
+    _masterVolume = value.clamp(0.0, 1.0);
+    _platform.setMasterVolume(_masterVolume);
+  }
+
+  void setMusicVolume(double value) {
+    _musicVolume = value.clamp(0.0, 1.0);
+    _platform.setMusicVolume(_musicVolume);
+    _platform.setBgmEnabled(_musicVolume > 0.01 && _bgmEnabled && !_isMuted);
+  }
+
+  void setSfxVolume(double value) {
+    _sfxVolume = value.clamp(0.0, 1.0);
+    _platform.setSfxVolume(_sfxVolume);
+    _platform.setSfxEnabled(_sfxVolume > 0.01 && _sfxEnabled && !_isMuted);
+  }
+
+  void setMuted(bool muted) {
+    _isMuted = muted;
+    _platform.setMuted(_isMuted);
   }
 }

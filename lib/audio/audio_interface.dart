@@ -17,8 +17,19 @@ abstract class AudioServiceInterface {
   void playHit();
   void playBossLaser();
   void playCombo();
+  void playWeaponShot(int weaponIndex);
+  void playSpecialSkill();
+  void playShieldActivate();
+  void playBossEntrance();
+  void playBossDefeat();
+  void playRevive();
   void startBgm();
+  void startBossBgm();
   void stopBgm();
   void setBgmEnabled(bool enabled);
   void setSfxEnabled(bool enabled);
+  void setMasterVolume(double volume);
+  void setMusicVolume(double volume);
+  void setSfxVolume(double volume);
+  void setMuted(bool muted);
 }

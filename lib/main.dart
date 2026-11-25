@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'audio/audio_service.dart';
 import 'screens/capsule_warriors_final_screen.dart';
 import 'screens/capsule_warriors_home_screen.dart';
 import 'screens/capsule_warriors_how_to_play_screen.dart';
@@ -23,8 +24,13 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Preload progress
-  await StorageService().loadProgress();
+  // Preload progress and apply saved audio settings
+  final initialProgress = await StorageService().loadProgress();
+  AudioService().applySettings(
+    musicVolume: initialProgress.musicVolume,
+    sfxVolume: initialProgress.sfxVolume,
+    isMuted: initialProgress.isMuted,
+  );
 
   runApp(const CapsuleWarriorsApp());
 }

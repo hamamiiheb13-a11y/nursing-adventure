@@ -72,26 +72,27 @@ void main() {
   });
 
   group('ArcadeGameController & Educational Checkpoints Integration', () {
-    test('Level 1 initializes with World 1 and 3 checkpoints plus 1 boss question', () {
+    test('Level 1 initializes with World 1, all 4 stage checkpoints, and live 2D boss', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
 
       expect(controller.world.id, 1);
-      expect(controller.checkpoints.length, 3);
+      expect(controller.checkpoints.length, 4);
       expect(controller.collectibles.isNotEmpty, true);
       expect(controller.obstacles.isNotEmpty, true);
       expect(controller.boss.name, 'Helicobacter Rex');
-      expect(controller.boss.challengeQuestions.length, 1);
-      expect(controller.boss.currentHp, 1);
+      expect(controller.boss.maxHp, 28);
+      expect(controller.boss.currentHp, 28);
 
-      // Checkpoint questions match official questions Q1..Q3
+      // Checkpoint questions match official PDF questions for Stage 1
       for (final cp in controller.checkpoints) {
         expect(allGastroQuestions.contains(cp.question), true);
+        expect(cp.question.worldId, 1);
         expect(cp.question.originalNumber, inInclusiveRange(1, 27));
       }
     });
 
-    test('Analog movement vector and EMP special skill work properly', () {
+    test('Analog movement vector and Anti-Inflammatory Special Skill work properly', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
@@ -99,36 +100,54 @@ void main() {
       // Test analog movement vector
       const inputVec = Offset(0.6, -0.8);
       controller.setMoveVector(inputVec);
-      expect(controller.player.moveInput, inputVec);
+      expect(controller.player.moveInput.dx, closeTo(0.6, 0.01));
+      expect(controller.player.moveInput.dy, closeTo(-0.8, 0.01));
 
-      // Test special skill (EMP Blast)
+      // Place a nearby inflammatory zone hazard to verify Special Skill soothing
+      final hazard = ArcadeObstacle(
+        id: 7777,
+        position: controller.player.position + const Offset(80.0, 0.0),
+        type: ObstacleType.inflammatoryZone,
+        initialY: controller.player.position.dy,
+      );
+      controller.obstacles.add(hazard);
+      expect(hazard.isSoothed, false);
+
+      // Test special skill (Anti-Inflammatory Wave)
       expect(controller.player.specialSkillCooldown, 0.0);
       controller.triggerSpecialSkill();
       expect(controller.player.specialSkillCooldown, greaterThan(0.0));
       expect(controller.screenShake, greaterThan(0.0));
+      expect(hazard.isSoothed, true);
     });
 
-    test('Correct checkpoint answer increases XP, combo, and awards speed boost', () {
+    test('Correct checkpoint answers boost knowledge damage multiplier and trigger Max Synergy', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
 
-      final cp = controller.checkpoints.first;
-      controller.activeCheckpoint = cp;
+      expect(controller.player.knowledgeDamageMultiplier, 1.0);
 
-      controller.answerCheckpoint(
-        selectedOptionIndex: cp.question.correctOptionIndex,
-        isCorrect: true,
-      );
+      for (final cp in controller.checkpoints) {
+        controller.activeCheckpoint = cp;
+        controller.answerCheckpoint(
+          selectedOptionIndex: cp.question.correctOptionIndex,
+          isCorrect: true,
+        );
+      }
 
-      expect(controller.earnedXp, 100);
-      expect(controller.combo, greaterThan(0));
+      expect(controller.earnedXp, 400);
+      expect(controller.combo, greaterThanOrEqualTo(4));
       expect(controller.player.isBoosted, true);
+      expect(controller.player.knowledgeDamageMultiplier, 2.5);
+      expect(controller.player.isMaxSynergy, true);
       expect(progress.isLevelCompleted(1), false); // Level completed when defeating boss
-      expect(progress.masteredQuestions.contains(cp.question.id), true);
+      for (final cp in controller.checkpoints) {
+        expect(progress.masteredQuestions.contains(cp.question.id), true);
+      }
     });
 
-    test('Incorrect checkpoint answer loses heart and adds to Revision Queue', () {
+    test('Incorrect checkpoint answer records mistake to Revision Queue without soft-locking', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
@@ -143,7 +162,9 @@ void main() {
         isCorrect: false,
       );
 
-      expect(controller.player.hearts, 2);
+      expect(controller.player.hearts, 3); // Positive educational flow, brief shield
+      expect(controller.player.invulnerableTimer, greaterThan(0.0));
+      expect(controller.wrongAnswersInStage, 1);
       expect(progress.revisionQueue.contains(cp.question.id), true);
       expect(progress.masteredQuestions.contains(cp.question.id), false);
       expect(progress.questionsInRevisionCount, 1);
@@ -169,29 +190,64 @@ void main() {
       expect(progress.questionsMasteredCount, 1);
     });
 
-    test('Boss challenge reduces boss HP on correct answer and completes level on defeat', () {
+    test('Live Boss enters Phase 2 at half HP and awards 3 stars on clean defeat or 2 stars with errors', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
 
+      // Answer all 4 checkpoints right first
+      for (final cp in controller.checkpoints) {
+        controller.activeCheckpoint = cp;
+        controller.answerCheckpoint(
+          selectedOptionIndex: cp.question.correctOptionIndex,
+          isCorrect: true,
+        );
+      }
+
       final boss = controller.boss;
-      expect(boss.currentHp, 1);
+      expect(boss.currentHp, 28);
+      expect(boss.isPhase2, false);
       expect(boss.isDefeated, false);
 
-      // Hit 1 - Defeat!
+      // Deal 14 damage -> half HP -> Phase 2
+      boss.takeDamage(14);
+      expect(boss.currentHp, 14);
+      expect(boss.isPhase2, true);
+      expect(boss.isDefeated, false);
+
+      // Final tactical blow -> Defeat + 3 Stars + Stage 2 & Weapon unlocked
       controller.answerBossQuestion(
-        questionId: boss.challengeQuestions[0].id,
-        selectedOptionIndex: boss.challengeQuestions[0].correctOptionIndex,
+        questionId: allGastroQuestions.first.id,
+        selectedOptionIndex: allGastroQuestions.first.correctOptionIndex,
         isCorrect: true,
       );
       expect(boss.currentHp, 0);
       expect(boss.isDefeated, true);
       expect(controller.state, GameState.victory);
+      expect(controller.lastStarsEarned, 3);
       expect(progress.isLevelCompleted(1), true);
       expect(progress.isLevelUnlocked(2), true);
+      expect(progress.unlockedWeapons.contains('Double Laser Océan'), true);
+
+      // Second controller with a quiz mistake should award 2 stars on boss defeat
+      final progressWithMistake = GameProgress();
+      final c2 = ArcadeGameController(level: 1, progress: progressWithMistake);
+      c2.start();
+      c2.activeCheckpoint = c2.checkpoints.first;
+      c2.answerCheckpoint(
+        selectedOptionIndex: (c2.checkpoints.first.question.correctOptionIndex + 1) % 3,
+        isCorrect: false,
+      );
+      c2.answerBossQuestion(
+        questionId: allGastroQuestions.first.id,
+        selectedOptionIndex: allGastroQuestions.first.correctOptionIndex,
+        isCorrect: true,
+      );
+      expect(c2.state, GameState.victory);
+      expect(c2.lastStarsEarned, 2);
     });
 
-    test('Shooting spawns projectiles and respects cooldown', () {
+    test('Evolved weapons spawn distinct projectile patterns and respect cooldown', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
@@ -206,10 +262,23 @@ void main() {
       controller.shoot();
       expect(controller.playerProjectiles.length, countAfterShoot);
 
-      // Advance time past cooldown
+      // Advance time past cooldown & equip 3-way Canon Antibactérien
       controller.update(0.35);
+      progress.unlockedWeapons.add('Canon Antibactérien');
+      progress.equipWeapon('Canon Antibactérien');
+      controller.player.shootCooldownTimer = 0.0;
+      controller.playerProjectiles.clear();
       controller.shoot();
-      expect(controller.playerProjectiles.length, greaterThan(countAfterShoot));
+      expect(controller.playerProjectiles.length, 3);
+
+      // Equip Orbes Thérapeutiques -> spawns 2 homing orbs
+      progress.unlockedWeapons.add('Orbes Thérapeutiques');
+      progress.equipWeapon('Orbes Thérapeutiques');
+      controller.player.shootCooldownTimer = 0.0;
+      controller.playerProjectiles.clear();
+      controller.shoot();
+      expect(controller.playerProjectiles.length, 2);
+      expect(controller.playerProjectiles.every((p) => p.isHoming), true);
     });
 
     test('Enemies spawn in level and can take damage from player', () {

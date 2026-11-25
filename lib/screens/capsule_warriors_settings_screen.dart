@@ -6,6 +6,7 @@ import '../audio/audio_service.dart';
 import '../models/game_progress.dart';
 import '../services/storage_service.dart';
 import '../theme/capsule_theme.dart';
+import '../utils/fullscreen_util.dart';
 import '../widgets/capsule_parallax_background.dart';
 
 class CapsuleWarriorsSettingsScreen extends StatefulWidget {
@@ -28,14 +29,20 @@ class _CapsuleWarriorsSettingsScreenState
   final AudioService _audio = AudioService();
   final StorageService _storage = StorageService();
 
-  double _musicVolume = 80.0;
+  double _musicVolume = 75.0;
   double _sfxVolume = 90.0;
+  bool _isMuted = false;
   bool _isFullscreen = false;
   String _selectedLanguage = 'FR'; // 'FR' or 'EN'
 
   @override
   void initState() {
     super.initState();
+    final progress = widget.progress ?? _storage.currentProgress;
+    _musicVolume = (progress.musicVolume * 100).clamp(0.0, 100.0);
+    _sfxVolume = (progress.sfxVolume * 100).clamp(0.0, 100.0);
+    _isMuted = progress.isMuted;
+    _isFullscreen = FullscreenUtil.isFullscreen;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -43,9 +50,20 @@ class _CapsuleWarriorsSettingsScreenState
     ]);
   }
 
+  Future<void> _persistAudio() async {
+    final progress = _storage.currentProgress;
+    progress.musicVolume = (_musicVolume / 100.0).clamp(0.0, 1.0);
+    progress.sfxVolume = (_sfxVolume / 100.0).clamp(0.0, 1.0);
+    progress.isMuted = _isMuted;
+    await _storage.saveProgress(progress);
+  }
+
   void _toggleFullscreen(bool val) {
-    setState(() => _isFullscreen = val);
-    if (val) {
+    if (FullscreenUtil.isFullscreen != val) {
+      FullscreenUtil.toggle();
+    }
+    setState(() => _isFullscreen = FullscreenUtil.isFullscreen);
+    if (_isFullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -57,7 +75,7 @@ class _CapsuleWarriorsSettingsScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: CapsuleColors.oceanSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: CapsuleColors.dangerRed, width: 2),
@@ -66,26 +84,28 @@ class _CapsuleWarriorsSettingsScreenState
           children: [
             const Icon(Icons.warning_amber_rounded, color: CapsuleColors.dangerRed, size: 28),
             const SizedBox(width: 10),
-            Text(
-              'RÉINITIALISATION',
-              style: GoogleFonts.orbitron(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
+            Expanded(
+              child: Text(
+                'RÉINITIALISATION',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
           'Voulez-vous réinitialiser toute votre progression ?\n(Niveaux, scores, armes débloquées et questions révisées seront effacés).\nCette action est irréversible.',
-          style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 13, height: 1.4),
+          style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'ANNULER',
-              style: GoogleFonts.orbitron(color: Colors.white70, fontWeight: FontWeight.w700),
+              style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontWeight: FontWeight.w700),
             ),
           ),
           ElevatedButton(
@@ -103,10 +123,10 @@ class _CapsuleWarriorsSettingsScreenState
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    backgroundColor: const Color(0xFF0F172A),
+                    backgroundColor: CapsuleColors.oceanSurface,
                     content: Text(
                       'Progression réinitialisée avec succès.',
-                      style: GoogleFonts.inter(color: CapsuleColors.cyanGlow),
+                      style: GoogleFonts.plusJakartaSans(color: CapsuleColors.cyanGlow, fontWeight: FontWeight.w700),
                     ),
                   ),
                 );
@@ -114,7 +134,7 @@ class _CapsuleWarriorsSettingsScreenState
             },
             child: Text(
               'EFFACER TOUT',
-              style: GoogleFonts.orbitron(fontWeight: FontWeight.w800),
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -127,8 +147,10 @@ class _CapsuleWarriorsSettingsScreenState
     final media = MediaQuery.of(context);
     final isCompact = media.size.height < 520;
 
+    final isNarrow = media.size.width < 600;
+
     return Scaffold(
-      backgroundColor: CapsuleColors.darkNavy,
+      backgroundColor: CapsuleColors.deepOcean,
       body: CapsuleParallaxBackground(
         showHeroCapsule: false,
         showEnemySilhouettes: false,
@@ -137,7 +159,7 @@ class _CapsuleWarriorsSettingsScreenState
             children: [
               // 1. Top Bar: RETOUR button + Title
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: isNarrow ? 14 : 24, vertical: 12),
                 child: Row(
                   children: [
                     InkWell(
@@ -147,21 +169,22 @@ class _CapsuleWarriorsSettingsScreenState
                         Navigator.of(context).pop();
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+                          border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.6)),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.arrow_back_rounded, color: CapsuleColors.cyanGlow, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               'RETOUR',
-                              style: GoogleFonts.orbitron(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -169,20 +192,24 @@ class _CapsuleWarriorsSettingsScreenState
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Text(
-                      'PARAMÈTRES & CONFIGURATION',
-                      style: GoogleFonts.orbitron(
-                        fontSize: isCompact ? 15 : 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: CapsuleColors.cyanGlow.withValues(alpha: 0.7),
-                            blurRadius: 12,
-                          ),
-                        ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'PARAMÈTRES & CONFIGURATION',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: isNarrow || isCompact ? 15 : 19,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: CapsuleColors.cyanGlow.withValues(alpha: 0.55),
+                              blurRadius: 12,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -193,7 +220,7 @@ class _CapsuleWarriorsSettingsScreenState
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 20 : 36,
+                    horizontal: isNarrow ? 14 : (isCompact ? 20 : 36),
                     vertical: 8,
                   ),
                   child: Center(
@@ -201,13 +228,36 @@ class _CapsuleWarriorsSettingsScreenState
                       constraints: const BoxConstraints(maxWidth: 820),
                       child: Column(
                         children: [
-                          // Audio Settings: Music & SFX Sliders
+                          // Audio Settings: Music & SFX Sliders + Mute Toggle
                           _buildCard(
                             title: 'VOLUME AUDIO & EFFETS SONORES',
-                            icon: Icons.volume_up_rounded,
+                            icon: _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                             color: CapsuleColors.cyanGlow,
                             child: Column(
                               children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _isMuted ? 'Audio global coupé' : 'Audio actif',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: _isMuted ? CapsuleColors.dangerOrange : CapsuleColors.mintGlow,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Switch(
+                                      value: !_isMuted,
+                                      activeThumbColor: CapsuleColors.cyanGlow,
+                                      onChanged: (enabled) {
+                                        setState(() => _isMuted = !enabled);
+                                        _audio.setMuted(_isMuted);
+                                        _persistAudio();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
                                 // Music Volume Slider
                                 Row(
                                   children: [
@@ -219,15 +269,23 @@ class _CapsuleWarriorsSettingsScreenState
                                         children: [
                                           Text(
                                             'MUSIQUE BIO-GASTRIQUE : ${_musicVolume.toInt()}%',
-                                            style: GoogleFonts.orbitron(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
+                                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                                           ),
                                           Slider(
                                             value: _musicVolume,
                                             min: 0,
                                             max: 100,
                                             activeColor: CapsuleColors.cyanGlow,
-                                            inactiveColor: const Color(0xFF1E293B),
-                                            onChanged: (val) => setState(() => _musicVolume = val),
+                                            inactiveColor: CapsuleColors.cardOcean,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _musicVolume = val;
+                                                if (val > 0 && _isMuted) _isMuted = false;
+                                              });
+                                              _audio.setMuted(_isMuted);
+                                              _audio.setMusicVolume(val / 100.0);
+                                            },
+                                            onChangeEnd: (_) => _persistAudio(),
                                           ),
                                         ],
                                       ),
@@ -239,7 +297,7 @@ class _CapsuleWarriorsSettingsScreenState
                                 // SFX Volume Slider
                                 Row(
                                   children: [
-                                    const Icon(Icons.graphic_eq_rounded, color: CapsuleColors.purple, size: 20),
+                                    const Icon(Icons.graphic_eq_rounded, color: CapsuleColors.softViolet, size: 20),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
@@ -247,15 +305,26 @@ class _CapsuleWarriorsSettingsScreenState
                                         children: [
                                           Text(
                                             'EFFETS SONORES & TIRS : ${_sfxVolume.toInt()}%',
-                                            style: GoogleFonts.orbitron(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
+                                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                                           ),
                                           Slider(
                                             value: _sfxVolume,
                                             min: 0,
                                             max: 100,
-                                            activeColor: CapsuleColors.purple,
-                                            inactiveColor: const Color(0xFF1E293B),
-                                            onChanged: (val) => setState(() => _sfxVolume = val),
+                                            activeColor: CapsuleColors.softViolet,
+                                            inactiveColor: CapsuleColors.cardOcean,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _sfxVolume = val;
+                                                if (val > 0 && _isMuted) _isMuted = false;
+                                              });
+                                              _audio.setMuted(_isMuted);
+                                              _audio.setSfxVolume(val / 100.0);
+                                            },
+                                            onChangeEnd: (_) {
+                                              _persistAudio();
+                                              _audio.playClick();
+                                            },
                                           ),
                                         ],
                                       ),
@@ -267,58 +336,73 @@ class _CapsuleWarriorsSettingsScreenState
                           ),
                           const SizedBox(height: 14),
 
-                          // Display & Language Options
-                          Row(
-                            children: [
-                              // Fullscreen Toggle
-                              Expanded(
-                                child: _buildCard(
-                                  title: 'PLEIN ÉCRAN',
-                                  icon: Icons.fullscreen_rounded,
-                                  color: CapsuleColors.electricBlue,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
+                          // Display & Language Options (Responsive on narrow phones)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final stackCols = constraints.maxWidth < 560;
+                              final fullscreenCard = _buildCard(
+                                title: 'PLEIN ÉCRAN',
+                                icon: Icons.fullscreen_rounded,
+                                color: CapsuleColors.electricBlue,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
                                         _isFullscreen ? 'Activé (Immersion)' : 'Désactivé (Fenêtré)',
-                                        style: GoogleFonts.inter(color: Colors.white, fontSize: 12),
+                                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12.5),
                                       ),
-                                      Switch(
-                                        value: _isFullscreen,
-                                        activeColor: CapsuleColors.cyanGlow,
-                                        onChanged: _toggleFullscreen,
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    Switch(
+                                      value: _isFullscreen,
+                                      activeThumbColor: CapsuleColors.cyanGlow,
+                                      onChanged: _toggleFullscreen,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 14),
-
-                              // Language Toggle (FR / EN)
-                              Expanded(
-                                child: _buildCard(
-                                  title: 'LANGUE / LANGUAGE',
-                                  icon: Icons.language_rounded,
-                                  color: CapsuleColors.turquoise,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
+                              );
+                              final languageCard = _buildCard(
+                                title: 'LANGUE / LANGUAGE',
+                                icon: Icons.language_rounded,
+                                color: CapsuleColors.turquoise,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
                                         _selectedLanguage == 'FR' ? 'Français (Officiel ISSIT)' : 'English',
-                                        style: GoogleFonts.inter(color: Colors.white, fontSize: 12),
+                                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12.5),
                                       ),
-                                      Row(
-                                        children: [
-                                          _buildLangButton('FR'),
-                                          const SizedBox(width: 6),
-                                          _buildLangButton('EN'),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildLangButton('FR'),
+                                        const SizedBox(width: 6),
+                                        _buildLangButton('EN'),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                              );
+
+                              if (stackCols) {
+                                return Column(
+                                  children: [
+                                    fullscreenCard,
+                                    const SizedBox(height: 12),
+                                    languageCard,
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  Expanded(child: fullscreenCard),
+                                  const SizedBox(width: 14),
+                                  Expanded(child: languageCard),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 14),
 
@@ -330,21 +414,21 @@ class _CapsuleWarriorsSettingsScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
-                                    _buildControlBadge('[Z, Q, S, D] ou Flèches', 'Déplacement'),
-                                    const SizedBox(width: 10),
-                                    _buildControlBadge('[ESPACE]', 'Tir Laser'),
-                                    const SizedBox(width: 10),
+                                    _buildControlBadge('[Z, Q, S, D] ou Flèches', 'Déplacement 360°'),
+                                    _buildControlBadge('[ESPACE]', 'Tir Continu'),
                                     _buildControlBadge('[E] ou [Shift]', 'Bouclier'),
-                                    const SizedBox(width: 10),
+                                    _buildControlBadge('[Q / F]', 'Onde Spéciale'),
                                     _buildControlBadge('[ÉCHAP] ou [P]', 'Pause'),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '* Sur mobile, des commandes tactiles virtuelles s\'affichent automatiquement à l\'écran.',
-                                  style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 11),
+                                  '* Sur mobile, un joystick analogique 360° et des boutons tactiles s\'affichent automatiquement.',
+                                  style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 11.5),
                                 ),
                               ],
                             ),
@@ -356,27 +440,31 @@ class _CapsuleWarriorsSettingsScreenState
                             title: 'ZONE DE DANGER • DONNÉES DE SAUVEGARDE',
                             icon: Icons.delete_forever_rounded,
                             color: CapsuleColors.dangerRed,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 10,
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Expanded(
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 520),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Réinitialiser toute la progression',
-                                        style: GoogleFonts.inter(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700),
+                                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
                                       ),
                                       Text(
                                         'Efface les scores, les étoiles, les checkpoints et les armes débloquées.',
-                                        style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 11),
+                                        style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 11.5),
                                       ),
                                     ],
                                   ),
                                 ),
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: CapsuleColors.dangerRed.withValues(alpha: 0.85),
+                                    backgroundColor: CapsuleColors.dangerRed.withValues(alpha: 0.88),
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
@@ -384,7 +472,7 @@ class _CapsuleWarriorsSettingsScreenState
                                   icon: const Icon(Icons.refresh_rounded, size: 16),
                                   label: Text(
                                     'RÉINITIALISER',
-                                    style: GoogleFonts.orbitron(fontSize: 10.5, fontWeight: FontWeight.w800),
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w800),
                                   ),
                                 ),
                               ],
@@ -413,9 +501,9 @@ class _CapsuleWarriorsSettingsScreenState
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.85),
+        color: CapsuleColors.oceanSurface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF1E293B)),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,13 +512,17 @@ class _CapsuleWarriorsSettingsScreenState
             children: [
               Icon(icon, color: color, size: 18),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: GoogleFonts.orbitron(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: color,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.7,
+                  ),
                 ),
               ),
             ],
@@ -450,14 +542,15 @@ class _CapsuleWarriorsSettingsScreenState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? CapsuleColors.cyanGlow : const Color(0xFF1E293B),
+          color: isSelected ? CapsuleColors.cyanGlow : CapsuleColors.cardOcean,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? CapsuleColors.cyanGlow : CapsuleColors.cardBorder),
         ),
         child: Text(
           lang,
-          style: GoogleFonts.orbitron(
-            color: isSelected ? Colors.black : Colors.white70,
-            fontSize: 11,
+          style: GoogleFonts.plusJakartaSans(
+            color: isSelected ? CapsuleColors.deepOcean : Colors.white70,
+            fontSize: 11.5,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -469,14 +562,14 @@ class _CapsuleWarriorsSettingsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: CapsuleColors.cardOcean,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: CapsuleColors.cardBorder),
       ),
       child: Column(
         children: [
-          Text(keyText, style: GoogleFonts.orbitron(color: CapsuleColors.gold, fontSize: 10, fontWeight: FontWeight.w800)),
-          Text(label, style: GoogleFonts.inter(color: CapsuleColors.textSubtle, fontSize: 9)),
+          Text(keyText, style: GoogleFonts.plusJakartaSans(color: CapsuleColors.gold, fontSize: 10.5, fontWeight: FontWeight.w800)),
+          Text(label, style: GoogleFonts.plusJakartaSans(color: CapsuleColors.textSubtle, fontSize: 10)),
         ],
       ),
     );

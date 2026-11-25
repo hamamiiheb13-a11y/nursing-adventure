@@ -88,7 +88,16 @@ class _RotationWarningWrapperState extends State<RotationWarningWrapper>
     final isFr = _isFrench(context);
 
     return Container(
-      color: const Color(0xFF0A0E1A),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0B253C),
+            Color(0xFF144266),
+          ],
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Center(
         child: SingleChildScrollView(

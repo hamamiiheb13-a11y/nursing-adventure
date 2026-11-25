@@ -110,12 +110,14 @@ class VirtualAnalogJoystick extends StatefulWidget {
 class _VirtualAnalogJoystickState extends State<VirtualAnalogJoystick> {
   Offset _dragOffset = Offset.zero;
   bool _isDragging = false;
+  int? _activePointer;
+  static const double _touchPadding = 16.0;
 
   void _updatePosition(Offset localPosition) {
-    final center = Offset(widget.radius, widget.radius);
+    final center = Offset(widget.radius + _touchPadding, widget.radius + _touchPadding);
     final delta = localPosition - center;
     final distance = delta.distance;
-    final maxDist = widget.radius - widget.knobRadius * 0.4;
+    final maxDist = widget.radius - widget.knobRadius * 0.35;
 
     Offset clampedDelta;
     if (distance <= maxDist) {
@@ -137,17 +139,18 @@ class _VirtualAnalogJoystickState extends State<VirtualAnalogJoystick> {
     widget.onMove?.call(normalized);
 
     if (widget.onDirectionChanged != null) {
-      // Deadzone 0.22
-      const deadzone = 0.22;
-      final bool up = normalized.dy < -deadzone;
-      final bool down = normalized.dy > deadzone;
-      final bool left = normalized.dx < -deadzone;
-      final bool right = normalized.dx > deadzone;
-      widget.onDirectionChanged!(up, down, left, right);
+      const deadzone = 0.20;
+      widget.onDirectionChanged!(
+        normalized.dy < -deadzone,
+        normalized.dy > deadzone,
+        normalized.dx < -deadzone,
+        normalized.dx > deadzone,
+      );
     }
   }
 
-  void _onPanEnd() {
+  void _resetStick() {
+    _activePointer = null;
     setState(() {
       _dragOffset = Offset.zero;
       _isDragging = false;
@@ -158,22 +161,37 @@ class _VirtualAnalogJoystickState extends State<VirtualAnalogJoystick> {
 
   @override
   Widget build(BuildContext context) {
-    final totalSize = widget.radius * 2;
+    final totalSize = (widget.radius + _touchPadding) * 2;
 
-    return GestureDetector(
-      onPanStart: (details) => _updatePosition(details.localPosition),
-      onPanUpdate: (details) => _updatePosition(details.localPosition),
-      onPanEnd: (_) => _onPanEnd(),
-      onPanCancel: _onPanEnd,
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (event) {
+        _activePointer = event.pointer;
+        _updatePosition(event.localPosition);
+      },
+      onPointerMove: (event) {
+        if (_activePointer == null || _activePointer == event.pointer) {
+          _updatePosition(event.localPosition);
+        }
+      },
+      onPointerUp: (event) {
+        if (_activePointer == event.pointer) _resetStick();
+      },
+      onPointerCancel: (event) {
+        if (_activePointer == event.pointer) _resetStick();
+      },
       child: SizedBox(
         width: totalSize,
         height: totalSize,
-        child: CustomPaint(
-          painter: _JoystickPainter(
-            radius: widget.radius,
-            knobRadius: widget.knobRadius,
-            knobOffset: _dragOffset,
-            isDragging: _isDragging,
+        child: Padding(
+          padding: const EdgeInsets.all(_touchPadding),
+          child: CustomPaint(
+            painter: _JoystickPainter(
+              radius: widget.radius,
+              knobRadius: widget.knobRadius,
+              knobOffset: _dragOffset,
+              isDragging: _isDragging,
+            ),
           ),
         ),
       ),
@@ -198,82 +216,99 @@ class _JoystickPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(radius, radius);
 
-    // 1. Base Ring Outer Glow
-    final baseGlowPaint = Paint()
-      ..color = const Color(0xFF00E5FF).withValues(alpha: isDragging ? 0.25 : 0.12)
-      ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-    canvas.drawCircle(center, radius, baseGlowPaint);
-
-    // 2. Base Plate Semi-transparent Body
+    // 1. Clean Ocean-Glass Base Plate
     final basePaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFF0F172A).withValues(alpha: 0.65),
-          const Color(0xFF0A0E1A).withValues(alpha: 0.85),
+          const Color(0xFF174266).withValues(alpha: isDragging ? 0.72 : 0.55),
+          const Color(0xFF0B253C).withValues(alpha: isDragging ? 0.85 : 0.70),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, basePaint);
 
-    // 3. Base Ring Outline with Neon Glow
+    // 2. Crisp Subtle Rim
     final borderPaint = Paint()
-      ..color = const Color(0xFF00E5FF).withValues(alpha: isDragging ? 0.8 : 0.4)
+      ..color = (isDragging ? const Color(0xFF22D3EE) : const Color(0xFF7DD3FC))
+          .withValues(alpha: isDragging ? 0.90 : 0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = isDragging ? 2.4 : 1.6;
     canvas.drawCircle(center, radius - 1, borderPaint);
 
-    // 4. Directional Crosshair Notches (Cardinal & Diagonal)
+    // 3. Directional Active Sector Glow when Thumb Moves!
+    if (isDragging && knobOffset.distance > 4.0) {
+      final dirAngle = knobOffset.direction;
+      final sectorPaint = Paint()
+        ..color = const Color(0xFF22D3EE).withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 3.5),
+        dirAngle - 0.45,
+        0.90,
+        false,
+        sectorPaint,
+      );
+    }
+
+    // 4. Clean Cardinal Crosshair Guides
     final notchPaint = Paint()
-      ..color = const Color(0xFF00E5FF).withValues(alpha: 0.35)
-      ..strokeWidth = 1.5;
+      ..color = const Color(0xFF7DD3FC).withValues(alpha: 0.35)
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
 
-    for (int i = 0; i < 8; i++) {
-      final angle = (i * math.pi / 4);
-      final isCardinal = (i % 2 == 0);
-      final rInner = radius - (isCardinal ? 14.0 : 8.0);
-      final rOuter = radius - 3.0;
-
-      final p1 = center + Offset(math.cos(angle) * rInner, math.sin(angle) * rInner);
-      final p2 = center + Offset(math.cos(angle) * rOuter, math.sin(angle) * rOuter);
+    for (int i = 0; i < 4; i++) {
+      final angle = (i * math.pi / 2);
+      final p1 = center + Offset(math.cos(angle) * (radius - 12.0), math.sin(angle) * (radius - 12.0));
+      final p2 = center + Offset(math.cos(angle) * (radius - 4.0), math.sin(angle) * (radius - 4.0));
       canvas.drawLine(p1, p2, notchPaint);
     }
 
-    // 5. Knob Position
+    // 5. Ergonomic Knob
     final knobCenter = center + knobOffset;
 
-    // Knob Glow
-    final knobGlow = Paint()
-      ..color = (isDragging ? const Color(0xFF00E5FF) : const Color(0xFF38BDF8))
-          .withValues(alpha: isDragging ? 0.45 : 0.2)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawCircle(knobCenter, knobRadius, knobGlow);
+    // Soft Elevation Shadow under Knob
+    canvas.drawCircle(
+      knobCenter + const Offset(0, 3),
+      knobRadius,
+      Paint()..color = Colors.black.withValues(alpha: 0.35),
+    );
 
-    // Knob Gradient Body
     final knobPaint = Paint()
       ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF38BDF8),
-          const Color(0xFF0284C7),
-          const Color(0xFF0F172A),
-        ],
-        stops: const [0.0, 0.6, 1.0],
+        center: const Alignment(-0.3, -0.3),
+        colors: isDragging
+            ? [
+                const Color(0xFFA5F3FC),
+                const Color(0xFF22D3EE),
+                const Color(0xFF0284C7),
+              ]
+            : [
+                const Color(0xFF7DD3FC),
+                const Color(0xFF0EA5E9),
+                const Color(0xFF0369A1),
+              ],
+        stops: const [0.0, 0.55, 1.0],
       ).createShader(Rect.fromCircle(center: knobCenter, radius: knobRadius))
       ..style = PaintingStyle.fill;
     canvas.drawCircle(knobCenter, knobRadius, knobPaint);
 
-    // Knob Border
-    final knobBorder = Paint()
-      ..color = Colors.white.withValues(alpha: isDragging ? 0.95 : 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawCircle(knobCenter, knobRadius - 1, knobBorder);
+    // Knob Border & Inner Dot
+    canvas.drawCircle(
+      knobCenter,
+      knobRadius - 1,
+      Paint()
+        ..color = Colors.white.withValues(alpha: isDragging ? 0.95 : 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0,
+    );
 
-    // Knob Center Core
-    final corePaint = Paint()
-      ..color = Colors.white.withValues(alpha: isDragging ? 0.9 : 0.45)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(knobCenter, knobRadius * 0.28, corePaint);
+    canvas.drawCircle(
+      knobCenter,
+      knobRadius * 0.25,
+      Paint()..color = Colors.white.withValues(alpha: isDragging ? 0.95 : 0.6),
+    );
   }
 
   @override

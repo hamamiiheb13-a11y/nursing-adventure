@@ -55,8 +55,29 @@ external void _nursingAudioPlayBossLaser();
 @JS('NursingAudio.playCombo')
 external void _nursingAudioPlayCombo();
 
+@JS('NursingAudio.playWeaponShot')
+external void _nursingAudioPlayWeaponShot(int weaponIndex);
+
+@JS('NursingAudio.playSpecialSkill')
+external void _nursingAudioPlaySpecialSkill();
+
+@JS('NursingAudio.playShieldActivate')
+external void _nursingAudioPlayShieldActivate();
+
+@JS('NursingAudio.playBossEntrance')
+external void _nursingAudioPlayBossEntrance();
+
+@JS('NursingAudio.playBossDefeat')
+external void _nursingAudioPlayBossDefeat();
+
+@JS('NursingAudio.playRevive')
+external void _nursingAudioPlayRevive();
+
 @JS('NursingAudio.startBgm')
 external void _nursingAudioStartBgm();
+
+@JS('NursingAudio.startBossBgm')
+external void _nursingAudioStartBossBgm();
 
 @JS('NursingAudio.stopBgm')
 external void _nursingAudioStopBgm();
@@ -66,6 +87,18 @@ external void _nursingAudioSetBgmEnabled(bool enabled);
 
 @JS('NursingAudio.setSfxEnabled')
 external void _nursingAudioSetSfxEnabled(bool enabled);
+
+@JS('NursingAudio.setMasterVolume')
+external void _nursingAudioSetMasterVolume(double volume);
+
+@JS('NursingAudio.setMusicVolume')
+external void _nursingAudioSetMusicVolume(double volume);
+
+@JS('NursingAudio.setSfxVolume')
+external void _nursingAudioSetSfxVolume(double volume);
+
+@JS('NursingAudio.setMuted')
+external void _nursingAudioSetMuted(bool muted);
 
 class AudioPlatformService implements AudioServiceInterface {
   @override
@@ -195,9 +228,58 @@ class AudioPlatformService implements AudioServiceInterface {
   }
 
   @override
+  void playWeaponShot(int weaponIndex) {
+    try {
+      _nursingAudioPlayWeaponShot(weaponIndex);
+    } catch (_) {}
+  }
+
+  @override
+  void playSpecialSkill() {
+    try {
+      _nursingAudioPlaySpecialSkill();
+    } catch (_) {}
+  }
+
+  @override
+  void playShieldActivate() {
+    try {
+      _nursingAudioPlayShieldActivate();
+    } catch (_) {}
+  }
+
+  @override
+  void playBossEntrance() {
+    try {
+      _nursingAudioPlayBossEntrance();
+    } catch (_) {}
+  }
+
+  @override
+  void playBossDefeat() {
+    try {
+      _nursingAudioPlayBossDefeat();
+    } catch (_) {}
+  }
+
+  @override
+  void playRevive() {
+    try {
+      _nursingAudioPlayRevive();
+    } catch (_) {}
+  }
+
+  @override
   void startBgm() {
     try {
       _nursingAudioStartBgm();
+    } catch (_) {}
+  }
+
+  @override
+  void startBossBgm() {
+    try {
+      _nursingAudioStartBossBgm();
     } catch (_) {}
   }
 
@@ -219,6 +301,34 @@ class AudioPlatformService implements AudioServiceInterface {
   void setSfxEnabled(bool enabled) {
     try {
       _nursingAudioSetSfxEnabled(enabled);
+    } catch (_) {}
+  }
+
+  @override
+  void setMasterVolume(double volume) {
+    try {
+      _nursingAudioSetMasterVolume(volume);
+    } catch (_) {}
+  }
+
+  @override
+  void setMusicVolume(double volume) {
+    try {
+      _nursingAudioSetMusicVolume(volume);
+    } catch (_) {}
+  }
+
+  @override
+  void setSfxVolume(double volume) {
+    try {
+      _nursingAudioSetSfxVolume(volume);
+    } catch (_) {}
+  }
+
+  @override
+  void setMuted(bool muted) {
+    try {
+      _nursingAudioSetMuted(muted);
     } catch (_) {}
   }
 }
