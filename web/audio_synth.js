@@ -239,6 +239,11 @@
       playTone(587.33, 0.26, 0.36, 'sine', 0.24);
     },
 
+    playBossAttack: function () {
+      playTone(340, 0.00, 0.14, 'sawtooth', 0.22, 140);
+      playTone(620, 0.03, 0.12, 'triangle', 0.18, 220);
+    },
+
     playBossDefeat: function () {
       playTone(320, 0.00, 0.35, 'sawtooth', 0.32, 65);
       playTone(523.25, 0.20, 0.16, 'triangle', 0.36);
@@ -254,41 +259,113 @@
   };
 
   // ============================================================================
-  // COHERENT DUAL-MODE BACKGROUND MUSIC (EXPLORATION vs BOSS COMBAT)
+  // MULTI-STAGE & BOSS BACKGROUND MUSIC ENGINE (Per-organ ambient themes)
   // Guaranteed single active loop: always stops prior timer before starting!
   // ============================================================================
   const BGM_TRACKS = {
-    // Cheerful, upbeat, luminous medical adventure melody (C Major / A Minor)
-    exploration: [
-      { f: 523.25, b: 261.63, d: 0.26 }, // C5
-      { f: 587.33, b: 261.63, d: 0.26 }, // D5
-      { f: 659.25, b: 329.63, d: 0.26 }, // E5
-      { f: 783.99, b: 329.63, d: 0.42 }, // G5
-      { f: 659.25, b: 293.66, d: 0.26 }, // E5
-      { f: 587.33, b: 293.66, d: 0.26 }, // D5
-      { f: 523.25, b: 246.94, d: 0.42 }, // C5
-      { f: 440.00, b: 220.00, d: 0.26 }, // A4
-      { f: 523.25, b: 220.00, d: 0.26 }, // C5
-      { f: 659.25, b: 261.63, d: 0.26 }, // E5
-      { f: 587.33, b: 196.00, d: 0.52 }, // D5
-      { f: 392.00, b: 196.00, d: 0.26 }, // G4
-      { f: 440.00, b: 220.00, d: 0.26 }, // A4
-      { f: 523.25, b: 261.63, d: 0.52 }  // C5
+    // Stage 1 (Œsophage) - Flowing bright C Major exploration
+    stage1: [
+      { f: 523.25, b: 261.63, d: 0.26 },
+      { f: 587.33, b: 261.63, d: 0.26 },
+      { f: 659.25, b: 329.63, d: 0.26 },
+      { f: 783.99, b: 329.63, d: 0.42 },
+      { f: 659.25, b: 293.66, d: 0.26 },
+      { f: 587.33, b: 293.66, d: 0.26 },
+      { f: 523.25, b: 246.94, d: 0.42 },
+      { f: 440.00, b: 220.00, d: 0.26 },
+      { f: 523.25, b: 220.00, d: 0.26 },
+      { f: 659.25, b: 261.63, d: 0.26 },
+      { f: 587.33, b: 196.00, d: 0.52 },
+      { f: 392.00, b: 196.00, d: 0.26 },
+      { f: 440.00, b: 220.00, d: 0.26 },
+      { f: 523.25, b: 261.63, d: 0.52 }
     ],
-    // Energetic heroic arcade Boss Fight rhythm (A Minor / F Major driving groove)
+    // Stage 2 (Estomac) - Warm bubbling G Major rhythm
+    stage2: [
+      { f: 392.00, b: 196.00, d: 0.24 },
+      { f: 493.88, b: 196.00, d: 0.24 },
+      { f: 587.33, b: 246.94, d: 0.24 },
+      { f: 783.99, b: 293.66, d: 0.36 },
+      { f: 659.25, b: 261.63, d: 0.24 },
+      { f: 587.33, b: 246.94, d: 0.24 },
+      { f: 493.88, b: 196.00, d: 0.36 },
+      { f: 440.00, b: 220.00, d: 0.24 },
+      { f: 523.25, b: 261.63, d: 0.24 },
+      { f: 587.33, b: 196.00, d: 0.48 }
+    ],
+    // Stage 3 (Intestin Grêle) - Crystal absorbing F Major arpeggio
+    stage3: [
+      { f: 349.23, b: 174.61, d: 0.22 },
+      { f: 440.00, b: 174.61, d: 0.22 },
+      { f: 523.25, b: 220.00, d: 0.22 },
+      { f: 698.46, b: 261.63, d: 0.34 },
+      { f: 659.25, b: 220.00, d: 0.22 },
+      { f: 587.33, b: 196.00, d: 0.22 },
+      { f: 523.25, b: 174.61, d: 0.34 },
+      { f: 440.00, b: 146.83, d: 0.22 },
+      { f: 523.25, b: 174.61, d: 0.44 }
+    ],
+    // Stage 4 (Iléon Terminal) - Tech immune D Dorian groove
+    stage4: [
+      { f: 293.66, b: 146.83, d: 0.21 },
+      { f: 440.00, b: 146.83, d: 0.21 },
+      { f: 523.25, b: 174.61, d: 0.21 },
+      { f: 587.33, b: 220.00, d: 0.32 },
+      { f: 493.88, b: 196.00, d: 0.21 },
+      { f: 440.00, b: 174.61, d: 0.21 },
+      { f: 392.00, b: 146.83, d: 0.32 },
+      { f: 329.63, b: 130.81, d: 0.21 },
+      { f: 440.00, b: 146.83, d: 0.42 }
+    ],
+    // Stage 5 (Côlon Transverse) - Calming azure Em/C osmotic motif
+    stage5: [
+      { f: 329.63, b: 164.81, d: 0.25 },
+      { f: 392.00, b: 164.81, d: 0.25 },
+      { f: 493.88, b: 196.00, d: 0.25 },
+      { f: 659.25, b: 246.94, d: 0.38 },
+      { f: 587.33, b: 220.00, d: 0.25 },
+      { f: 523.25, b: 196.00, d: 0.25 },
+      { f: 493.88, b: 164.81, d: 0.38 },
+      { f: 392.00, b: 130.81, d: 0.25 },
+      { f: 440.00, b: 164.81, d: 0.45 }
+    ],
+    // Stage 6 (Rectum & Urgences) - Crisp clinical alert A Minor pulse
+    stage6: [
+      { f: 440.00, b: 110.00, d: 0.19 },
+      { f: 523.25, b: 110.00, d: 0.19 },
+      { f: 659.25, b: 164.81, d: 0.19 },
+      { f: 587.33, b: 146.83, d: 0.28 },
+      { f: 523.25, b: 130.81, d: 0.19 },
+      { f: 493.88, b: 123.47, d: 0.19 },
+      { f: 440.00, b: 110.00, d: 0.32 },
+      { f: 659.25, b: 164.81, d: 0.19 },
+      { f: 783.99, b: 196.00, d: 0.36 }
+    ],
+    // Stage 7 (Sanctuaire Final) - Radiant Lydian championship finale
+    stage7: [
+      { f: 523.25, b: 261.63, d: 0.20 },
+      { f: 659.25, b: 261.63, d: 0.20 },
+      { f: 739.99, b: 293.66, d: 0.20 },
+      { f: 987.77, b: 329.63, d: 0.36 },
+      { f: 783.99, b: 293.66, d: 0.20 },
+      { f: 659.25, b: 261.63, d: 0.20 },
+      { f: 783.99, b: 246.94, d: 0.36 },
+      { f: 1046.50, b: 261.63, d: 0.48 }
+    ],
+    // Energetic heroic arcade Boss Fight rhythm
     boss: [
-      { f: 440.00, b: 110.00, d: 0.18 }, // A4
-      { f: 523.25, b: 110.00, d: 0.18 }, // C5
-      { f: 659.25, b: 130.81, d: 0.18 }, // E5
-      { f: 587.33, b: 110.00, d: 0.18 }, // D5
-      { f: 659.25, b: 130.81, d: 0.24 }, // E5
-      { f: 880.00, b: 146.83, d: 0.30 }, // A5
-      { f: 783.99, b: 146.83, d: 0.18 }, // G5
-      { f: 659.25, b: 130.81, d: 0.18 }, // E5
-      { f: 587.33, b: 116.54, d: 0.18 }, // D5
-      { f: 523.25, b: 98.00,  d: 0.18 }, // C5
-      { f: 659.25, b: 123.47, d: 0.24 }, // E5
-      { f: 783.99, b: 123.47, d: 0.30 }  // G5
+      { f: 440.00, b: 110.00, d: 0.18 },
+      { f: 523.25, b: 110.00, d: 0.18 },
+      { f: 659.25, b: 130.81, d: 0.18 },
+      { f: 587.33, b: 110.00, d: 0.18 },
+      { f: 659.25, b: 130.81, d: 0.24 },
+      { f: 880.00, b: 146.83, d: 0.30 },
+      { f: 783.99, b: 146.83, d: 0.18 },
+      { f: 659.25, b: 130.81, d: 0.18 },
+      { f: 587.33, b: 116.54, d: 0.18 },
+      { f: 523.25, b: 98.00,  d: 0.18 },
+      { f: 659.25, b: 123.47, d: 0.24 },
+      { f: 783.99, b: 123.47, d: 0.30 }
     ]
   };
 
@@ -300,7 +377,7 @@
       const ctx = getAudioContext();
       if (!ctx) return;
 
-      const track = BGM_TRACKS[activeTrackMode] || BGM_TRACKS.exploration;
+      const track = BGM_TRACKS[activeTrackMode] || BGM_TRACKS.stage1;
       const note = track[BGM.noteIdx % track.length];
       BGM.noteIdx = (BGM.noteIdx + 1) % track.length;
 
@@ -384,11 +461,13 @@
     playSpecialSkill: SFX.playSpecialSkill,
     playShieldActivate: SFX.playShieldActivate,
     playBossEntrance: SFX.playBossEntrance,
+    playBossAttack: SFX.playBossAttack,
     playBossDefeat: SFX.playBossDefeat,
     playRevive: SFX.playRevive,
 
-    startBgm: function () {
-      BGM.start('exploration');
+    startBgm: function (stageId) {
+      const id = (stageId && stageId >= 1 && stageId <= 7) ? stageId : 1;
+      BGM.start('stage' + id);
     },
     startBossBgm: function () {
       BGM.start('boss');

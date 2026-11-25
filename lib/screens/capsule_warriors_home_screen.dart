@@ -144,7 +144,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: CapsuleColors.darkNavy,
+        backgroundColor: CapsuleColors.deepOcean,
         body: Center(
           child: CircularProgressIndicator(color: CapsuleColors.cyanGlow),
         ),
@@ -270,44 +270,44 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
   }
 
   Widget _buildGameLogo(bool isCompact) {
-    final fontSize = isCompact ? 30.0 : 40.0;
+    final fontSize = isCompact ? 32.0 : 44.0;
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: Alignment.centerLeft,
       child: Stack(
         children: [
-          // Cyan Outer Glow Text Shadow
+          // Soft Cyan-Teal Halo
           Text(
-            'CAPSULE WARRIORS',
+            'GASTRO QUEST',
             maxLines: 1,
             style: GoogleFonts.orbitron(
               fontSize: fontSize,
               fontWeight: FontWeight.w900,
-              letterSpacing: 3.0,
+              letterSpacing: 2.5,
               foreground: Paint()
                 ..style = PaintingStyle.stroke
-                ..strokeWidth = 5
-                ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.5)
-                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+                ..strokeWidth = 4
+                ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.35),
             ),
           ),
-          // White / Electric Blue Foreground Gradient
+          // Crisp White -> Cyan -> Turquoise -> Soft Violet Gradient
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               colors: [
                 Colors.white,
                 CapsuleColors.cyanGlow,
-                CapsuleColors.electricBlue,
+                CapsuleColors.turquoise,
+                CapsuleColors.softViolet,
               ],
-              stops: [0.0, 0.5, 1.0],
+              stops: [0.0, 0.42, 0.72, 1.0],
             ).createShader(bounds),
             child: Text(
-              'CAPSULE WARRIORS',
+              'GASTRO QUEST',
               maxLines: 1,
               style: GoogleFonts.orbitron(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 3.0,
+                letterSpacing: 2.5,
                 color: Colors.white,
               ),
             ),
@@ -326,24 +326,21 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         children: [
           Container(
             width: 24,
-            height: 2,
-            color: CapsuleColors.turquoise,
+            height: 2.5,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [CapsuleColors.gold, CapsuleColors.cyanGlow]),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           const SizedBox(width: 8),
           Text(
-            'THE STOMACH MISSION',
+            'CAPSULE WARRIORS • EXPÉDITION DIGESTIVE',
             maxLines: 1,
-            style: GoogleFonts.orbitron(
-              fontSize: isCompact ? 12.0 : 15.0,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isCompact ? 12.5 : 14.5,
               fontWeight: FontWeight.w800,
-              color: CapsuleColors.turquoise,
-              letterSpacing: 3.5,
-              shadows: [
-                Shadow(
-                  color: CapsuleColors.turquoise.withValues(alpha: 0.8),
-                  blurRadius: 10,
-                ),
-              ],
+              color: CapsuleColors.mintGreen,
+              letterSpacing: 1.4,
             ),
           ),
         ],
@@ -440,16 +437,16 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
           colors: isPrimary
               ? [
                   CapsuleColors.electricBlue,
-                  CapsuleColors.purple,
+                  CapsuleColors.softViolet,
                 ]
               : [
-                  const Color(0xFF0F172A).withValues(alpha: 0.9),
-                  const Color(0xFF1E293B).withValues(alpha: 0.8),
+                  CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+                  CapsuleColors.cardOcean.withValues(alpha: 0.90),
                 ],
         ),
         border: Border.all(
-          color: isPrimary ? CapsuleColors.cyanGlow : effectiveAccent.withValues(alpha: 0.6),
-          width: isPrimary ? 2.0 : 1.2,
+          color: isPrimary ? CapsuleColors.cyanGlow : effectiveAccent.withValues(alpha: 0.55),
+          width: isPrimary ? 1.8 : 1.2,
         ),
         boxShadow: [
           BoxShadow(

@@ -69,6 +69,8 @@ class ArcadeGameController extends ChangeNotifier {
   double bossArenaMix = 0.0; // 0.0 exploration -> 1.0 boss chamber
   double arenaSupportTimer = 4.0;
   double specialWaveFlashTimer = 0.0;
+  bool _midEvent1Triggered = false;
+  bool _midEvent2Triggered = false;
   int _bossAttackIndex = 0;
   int _nextDynamicId = 5000;
 
@@ -460,7 +462,7 @@ class ArcadeGameController extends ChangeNotifier {
 
   void start() {
     state = GameState.playing;
-    audio.startBgm();
+    audio.startBgm(level);
     audio.playClick();
     notifyListeners();
   }
@@ -482,7 +484,7 @@ class ArcadeGameController extends ChangeNotifier {
       if (state == GameState.bossFight || state == GameState.bossIntro) {
         audio.startBossBgm();
       } else {
-        audio.startBgm();
+        audio.startBgm(level);
       }
       notifyListeners();
     }
@@ -743,11 +745,12 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 3. Deal Area-of-Effect therapeutic damage to nearby germs
-    final int specialDmg = math.max(6, (8 * player.knowledgeDamageMultiplier).round());
+    // 3. Deal Area-of-Effect therapeutic damage to nearby germs (stronger when Super Attack unlocked!)
+    final double superMult = player.hasSuperAttack ? 1.65 : 1.0;
+    final int specialDmg = math.max(6, (8 * player.knowledgeDamageMultiplier * superMult).round());
     for (final enemy in enemies) {
       if (enemy.isDead) continue;
-      if ((enemy.position - player.position).distance < 380.0) {
+      if ((enemy.position - player.position).distance < 420.0) {
         enemy.takeDamage(specialDmg);
         _emitHitSparks(enemy.position, color: const Color(0xFF34D399));
         if (enemy.isDead) {
@@ -759,10 +762,10 @@ class ArcadeGameController extends ChangeNotifier {
 
     // 4. Also strike the Boss if in Boss Chamber!
     if (state == GameState.bossFight && !boss.isDefeated) {
-      if ((boss.position - player.position).distance < 650.0) {
-        boss.takeDamage((specialDmg * 0.75).round());
+      if ((boss.position - player.position).distance < 720.0) {
+        boss.takeDamage((specialDmg * 0.85).round());
         _emitHitSparks(boss.position, color: const Color(0xFFFBBF24));
-        score += 250;
+        score += player.hasSuperAttack ? 400 : 250;
         if (boss.isDefeated) {
           _startBossDefeatSequence();
         }
@@ -776,15 +779,21 @@ class ArcadeGameController extends ChangeNotifier {
         ArcadeParticle(
           position: player.position,
           velocity: Offset(math.cos(angle) * 380.0, math.sin(angle) * 380.0),
-          color: i % 2 == 0 ? const Color(0xFF34D399) : const Color(0xFF22D3EE),
-          size: 5.5,
+          color: player.hasSuperAttack
+              ? (i % 2 == 0 ? const Color(0xFFFBBF24) : const Color(0xFF34D399))
+              : (i % 2 == 0 ? const Color(0xFF34D399) : const Color(0xFF22D3EE)),
+          size: player.hasSuperAttack ? 6.5 : 5.5,
           life: 0.65,
           maxLife: 0.65,
         ),
       );
     }
 
-    _addFloatingText('ONDE ANTI-INFLAMMATOIRE !', player.position + const Offset(0, -45), const Color(0xFF34D399));
+    _addFloatingText(
+      player.hasSuperAttack ? 'FRAPPE CLINIQUE MAX !' : 'ONDE ANTI-INFLAMMATOIRE !',
+      player.position + const Offset(0, -45),
+      player.hasSuperAttack ? const Color(0xFFFBBF24) : const Color(0xFF34D399),
+    );
     notifyListeners();
   }
 
@@ -911,20 +920,37 @@ class ArcadeGameController extends ChangeNotifier {
     if (player.doubleShotTimer > 0) {
       player.doubleShotTimer = math.max(0.0, player.doubleShotTimer - dt);
     }
+    if (player.collectFlashTimer > 0) {
+      player.collectFlashTimer = math.max(0.0, player.collectFlashTimer - dt);
+    }
+    if (player.damageFlashTimer > 0) {
+      player.damageFlashTimer = math.max(0.0, player.damageFlashTimer - dt);
+    }
+    if (player.shieldDeflectTimer > 0) {
+      player.shieldDeflectTimer = math.max(0.0, player.shieldDeflectTimer - dt);
+    }
 
     player.animPhase += dt * 4.5;
 
-    final double maxSpeed = (player.isBoosted ? 350.0 : 270.0) * player.joystickSensitivity;
+    // Progressive capsule speed upgrade based on unlocked arsenal!
+    final double speedUpgradeMult = (1.0 + (progress.unlockedWeapons.length - 1) * 0.035).clamp(1.0, 1.25);
+    final double maxSpeed = (player.isBoosted ? 350.0 : 270.0) * speedUpgradeMult * player.joystickSensitivity;
 
     double targetVx = player.moveInput.dx * maxSpeed;
     double targetVy = player.moveInput.dy * maxSpeed;
+
+    // Organ-specific subtle digestive physics cue: Stage 1 gentle esophageal peristaltic lift
+    if (level == 1 && state == GameState.playing) {
+      targetVy += math.sin(gameTime * 2.1) * 14.0;
+    }
 
     if (state == GameState.bossFight) {
       // Arena mode: unrestricted 360° piloting without forced forward drift
     } else {
       if (player.moveInput.dx >= -0.12) {
-        targetVx = math.max(targetVx, player.isBoosted ? 245.0 : 145.0);
+        targetVx = math.max(targetVx, (player.isBoosted ? 245.0 : 145.0) * speedUpgradeMult);
       }
+      _checkMidStageSurprises();
     }
 
     // Immediate snappy feel with smooth fluid damping
@@ -976,6 +1002,80 @@ class ArcadeGameController extends ChangeNotifier {
     } else if (player.position.dy > floorY) {
       player.position = Offset(player.position.dx, floorY);
       player.velocity = Offset(player.velocity.dx * 0.9, -15.0);
+    }
+  }
+
+  /// Special in-stage surprises / events along progression to boost variety & excitement
+  void _checkMidStageSurprises() {
+    final double frac = progressFraction;
+    if (!_midEvent1Triggered && frac >= 0.42 && frac < 0.70) {
+      _midEvent1Triggered = true;
+      final spawnX = player.position.dx + 280.0;
+      if (spawnX < totalDistance - 1150.0) {
+        final midY = (tunnel.getCeilingY(spawnX, gameTime) + tunnel.getFloorY(spawnX, gameTime)) * 0.5;
+        collectibles.addAll([
+          ArcadeCollectible(
+            id: _nextDynamicId++,
+            position: Offset(spawnX, midY - 36.0),
+            type: CollectibleType.vitaminCapsule,
+            xpValue: 50,
+            scoreValue: 120,
+          ),
+          ArcadeCollectible(
+            id: _nextDynamicId++,
+            position: Offset(spawnX + 38.0, midY),
+            type: CollectibleType.shieldBoost,
+            xpValue: 80,
+            scoreValue: 160,
+          ),
+          ArcadeCollectible(
+            id: _nextDynamicId++,
+            position: Offset(spawnX + 76.0, midY + 36.0),
+            type: CollectibleType.vitaminCapsule,
+            xpValue: 50,
+            scoreValue: 120,
+          ),
+        ]);
+        _addFloatingText(
+          'RENFORT PROBIOTIQUE !',
+          player.position + const Offset(80, -45),
+          const Color(0xFF34D399),
+        );
+      }
+    }
+
+    if (!_midEvent2Triggered && frac >= 0.72) {
+      _midEvent2Triggered = true;
+      final spawnX = player.position.dx + 260.0;
+      if (spawnX < totalDistance - 1080.0) {
+        final midY = (tunnel.getCeilingY(spawnX, gameTime) + tunnel.getFloorY(spawnX, gameTime)) * 0.5;
+        collectibles.add(
+          ArcadeCollectible(
+            id: _nextDynamicId++,
+            position: Offset(spawnX, midY),
+            type: CollectibleType.weaponUpgrade,
+            xpValue: 100,
+            scoreValue: 220,
+          ),
+        );
+        enemies.add(
+          ArcadeEnemy(
+            id: _nextDynamicId++,
+            position: Offset(spawnX + 95.0, midY - 40.0),
+            velocity: const Offset(-55.0, 0.0),
+            type: EnemyType.cytokineBlob,
+            maxHp: 4,
+            radius: 22.0,
+            scoreReward: 220,
+            xpReward: 50,
+          ),
+        );
+        _addFloatingText(
+          'SURCHARGE THÉRAPEUTIQUE !',
+          player.position + const Offset(75, -45),
+          const Color(0xFFFBBF24),
+        );
+      }
     }
   }
 
@@ -1213,7 +1313,7 @@ class ArcadeGameController extends ChangeNotifier {
             ),
           );
         }
-        audio.playBossLaser();
+        audio.playBossAttack();
         boss.attackCooldown = boss.isPhase2 ? 1.55 : 2.1;
         break;
 
@@ -1232,7 +1332,7 @@ class ArcadeGameController extends ChangeNotifier {
             ),
           );
         }
-        audio.playBossLaser();
+        audio.playBossAttack();
         boss.attackCooldown = boss.isPhase2 ? 1.5 : 2.0;
         break;
 
@@ -1302,6 +1402,11 @@ class ArcadeGameController extends ChangeNotifier {
         score += item.scoreValue * (1 + (combo / 4).floor());
         combo++;
         if (combo > highestCombo) highestCombo = combo;
+        player.triggerCollectFlash();
+        // Stage 3 Small Intestine villi absorption bonus: shaves Special cooldown slightly on pickup!
+        if (level == 3 && player.specialSkillCooldown > 0) {
+          player.specialSkillCooldown = math.max(0.0, player.specialSkillCooldown - 0.6);
+        }
 
         audio.playCrystal();
         if (combo % 5 == 0) {
@@ -1410,6 +1515,7 @@ class ArcadeGameController extends ChangeNotifier {
       final dist = (player.position - ep.position).distance;
       if (dist < player.radius + ep.radius) {
         if (player.isShieldActive) {
+          player.triggerShieldDeflect();
           _emitShieldDeflect(player.position);
           _addFloatingText('DÉVIÉ !', player.position + const Offset(0, -25), const Color(0xFF22D3EE));
         } else if (!player.isInvulnerable) {
@@ -1425,6 +1531,7 @@ class ArcadeGameController extends ChangeNotifier {
       final dist = (player.position - enemy.position).distance;
       if (dist < player.radius + enemy.radius) {
         if (player.isShieldActive) {
+          player.triggerShieldDeflect();
           _emitShieldDeflect(player.position);
           enemy.takeDamage(4);
           _addFloatingText('CHOC BOUCLIER !', enemy.position + const Offset(0, -20), const Color(0xFF22D3EE));
@@ -1439,6 +1546,7 @@ class ArcadeGameController extends ChangeNotifier {
     if (state == GameState.bossFight && !boss.isDefeated && !player.isInvulnerable) {
       if ((player.position - boss.position).distance < player.radius + 54.0) {
         if (player.isShieldActive) {
+          player.triggerShieldDeflect();
           _emitShieldDeflect(player.position);
           player.velocity = const Offset(-180.0, 0.0);
         } else {
@@ -1534,15 +1642,20 @@ class ArcadeGameController extends ChangeNotifier {
         _addFloatingText('NOTION MAÎTRISÉE !', player.position + const Offset(0, -45), const Color(0xFFFBBF24));
       }
 
-      // Link knowledge directly to combat effectiveness!
+      // Link knowledge directly to combat effectiveness & weaken the Boss!
       player.knowledgeDamageMultiplier = (1.0 + correctAnswersInStage * 0.30).clamp(1.0, 2.5);
       player.weaponPowerLevel = (1 + (correctAnswersInStage / 2).floor()).clamp(1, 4);
+      if (boss.currentHp > 6) {
+        boss.takeDamage(2);
+      }
 
       if (wrongAnswersInStage == 0 && correctAnswersInStage >= checkpoints.length && checkpoints.isNotEmpty) {
         player.knowledgeDamageMultiplier = 2.5;
         player.weaponPowerLevel = 4;
+        player.hasSuperAttack = true;
+        player.specialSkillCooldown = 0.0;
         player.activateDoubleShot(30.0);
-        _addFloatingText('SYNERGIE MAXIMALE ! x2.5 DÉGÂTS', player.position + const Offset(0, -48), const Color(0xFFFBBF24));
+        _addFloatingText('SYNERGIE MAXIMALE ! SUPER ATTAQUE PRÊTE !', player.position + const Offset(0, -48), const Color(0xFFFBBF24));
       }
 
       earnedXp += 100;
@@ -1555,7 +1668,7 @@ class ArcadeGameController extends ChangeNotifier {
       player.boostTimer = 3.0;
       player.heal();
       audio.playCorrect();
-      _addFloatingText('BONUS +30% DÉGÂTS !', player.position + const Offset(0, -30), const Color(0xFF34D399));
+      _addFloatingText('+30% ARME & -2 PV BOSS !', player.position + const Offset(0, -30), const Color(0xFF34D399));
     } else {
       wrongAnswersInStage++;
       combo = 0;
@@ -1620,9 +1733,17 @@ class ArcadeGameController extends ChangeNotifier {
     score += 1500;
     earnedXp += 400;
 
-    // 3 stars ONLY when all mission questions answered cleanly; otherwise 2 stars (never punitive!)
-    final bool perfectKnowledge = wrongAnswersInStage == 0 && (checkpoints.isEmpty || correctAnswersInStage >= checkpoints.length);
-    lastStarsEarned = perfectKnowledge ? 3 : 2;
+    // Coherent 1 / 2 / 3 star thresholds based on educational mastery (never punitive!)
+    final double accuracyRatio = checkpoints.isEmpty
+        ? 1.0
+        : (correctAnswersInStage / checkpoints.length);
+    if (wrongAnswersInStage == 0 && accuracyRatio >= 1.0) {
+      lastStarsEarned = 3;
+    } else if (accuracyRatio >= 0.5) {
+      lastStarsEarned = 2;
+    } else {
+      lastStarsEarned = 1;
+    }
 
     final previousWeapons = List<String>.from(progress.unlockedWeapons);
     progress.completeLevel(level, lastStarsEarned, score, crystalsCollected);
@@ -1634,6 +1755,7 @@ class ArcadeGameController extends ChangeNotifier {
 
     if (!previousWeapons.contains(world.unlockedWeaponName)) {
       newlyUnlockedWeapon = world.unlockedWeaponName;
+      audio.playRewardUnlock();
     }
 
     _emitVictoryConfetti(burstCount: 70);

@@ -38,6 +38,9 @@ class GastroWorld {
   // Visuals and progression
   final IconData icon;
   final String guideWelcome;
+  final String organZone;
+  final String stageMechanicHint;
+  final List<String> acquiredSkills;
   final Color? tunnelDeepColorCustom;
   final Color? tunnelWallColorCustom;
   final Color? tunnelFringeColorCustom;
@@ -61,6 +64,9 @@ class GastroWorld {
     this.starsEarned = 0,
     this.icon = Icons.biotech_rounded,
     this.guideWelcome = '',
+    this.organZone = '',
+    this.stageMechanicHint = '',
+    this.acquiredSkills = const [],
     this.tunnelDeepColorCustom,
     this.tunnelWallColorCustom,
     this.tunnelFringeColorCustom,
@@ -89,72 +95,81 @@ class GastroWorld {
 
   static List<GastroWorld> worlds = [
     // -------------------------------------------------------------
-    // MONDE 1 : Estomac & Muqueuse — Anatomie & Lésions (Q1-Q4)
+    // MONDE 1 : Œsophage & Cardia — Anatomie & Lésions (Q1-Q4)
     // -------------------------------------------------------------
     GastroWorld(
       id: 1,
-      name: 'ESTOMAC & MUQUEUSE',
+      name: 'ŒSOPHAGE & CARDIA',
       subtitle: 'Anatomie, Physiologie et Lésions',
       theme: 'anatomy',
       description: 'Explorez l\'anatomie du tube digestif, les villosités et le mécanisme des fistules.',
-      primaryColor: const Color(0xFFFB7185), // Corail lumineux
-      secondaryColor: const Color(0xFFFDBA74), // Pêche dorée
+      primaryColor: const Color(0xFFFB7185),
+      secondaryColor: const Color(0xFF38BDF8),
       questionIds: const [1, 2, 3, 4],
       bossName: 'Helicobacter Rex',
-      bossDescription: 'Fléau Flagellé de la Muqueuse. Colonise la paroi gastrique et libère des enzymes corrosives.',
+      bossDescription: 'Fléau Flagellé du Cardia. Libère des enzymes corrosives et vagues péristaltiques.',
       bossDangerLevel: 'MODÉRÉ',
-      environmentDescription: 'Parois corail lumineuses, villosités ondulantes et lumière gastrique rosée.',
+      environmentDescription: 'Parois œsophagiennes nacrées corail-azur et ondes péristaltiques douces.',
+      organZone: 'Œsophage & Jonction Cardiale',
+      stageMechanicHint: 'Courants péristaltiques doux facilitant la portance',
+      acquiredSkills: const ['Fistule vs Sténose', 'Villosités absorbantes', 'Rôle du côlon & iléon'],
       isUnlocked: true,
       icon: Icons.biotech_rounded,
-      guideWelcome: 'Bienvenue dans l\'Estomac ! Maîtrisons l\'anatomie et la physiologie digestive.',
-      tunnelDeepColorCustom: const Color(0xFF541F35),
-      tunnelWallColorCustom: const Color(0xFFBE4B65),
+      guideWelcome: 'Bienvenue dans l\'Œsophage ! Maîtrisons l\'anatomie du tractus digestif.',
+      tunnelDeepColorCustom: const Color(0xFF1D3E5E),
+      tunnelWallColorCustom: const Color(0xFF287494),
       tunnelFringeColorCustom: const Color(0xFFFDA4AF),
       unlockedWeaponNameCustom: 'Double Laser Océan',
     ),
 
     // -------------------------------------------------------------
-    // MONDE 2 : Intestin Grêle — Symptômes & Manifestations (Q5-Q9)
+    // MONDE 2 : Estomac & Muqueuse — Symptômes & Manifestations (Q5-Q9)
     // -------------------------------------------------------------
     GastroWorld(
       id: 2,
-      name: 'INTESTIN GRÊLE',
+      name: 'ESTOMAC & MUQUEUSE',
       subtitle: 'Symptômes et Manifestations MICI',
       theme: 'symptoms',
       description: 'Déchiffrez les symptômes cardinaux, la rémission et les atteintes articulaires.',
-      primaryColor: const Color(0xFFFB923C), // Orange chaleureux
-      secondaryColor: const Color(0xFF38BDF8), // Bleu océan
+      primaryColor: const Color(0xFFFB923C),
+      secondaryColor: const Color(0xFFFBBF24),
       questionIds: const [5, 6, 7, 8, 9],
       bossName: 'Colossus Inflammatio',
-      bossDescription: 'Titan des Poussées Aiguës. Projette des salves de cytokines inflammatoires.',
+      bossDescription: 'Titan Gastrique des Poussées Aiguës. Projette des salves de cytokines acides.',
       bossDangerLevel: 'MODÉRÉ +',
-      environmentDescription: 'Corridor océan-ambre baigné de replis absorbants et de foyers inflammatoires.',
+      environmentDescription: 'Corridor gastrique chaud pêche-doré parsemé de replis muqueux et bulles.',
+      organZone: 'Estomac & Antre Gastrique',
+      stageMechanicHint: 'Gouttelettes gastriques et foyers inflammatoires à apaiser',
+      acquiredSkills: const ['Rémission vs Guérison', 'Signes articulaires & généraux', 'Croissance pédiatrique'],
       icon: Icons.medical_services_rounded,
-      guideWelcome: 'Cap sur l\'Intestin Grêle pour identifier la sémiologie des MICI.',
-      tunnelDeepColorCustom: const Color(0xFF153E5C),
+      guideWelcome: 'Cap sur l\'Estomac pour identifier la sémiologie des MICI.',
+      tunnelDeepColorCustom: const Color(0xFF1A4363),
       tunnelWallColorCustom: const Color(0xFF0E7490),
       tunnelFringeColorCustom: const Color(0xFFFDBA74),
       unlockedWeaponNameCustom: 'Canon Antibactérien',
     ),
 
     // -------------------------------------------------------------
-    // MONDE 3 : Iléon Terminal — Traitements & Observance (Q10-Q12)
+    // MONDE 3 : Intestin Grêle — Traitements & Observance (Q10-Q12)
     // -------------------------------------------------------------
     GastroWorld(
       id: 3,
-      name: 'ILÉON TERMINAL',
+      name: 'INTESTIN GRÊLE',
       subtitle: 'Traitements et Observance',
       theme: 'treatment',
       description: 'Maîtrisez les biothérapies anti-TNF, immunosuppresseurs et l\'importance de l\'observance.',
-      primaryColor: const Color(0xFF14B8A6), // Turquoise médicinal
-      secondaryColor: const Color(0xFF34D399), // Vert menthe
+      primaryColor: const Color(0xFF14B8A6),
+      secondaryColor: const Color(0xFF34D399),
       questionIds: const [10, 11, 12],
       bossName: 'Auto-Immuno Titan',
       bossDescription: 'Golem des Anticorps Dissidents. Bloque l\'action des thérapies biologiques.',
       bossDangerLevel: 'ÉLEVÉ',
-      environmentDescription: 'Flux turquoise apaisant enrichi de molécules thérapeutiques et plaques immunitaires.',
+      environmentDescription: 'Flux turquoise apaisant enrichi de villosités et nutriments absorbants.',
+      organZone: 'Intestin Grêle (Jéjunum)',
+      stageMechanicHint: 'Villosités nourricières accélérant la recharge énergétique',
+      acquiredSkills: const ['Sécurité anti-TNF', 'Combothérapie immunomodulatrice', 'Observance stricte'],
       icon: Icons.medication_rounded,
-      guideWelcome: 'Bienvenue dans l\'Iléon Terminal ! Place à la pharmacologie anti-TNF.',
+      guideWelcome: 'Bienvenue dans l\'Intestin Grêle ! Place à la pharmacologie anti-TNF.',
       tunnelDeepColorCustom: const Color(0xFF0D444A),
       tunnelWallColorCustom: const Color(0xFF0F766E),
       tunnelFringeColorCustom: const Color(0xFF5EEAD4),
@@ -162,23 +177,26 @@ class GastroWorld {
     ),
 
     // -------------------------------------------------------------
-    // MONDE 4 : Côlon Transverse — Examens & Nutrition (Q13-Q17)
+    // MONDE 4 : Iléon Terminal — Examens & Nutrition (Q13-Q17)
     // -------------------------------------------------------------
     GastroWorld(
       id: 4,
-      name: 'CÔLON TRANSVERSE',
+      name: 'ILÉON TERMINAL',
       subtitle: 'Examens, Dépistage et Nutrition',
       theme: 'exams',
       description: 'Interprétez CRP, plaquettes, dépistage coloscopique et nutrition entérale.',
-      primaryColor: const Color(0xFF0EA5E9), // Bleu ciel vif
-      secondaryColor: const Color(0xFF34D399), // Vert menthe
+      primaryColor: const Color(0xFF0EA5E9),
+      secondaryColor: const Color(0xFF34D399),
       questionIds: const [13, 14, 15, 16, 17],
       bossName: 'Calprotectin Behemoth',
       bossDescription: 'Sentinelle des Biomarqueurs. Protégé par une carapace d\'enzymes leucocytaires.',
       bossDangerLevel: 'ÉLEVÉ',
-      environmentDescription: 'Lumière colique azur claire ponctuée de marqueurs biochimiques et flore probiotique.',
+      environmentDescription: 'Lumière iléale azur ponctuée de sténoses douces et plaques de Peyer.',
+      organZone: 'Iléon Terminal & Valvule Iléo-Caecale',
+      stageMechanicHint: 'Rétrécissements physiologiques à négocier avec précision',
+      acquiredSkills: const ['Plaquettes & CRP en poussée', 'Coloscopie de dépistage', 'Nutrition entérale'],
       icon: Icons.science_rounded,
-      guideWelcome: 'Analysons les marqueurs biologiques et la surveillance endoscopique du côlon.',
+      guideWelcome: 'Analysons les marqueurs biologiques et la surveillance dans l\'Iléon Terminal.',
       tunnelDeepColorCustom: const Color(0xFF103763),
       tunnelWallColorCustom: const Color(0xFF0284C7),
       tunnelFringeColorCustom: const Color(0xFF6EE7B7),
@@ -186,55 +204,61 @@ class GastroWorld {
     ),
 
     // -------------------------------------------------------------
-    // MONDE 5 : Zone Vasculaire — Hérédité & Grossesse (Q18-Q24)
+    // MONDE 5 : Côlon Transverse — Hérédité & Grossesse (Q18-Q24)
     // -------------------------------------------------------------
     GastroWorld(
       id: 5,
-      name: 'ZONE VASCULAIRE',
-      subtitle: 'Hérédité, Grossesse et Allaitement',
+      name: 'CÔLON TRANSVERSE',
+      subtitle: 'Hérédité, Fertilité et Allaitement',
       theme: 'family',
       description: 'Accompagnez les patientes : fertilité, grossesse sous contrôle et allaitement sécurisé.',
-      primaryColor: const Color(0xFFA78BFA), // Violet doux
-      secondaryColor: const Color(0xFFFB7185), // Corail rose
+      primaryColor: const Color(0xFFA78BFA),
+      secondaryColor: const Color(0xFFFB7185),
       questionIds: const [18, 19, 20, 21, 22, 23, 24],
       bossName: 'Chromosoma Prime',
-      bossDescription: 'Archonte Périnatal. Déclenche des vagues circulaires autour des membranes cellulaires.',
+      bossDescription: 'Archonte Périnatal. Déclenche des vagues circulaires autour des haustrations coliques.',
       bossDangerLevel: 'TRÈS ÉLEVÉ',
-      environmentDescription: 'Chambre vasculaire lavande et corail douce avec vésicules génétiques luminescentes.',
+      environmentDescription: 'Chambre colique lavande et corail douce avec haustrations et flore symbiotique.',
+      organZone: 'Côlon Transverse & Haustrations',
+      stageMechanicHint: 'Vagues probiotiques protectrices et salves périnatales',
+      acquiredSkills: const ['Prédisposition génétique', 'Rémission pré-conception', 'Accouchement & allaitement'],
       icon: Icons.favorite_rounded,
-      guideWelcome: 'Sept questions essentielles sur la conception, la grossesse et l\'allaitement !',
-      tunnelDeepColorCustom: const Color(0xFF33215E),
-      tunnelWallColorCustom: const Color(0xFF7C3AED),
+      guideWelcome: 'Sept questions clés sur la conception, la grossesse et l\'allaitement !',
+      tunnelDeepColorCustom: const Color(0xFF2D2560),
+      tunnelWallColorCustom: const Color(0xFF6D28D9),
       tunnelFringeColorCustom: const Color(0xFFFDA4AF),
       unlockedWeaponNameCustom: 'Bouclier Déflecteur Pulsé',
     ),
 
     // -------------------------------------------------------------
-    // MONDE 6 : Soins Intensifs — Rôle Infirmier & Urgences (Q25-Q27)
+    // MONDE 6 : Rectum & Zone Périnéale — Rôle Infirmier (Q25-Q27)
     // -------------------------------------------------------------
     GastroWorld(
       id: 6,
-      name: 'SECTEUR SOINS AIGUS',
+      name: 'RECTUM & URGENCES',
       subtitle: 'Rôle Infirmier et Colite Aiguë Grave',
       theme: 'nursing',
       description: 'Repérez l\'urgence vitale (CAG), surveillez l\'azathioprine et assurez la thromboprophylaxie.',
-      primaryColor: const Color(0xFF38BDF8), // Bleu monitoring lumineux
-      secondaryColor: const Color(0xFFFBBF24), // Or d'alerte clinique
+      primaryColor: const Color(0xFF38BDF8),
+      secondaryColor: const Color(0xFFFBBF24),
       questionIds: const [25, 26, 27],
       bossName: 'Thrombosis Hydra',
-      bossDescription: 'Hydre des Complications Aiguës. Multiplie les projectiles rapides et zones critiques.',
+      bossDescription: 'Hydre des Complications Rectales. Multiplie les projectiles rapides et zones critiques.',
       bossDangerLevel: 'CRITIQUE',
-      environmentDescription: 'Corridor clinique haute précision avec rétrécissements intestinaux et signaux vitaux.',
+      environmentDescription: 'Corridor rectal vascularisé avec signaux vitaux dorés et alertes cliniques.',
+      organZone: 'Rectum & Zone Périnéale',
+      stageMechanicHint: 'Signaux d\'alerte rapides demandant bouclier et réflexes',
+      acquiredSkills: const ['Signes de Colite Aiguë Grave', 'Bilan azathioprine (NFS/foie)', 'HBPM préventive'],
       icon: Icons.health_and_safety_rounded,
-      guideWelcome: 'Votre expertise infirmière fait la différence face aux situations aiguës !',
-      tunnelDeepColorCustom: const Color(0xFF103159),
+      guideWelcome: 'Votre expertise infirmière fait la différence face aux urgences rectales !',
+      tunnelDeepColorCustom: const Color(0xFF103563),
       tunnelWallColorCustom: const Color(0xFF1D4ED8),
       tunnelFringeColorCustom: const Color(0xFFFCD34D),
       unlockedWeaponNameCustom: 'Plasma Bio-Émeraude',
     ),
 
     // -------------------------------------------------------------
-    // MONDE 7 : Sanctuaire Final — Révision & Maîtrise PFE
+    // MONDE 7 : Sanctuaire Immunitaire — Révision & Maîtrise PFE
     // -------------------------------------------------------------
     GastroWorld(
       id: 7,
@@ -242,13 +266,16 @@ class GastroWorld {
       subtitle: 'Révision Active & Maîtrise Totale',
       theme: 'revision',
       description: 'Consolidez vos points à revoir ou triomphez de l\'épreuve ultime de certification ISSIT.',
-      primaryColor: const Color(0xFFFBBF24), // Or radieux
-      secondaryColor: const Color(0xFF22D3EE), // Cyan lumineux
-      questionIds: const [], // Dynamiquement alimenté par progress.revisionQueue
+      primaryColor: const Color(0xFFFBBF24),
+      secondaryColor: const Color(0xFF22D3EE),
+      questionIds: const [],
       bossName: 'Alpha-Cure Prime',
       bossDescription: 'Gardien Suprême de la Rémission. Test ultime combinant agilité, bouclier et puissance.',
       bossDangerLevel: 'ULTIME',
       environmentDescription: 'Sanctuaire doré et turquoise baigné d\'aurores thérapeutiques apaisantes.',
+      organZone: 'Tractus Digestif Complet — Certification',
+      stageMechanicHint: 'Combinaison de toutes les mécaniques digestives',
+      acquiredSkills: const ['Synthèse clinique MICI', 'Maîtrise thérapeutique', 'Certification ISSIT'],
       icon: Icons.workspace_premium_rounded,
       guideWelcome: 'L\'épreuve finale ! Transformez vos connaissances cliniques en puissance de guérison !',
       tunnelDeepColorCustom: const Color(0xFF134154),

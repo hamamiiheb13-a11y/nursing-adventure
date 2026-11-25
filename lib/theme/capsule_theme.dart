@@ -27,6 +27,7 @@ class CapsuleColors {
   static const Color dangerOrange = Color(0xFFFB923C);
   static const Color successGreen = mintGreen;
   static const Color gold = Color(0xFFFBBF24);
+  static const Color amberGold = gold;
 
   // High-Contrast Crisp Typography
   static const Color textWhite = Color(0xFFF8FAFC);

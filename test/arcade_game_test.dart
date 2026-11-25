@@ -190,12 +190,12 @@ void main() {
       expect(progress.questionsMasteredCount, 1);
     });
 
-    test('Live Boss enters Phase 2 at half HP and awards 3 stars on clean defeat or 2 stars with errors', () {
+    test('Live Boss enters Phase 2 at half HP and awards 1/2/3 stars coherently', () {
       final progress = GameProgress();
       final controller = ArcadeGameController(level: 1, progress: progress);
       controller.start();
 
-      // Answer all 4 checkpoints right first
+      // Answer all 4 checkpoints right first (+2 direct Boss HP chip each & Super Attack unlocked)
       for (final cp in controller.checkpoints) {
         controller.activeCheckpoint = cp;
         controller.answerCheckpoint(
@@ -205,17 +205,18 @@ void main() {
       }
 
       final boss = controller.boss;
-      expect(boss.currentHp, 28);
+      expect(boss.currentHp, 20); // 28 - 4 * 2 direct pedagogical damage
+      expect(controller.player.hasSuperAttack, true);
       expect(boss.isPhase2, false);
       expect(boss.isDefeated, false);
 
-      // Deal 14 damage -> half HP -> Phase 2
-      boss.takeDamage(14);
-      expect(boss.currentHp, 14);
+      // Deal 10 damage -> drops to 10 (<= half of 28) -> Phase 2
+      boss.takeDamage(10);
+      expect(boss.currentHp, 10);
       expect(boss.isPhase2, true);
       expect(boss.isDefeated, false);
 
-      // Final tactical blow -> Defeat + 3 Stars + Stage 2 & Weapon unlocked
+      // Final tactical blow -> Defeat + 3 Stars (0 errors) + Stage 2 & Weapon unlocked
       controller.answerBossQuestion(
         questionId: allGastroQuestions.first.id,
         selectedOptionIndex: allGastroQuestions.first.correctOptionIndex,
@@ -229,13 +230,13 @@ void main() {
       expect(progress.isLevelUnlocked(2), true);
       expect(progress.unlockedWeapons.contains('Double Laser Océan'), true);
 
-      // Second controller with a quiz mistake should award 2 stars on boss defeat
-      final progressWithMistake = GameProgress();
-      final c2 = ArcadeGameController(level: 1, progress: progressWithMistake);
+      // Controller with 1 mistake & < 50% right (0/4) -> 1 star
+      final progressLow = GameProgress();
+      final c2 = ArcadeGameController(level: 1, progress: progressLow);
       c2.start();
       c2.activeCheckpoint = c2.checkpoints.first;
       c2.answerCheckpoint(
-        selectedOptionIndex: (c2.checkpoints.first.question.correctOptionIndex + 1) % 3,
+        selectedOptionIndex: (c2.checkpoints.first.question.correctOptionIndex + 1) % 2,
         isCorrect: false,
       );
       c2.answerBossQuestion(
@@ -244,7 +245,30 @@ void main() {
         isCorrect: true,
       );
       expect(c2.state, GameState.victory);
-      expect(c2.lastStarsEarned, 2);
+      expect(c2.lastStarsEarned, 1);
+
+      // Controller with 3/4 right (>= 50%) and 1 mistake -> 2 stars
+      final progressMid = GameProgress();
+      final c3 = ArcadeGameController(level: 1, progress: progressMid);
+      c3.start();
+      for (int i = 0; i < c3.checkpoints.length; i++) {
+        final cp = c3.checkpoints[i];
+        c3.activeCheckpoint = cp;
+        final isRight = i > 0;
+        c3.answerCheckpoint(
+          selectedOptionIndex: isRight
+              ? cp.question.correctOptionIndex
+              : (cp.question.correctOptionIndex + 1) % cp.question.options.length,
+          isCorrect: isRight,
+        );
+      }
+      c3.answerBossQuestion(
+        questionId: allGastroQuestions.first.id,
+        selectedOptionIndex: allGastroQuestions.first.correctOptionIndex,
+        isCorrect: true,
+      );
+      expect(c3.state, GameState.victory);
+      expect(c3.lastStarsEarned, 2);
     });
 
     test('Evolved weapons spawn distinct projectile patterns and respect cooldown', () {

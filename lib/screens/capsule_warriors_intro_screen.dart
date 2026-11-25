@@ -37,10 +37,10 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Total sequence duration: 6.1 seconds
+    // Total sequence duration: 4.6 seconds (snappy on mobile & desktop)
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 6100),
+      duration: const Duration(milliseconds: 4600),
     );
 
     _animController.addStatusListener((status) {
@@ -79,50 +79,107 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: CapsuleColors.deepOcean,
       body: Stack(
         children: [
-          // 1. Cinematic 2D Canvas Scene (7 Animated Steps)
+          // 1. Cinematic 2D Canvas Scene (GASTRO QUEST Logo + Animated Digestive Environment)
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _animController,
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _CinematicIntroPainter(progress: _animController.value),
-                );
-              },
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _animController,
+                builder: (context, _) {
+                  return CustomPaint(
+                    painter: _CinematicIntroPainter(progress: _animController.value),
+                  );
+                },
+              ),
             ),
           ),
 
-          // 2. Skip Button (Top Right, Always Visible)
+          // 2. Skip Button (Top Right) + Luminous Calibration Loading Bar (Bottom)
           SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A).withValues(alpha: 0.75),
-                    foregroundColor: CapsuleColors.cyanGlow,
-                    side: BorderSide(
-                      color: CapsuleColors.cyanGlow.withValues(alpha: 0.5),
-                      width: 1.2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: CapsuleColors.oceanSurface.withValues(alpha: 0.88),
+                        foregroundColor: CapsuleColors.cyanGlow,
+                        side: BorderSide(
+                          color: CapsuleColors.cyanGlow.withValues(alpha: 0.65),
+                          width: 1.3,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.fast_forward_rounded, size: 16),
+                      label: Text(
+                        'PASSER',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      onPressed: _finishIntro,
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                  icon: const Icon(Icons.fast_forward_rounded, size: 16),
-                  label: Text(
-                    'PASSER',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  onPressed: _finishIntro,
                 ),
-              ),
+
+                // Animated Loading & Capsule Calibration Bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 22),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: AnimatedBuilder(
+                      animation: _animController,
+                      builder: (context, _) {
+                        final pct = (_animController.value * 100).clamp(0, 100).toInt();
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'PRÉPARATION DU TRACTUS DIGESTIF...',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: CapsuleColors.textSubtle,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  '$pct%',
+                                  style: GoogleFonts.orbitron(
+                                    color: CapsuleColors.gold,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: _animController.value.clamp(0.0, 1.0),
+                                minHeight: 8,
+                                backgroundColor: CapsuleColors.oceanSurface,
+                                valueColor: const AlwaysStoppedAnimation<Color>(CapsuleColors.cyanGlow),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -208,18 +265,18 @@ class _CinematicIntroPainter extends CustomPainter {
         canvas.drawCircle(Offset(px, py), r, burstPaint);
       }
 
-      // Draw "CAPSULE WARRIORS" Title
+      // Draw "GASTRO QUEST" Title
       final titleSpan = TextSpan(
-        text: 'CAPSULE WARRIORS',
+        text: 'GASTRO QUEST',
         style: GoogleFonts.orbitron(
           fontSize: (size.width < 600 ? 28.0 : 44.0),
           fontWeight: FontWeight.w900,
-          letterSpacing: 4.0,
+          letterSpacing: 3.5,
           color: Colors.white.withValues(alpha: logoAlpha),
           shadows: [
             Shadow(
               color: CapsuleColors.cyanGlow.withValues(alpha: logoAlpha),
-              blurRadius: 24,
+              blurRadius: 20,
             ),
           ],
         ),

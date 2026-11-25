@@ -149,6 +149,12 @@ class _CapsuleWarriorsBriefingScreenState
                                       _buildKeyInfoRow(equippedConfig, isNarrow: true),
                                       const SizedBox(height: 10),
                                       _buildWeaponSelectorCard(),
+                                      if (_world.id < 7) ...[
+                                        const SizedBox(height: 10),
+                                        _buildNextEnvironmentCard(
+                                          GastroWorld.getWorldForLevel(_world.id + 1),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 )
@@ -187,6 +193,12 @@ class _CapsuleWarriorsBriefingScreenState
                                             _buildKeyInfoRow(equippedConfig, isNarrow: false),
                                             SizedBox(height: isShortLandscape ? 8 : 12),
                                             _buildWeaponSelectorCard(),
+                                            if (_world.id < 7) ...[
+                                              SizedBox(height: isShortLandscape ? 8 : 12),
+                                              _buildNextEnvironmentCard(
+                                                GastroWorld.getWorldForLevel(_world.id + 1),
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       ),
@@ -383,6 +395,34 @@ class _CapsuleWarriorsBriefingScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: _world.primaryColor.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.biotech_rounded, color: CapsuleColors.cyanGlow, size: 13),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    'ZONE : ${_world.organZone.toUpperCase()}',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: CapsuleColors.cyanGlow,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
             _world.description,
             style: GoogleFonts.inter(
@@ -410,6 +450,101 @@ class _CapsuleWarriorsBriefingScreenState
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_world.stageMechanicHint.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: CapsuleColors.amberGold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: CapsuleColors.amberGold.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.tips_and_updates_rounded, color: CapsuleColors.amberGold, size: 15),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      _world.stageMechanicHint,
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFFFEF3C7),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextEnvironmentCard(GastroWorld nextWorld) {
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            CapsuleColors.oceanSurface.withValues(alpha: 0.92),
+            nextWorld.primaryColor.withValues(alpha: 0.24),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CapsuleColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [nextWorld.primaryColor, nextWorld.secondaryColor],
+              ),
+              border: Border.all(color: Colors.white30),
+            ),
+            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'APERÇU DU PROCHAIN ENVIRONNEMENT',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.gold,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+                Text(
+                  'Stage ${nextWorld.id} : ${nextWorld.organZone} — ${nextWorld.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Boss : ${nextWorld.bossName} • Arme : ${nextWorld.unlockedWeaponName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: CapsuleColors.textSubtle,
+                    fontSize: 10.5,
                   ),
                 ),
               ],

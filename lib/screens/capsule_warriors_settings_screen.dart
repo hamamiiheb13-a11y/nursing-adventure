@@ -29,6 +29,7 @@ class _CapsuleWarriorsSettingsScreenState
   final AudioService _audio = AudioService();
   final StorageService _storage = StorageService();
 
+  double _masterVolume = 100.0;
   double _musicVolume = 75.0;
   double _sfxVolume = 90.0;
   bool _isMuted = false;
@@ -39,6 +40,7 @@ class _CapsuleWarriorsSettingsScreenState
   void initState() {
     super.initState();
     final progress = widget.progress ?? _storage.currentProgress;
+    _masterVolume = (progress.masterVolume * 100).clamp(0.0, 100.0);
     _musicVolume = (progress.musicVolume * 100).clamp(0.0, 100.0);
     _sfxVolume = (progress.sfxVolume * 100).clamp(0.0, 100.0);
     _isMuted = progress.isMuted;
@@ -52,6 +54,7 @@ class _CapsuleWarriorsSettingsScreenState
 
   Future<void> _persistAudio() async {
     final progress = _storage.currentProgress;
+    progress.masterVolume = (_masterVolume / 100.0).clamp(0.0, 1.0);
     progress.musicVolume = (_musicVolume / 100.0).clamp(0.0, 1.0);
     progress.sfxVolume = (_sfxVolume / 100.0).clamp(0.0, 1.0);
     progress.isMuted = _isMuted;
@@ -254,6 +257,41 @@ class _CapsuleWarriorsSettingsScreenState
                                         _audio.setMuted(_isMuted);
                                         _persistAudio();
                                       },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                // Master Volume Slider
+                                Row(
+                                  children: [
+                                    const Icon(Icons.speaker_rounded, color: CapsuleColors.gold, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'VOLUME GÉNÉRAL : ${_masterVolume.toInt()}%',
+                                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                                          ),
+                                          Slider(
+                                            value: _masterVolume,
+                                            min: 0,
+                                            max: 100,
+                                            activeColor: CapsuleColors.gold,
+                                            inactiveColor: CapsuleColors.cardOcean,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _masterVolume = val;
+                                                if (val > 0 && _isMuted) _isMuted = false;
+                                              });
+                                              _audio.setMuted(_isMuted);
+                                              _audio.setMasterVolume(val / 100.0);
+                                            },
+                                            onChangeEnd: (_) => _persistAudio(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),

@@ -365,10 +365,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
         textColor = const Color(0xFFD1FAE5);
         badgeBg = CapsuleColors.mintGreen;
       } else if (isSelected && !isRightOption) {
-        cardBg = const Color(0xFF881337).withValues(alpha: 0.55);
-        borderColor = CapsuleColors.dangerOrange;
-        textColor = const Color(0xFFFED7AA);
-        badgeBg = CapsuleColors.dangerOrange;
+        cardBg = const Color(0xFF1F3859).withValues(alpha: 0.72);
+        borderColor = CapsuleColors.amberGold;
+        textColor = const Color(0xFFFEF3C7);
+        badgeBg = CapsuleColors.amberGold;
       }
     } else if (isSelected) {
       cardBg = CapsuleColors.turquoise.withValues(alpha: 0.28);
@@ -436,7 +436,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               if (_isValidated && isRightOption)
                 const Icon(Icons.check_circle_rounded, color: CapsuleColors.mintGreen, size: 18)
               else if (_isValidated && isSelected && !isRightOption)
-                const Icon(Icons.info_outline_rounded, color: CapsuleColors.dangerOrange, size: 18),
+                const Icon(Icons.info_outline_rounded, color: CapsuleColors.amberGold, size: 18),
             ],
           ),
         ),
@@ -445,10 +445,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
   }
 
   Widget _buildPedagogicalResultCard(GastroQuestion q, bool isCorrect, bool isCompact) {
-    final Color accent = isCorrect ? CapsuleColors.mintGreen : CapsuleColors.dangerOrange;
+    final Color accent = isCorrect ? CapsuleColors.mintGreen : CapsuleColors.amberGold;
     final Color bgTint = isCorrect
         ? const Color(0xFF064E3B).withValues(alpha: 0.55)
-        : const Color(0xFF431407).withValues(alpha: 0.55);
+        : CapsuleColors.oceanSurface.withValues(alpha: 0.90);
 
     return Container(
       padding: EdgeInsets.all(isCompact ? 10 : 12),
@@ -504,7 +504,14 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
             ),
           ],
 
-          const SizedBox(height: 7),
+          const SizedBox(height: 8),
+          _ClinicalMiniDiagram(
+            diagramType: q.diagramType,
+            accent: accent,
+            isCompact: isCompact,
+          ),
+
+          const SizedBox(height: 8),
           Text(
             q.explanation,
             style: GoogleFonts.inter(
@@ -513,6 +520,41 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               height: 1.38,
             ),
           ),
+
+          if (q.whyOthersWrong.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+              decoration: BoxDecoration(
+                color: CapsuleColors.amberGold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: CapsuleColors.amberGold.withValues(alpha: 0.42)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'POURQUOI LES AUTRES CHOIX NE CONVIENNENT PAS',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: CapsuleColors.amberGold,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    q.whyOthersWrong,
+                    style: GoogleFonts.inter(
+                      color: CapsuleColors.textWhite,
+                      fontSize: isCompact ? 10.6 : 11.3,
+                      height: 1.32,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           if (q.fichePoints.isNotEmpty) ...[
             const SizedBox(height: 9),
@@ -572,4 +614,235 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       ),
     );
   }
+}
+
+class _ClinicalMiniDiagram extends StatefulWidget {
+  final String diagramType;
+  final Color accent;
+  final bool isCompact;
+
+  const _ClinicalMiniDiagram({
+    required this.diagramType,
+    required this.accent,
+    required this.isCompact,
+  });
+
+  @override
+  State<_ClinicalMiniDiagram> createState() => _ClinicalMiniDiagramState();
+}
+
+class _ClinicalMiniDiagramState extends State<_ClinicalMiniDiagram>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = switch (widget.diagramType) {
+      'fistula_stenosis' => 'SCHÉMA • FISTULE VS STÉNOSE',
+      'villi_absorption' => 'SCHÉMA • VILLOSITÉS & ABSORPTION',
+      'colon_water' => 'SCHÉMA • RÉABSORPTION COLIQUE (H₂O)',
+      'ileum_valve' => 'SCHÉMA • ILÉON TERMINAL & VALVULE',
+      'systemic_mici' => 'SCHÉMA • ATTEINTE SYSTÉMIQUE',
+      'biotherapy_tnf' => 'SCHÉMA • BIOTHÉRAPIE ANTI-TNF',
+      'biomarker_labs' => 'SCHÉMA • SUIVI BIOLOGIQUE & ENDOSCOPIE',
+      'pregnancy_genetics' => 'SCHÉMA • HÉRÉDITÉ & MATERNITÉ',
+      'emergency_nursing' => 'SCHÉMA • SURVEILLANCE INFIRMIÈRE',
+      _ => 'SCHÉMA • REPÈRE ANATOMIQUE',
+    };
+
+    return Container(
+      height: widget.isCompact ? 58 : 70,
+      decoration: BoxDecoration(
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: CapsuleColors.cyanGlow.withValues(alpha: 0.35)),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedBuilder(
+                animation: _pulseCtrl,
+                builder: (context, _) => CustomPaint(
+                  painter: _ClinicalDiagramPainter(
+                    diagramType: widget.diagramType,
+                    t: _pulseCtrl.value,
+                    accent: widget.accent,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            left: 8,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: CapsuleColors.cyanGlow,
+                fontSize: 8.8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClinicalDiagramPainter extends CustomPainter {
+  final String diagramType;
+  final double t;
+  final Color accent;
+
+  const _ClinicalDiagramPainter({
+    required this.diagramType,
+    required this.t,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cy = h * 0.58;
+    final pulse = 0.5 + 0.5 * math.sin(t * math.pi * 2);
+
+    final gridPaint = Paint()
+      ..color = CapsuleColors.cyanGlow.withValues(alpha: 0.08)
+      ..strokeWidth = 1;
+    for (double x = 24; x < w; x += 28) {
+      canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
+    }
+
+    final linePaint = Paint()
+      ..color = CapsuleColors.cyanGlow
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+
+    switch (diagramType) {
+      case 'fistula_stenosis':
+        // Left: two parallel walls bridged by a pulsing fistula duct
+        canvas.drawLine(Offset(w * 0.10, cy - 12), Offset(w * 0.42, cy - 12), linePaint);
+        canvas.drawLine(Offset(w * 0.10, cy + 12), Offset(w * 0.42, cy + 12), linePaint);
+        fillPaint.color = accent.withValues(alpha: 0.45 + 0.35 * pulse);
+        canvas.drawRect(Rect.fromLTWH(w * 0.23, cy - 12, 10, 24), fillPaint);
+        // Right: stenosis narrowing pinch
+        final pinch = 4.0 + pulse * 2.0;
+        final topPath = Path()
+          ..moveTo(w * 0.55, cy - 14)
+          ..quadraticBezierTo(w * 0.72, cy - pinch, w * 0.90, cy - 14);
+        final botPath = Path()
+          ..moveTo(w * 0.55, cy + 14)
+          ..quadraticBezierTo(w * 0.72, cy + pinch, w * 0.90, cy + 14);
+        canvas.drawPath(topPath, linePaint);
+        canvas.drawPath(botPath, linePaint);
+        break;
+      case 'villi_absorption':
+        final villi = Path()..moveTo(w * 0.08, cy + 14);
+        for (int i = 0; i < 6; i++) {
+          final bx = w * (0.14 + i * 0.13);
+          final tipY = cy - 10 - 3 * math.sin(t * math.pi * 2 + i);
+          villi.quadraticBezierTo(bx, tipY, bx + w * 0.065, cy + 14);
+        }
+        canvas.drawPath(villi, linePaint..color = CapsuleColors.mintGreen);
+        fillPaint.color = CapsuleColors.cyanGlow;
+        for (int i = 0; i < 4; i++) {
+          final dx = w * (0.20 + i * 0.18);
+          final dy = cy - 12 - ((t * 14 + i * 4) % 14);
+          canvas.drawCircle(Offset(dx, dy), 2.5, fillPaint);
+        }
+        break;
+      case 'colon_water':
+        final colon = Path()
+          ..moveTo(w * 0.15, cy + 14)
+          ..lineTo(w * 0.15, cy - 8)
+          ..quadraticBezierTo(w * 0.5, cy - 16, w * 0.85, cy - 8)
+          ..lineTo(w * 0.85, cy + 14);
+        canvas.drawPath(colon, linePaint..strokeWidth = 3.2);
+        fillPaint.color = CapsuleColors.cyanGlow.withValues(alpha: 0.85);
+        for (int i = 0; i < 4; i++) {
+          final hx = w * (0.28 + i * 0.15);
+          final hy = cy - 4 + pulse * 10;
+          canvas.drawCircle(Offset(hx, hy), 3.0, fillPaint);
+        }
+        break;
+      case 'ileum_valve':
+        canvas.drawLine(Offset(w * 0.10, cy), Offset(w * 0.48, cy), linePaint..strokeWidth = 3);
+        canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.68, cy), width: w * 0.30, height: 28), linePaint);
+        fillPaint.color = CapsuleColors.gold.withValues(alpha: 0.7 + 0.3 * pulse);
+        canvas.drawCircle(Offset(w * (0.15 + 0.33 * t), cy), 4, fillPaint);
+        break;
+      case 'biotherapy_tnf':
+        final abPaint = Paint()
+          ..color = CapsuleColors.cyanGlow
+          ..strokeWidth = 2.2
+          ..strokeCap = StrokeCap.round;
+        for (int i = 0; i < 3; i++) {
+          final ax = w * (0.22 + i * 0.28);
+          final ay = cy + 6 - pulse * 5;
+          canvas.drawLine(Offset(ax, ay + 8), Offset(ax, ay), abPaint);
+          canvas.drawLine(Offset(ax, ay), Offset(ax - 7, ay - 7), abPaint);
+          canvas.drawLine(Offset(ax, ay), Offset(ax + 7, ay - 7), abPaint);
+          fillPaint.color = accent.withValues(alpha: 0.85);
+          canvas.drawCircle(Offset(ax, ay - 10), 3.5, fillPaint);
+        }
+        break;
+      case 'biomarker_labs':
+      case 'emergency_nursing':
+        final wave = Path()..moveTo(w * 0.08, cy);
+        for (double x = w * 0.08; x <= w * 0.92; x += 4) {
+          final norm = (x - w * 0.08) / (w * 0.84);
+          final spike = (norm - t).abs() < 0.06
+              ? -14 * math.sin(((norm - t) / 0.06) * math.pi)
+              : 0.0;
+          wave.lineTo(x, cy + spike);
+        }
+        canvas.drawPath(wave, linePaint..color = accent);
+        break;
+      case 'pregnancy_genetics':
+      default:
+        final p1 = Path();
+        final p2 = Path();
+        for (double x = w * 0.12; x <= w * 0.88; x += 6) {
+          final phase = (x / w) * math.pi * 4 + t * math.pi * 2;
+          final y1 = cy + math.sin(phase) * 9;
+          final y2 = cy - math.sin(phase) * 9;
+          if (x == w * 0.12) {
+            p1.moveTo(x, y1);
+            p2.moveTo(x, y2);
+          } else {
+            p1.lineTo(x, y1);
+            p2.lineTo(x, y2);
+          }
+        }
+        canvas.drawPath(p1, linePaint..color = CapsuleColors.cyanGlow);
+        canvas.drawPath(p2, linePaint..color = CapsuleColors.mintGreen);
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ClinicalDiagramPainter oldDelegate) =>
+      oldDelegate.t != t || oldDelegate.diagramType != diagramType;
 }

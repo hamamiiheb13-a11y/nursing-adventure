@@ -56,6 +56,10 @@ class CapsulePlayer {
   double flameIntensity; // 0.0 to 1.0
   double knowledgeDamageMultiplier; // Evolves from 1.0 up to 2.5x via right answers!
   int weaponPowerLevel; // 1 to 4
+  double collectFlashTimer;
+  double damageFlashTimer;
+  double shieldDeflectTimer;
+  bool hasSuperAttack;
   List<Offset> trailPositions;
   WeaponType weaponType;
 
@@ -85,6 +89,10 @@ class CapsulePlayer {
     this.flameIntensity = 0.0,
     this.knowledgeDamageMultiplier = 1.0,
     this.weaponPowerLevel = 1,
+    this.collectFlashTimer = 0.0,
+    this.damageFlashTimer = 0.0,
+    this.shieldDeflectTimer = 0.0,
+    this.hasSuperAttack = false,
     List<Offset>? trailPositions,
     this.weaponType = WeaponType.medicalLaser,
   }) : trailPositions = trailPositions ?? <Offset>[];
@@ -94,7 +102,7 @@ class CapsulePlayer {
   bool get isBoosted => boostTimer > 0;
   bool get hasDoubleShot => doubleShotTimer > 0;
   bool get canUseSpecialSkill => specialSkillCooldown <= 0;
-  bool get isMaxSynergy => knowledgeDamageMultiplier >= 2.1;
+  bool get isMaxSynergy => knowledgeDamageMultiplier >= 2.1 || hasSuperAttack;
 
   void activateShield(double durationSeconds) {
     shieldTimer = math.max(shieldTimer, durationSeconds);
@@ -102,6 +110,14 @@ class CapsulePlayer {
 
   void activateDoubleShot(double durationSeconds) {
     doubleShotTimer = math.max(doubleShotTimer, durationSeconds);
+  }
+
+  void triggerCollectFlash() {
+    collectFlashTimer = 0.35;
+  }
+
+  void triggerShieldDeflect() {
+    shieldDeflectTimer = 0.35;
   }
 
   void triggerSpecialSkill() {
@@ -112,6 +128,7 @@ class CapsulePlayer {
     if (isInvulnerable) return;
     hearts = math.max(0, hearts - 1);
     invulnerableTimer = 1.8;
+    damageFlashTimer = 0.45;
     velocity = Offset(velocity.dx * 0.35 - 55, -30);
   }
 

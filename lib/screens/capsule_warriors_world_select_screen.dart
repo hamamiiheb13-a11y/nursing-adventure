@@ -484,7 +484,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                     ),
                     SizedBox(height: isShortLandscape ? 6 : 10),
 
-                    // Title & Subtitle
+                    // Title & Anatomical Organ Zone & Subtitle
                     Text(
                       world.name,
                       maxLines: 1,
@@ -497,15 +497,35 @@ class _CapsuleWarriorsWorldSelectScreenState
                     ),
                     const SizedBox(height: 2),
                     Expanded(
-                      child: Text(
-                        world.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: isShortLandscape ? 10.5 : 11.5,
-                          color: CapsuleColors.textSubtle,
-                          height: 1.25,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            world.organZone.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9.5,
+                              color: isUnlocked ? CapsuleColors.cyanGlow : CapsuleColors.textMuted,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Flexible(
+                            child: Text(
+                              world.subtitle,
+                              maxLines: isShortLandscape ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: isShortLandscape ? 10.5 : 11.5,
+                                color: CapsuleColors.textSubtle,
+                                height: 1.22,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -698,6 +718,18 @@ class _CapsuleWarriorsWorldSelectScreenState
                             color: Colors.white,
                           ),
                         ),
+                        Text(
+                          world.organZone.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: isUnlocked ? CapsuleColors.cyanGlow : CapsuleColors.textMuted,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
                         Text(
                           world.subtitle,
                           maxLines: 2,

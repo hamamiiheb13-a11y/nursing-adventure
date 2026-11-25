@@ -11,6 +11,8 @@ void main() {
       for (int i = 0; i < 7; i++) {
         expect(GastroWorld.worlds[i].id, i + 1);
         expect(GastroWorld.worlds[i].bossName.isNotEmpty, true);
+        expect(GastroWorld.worlds[i].organZone.isNotEmpty, true);
+        expect(GastroWorld.worlds[i].acquiredSkills.isNotEmpty, true);
       }
     });
 

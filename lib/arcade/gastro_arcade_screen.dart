@@ -247,6 +247,10 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                   onPause: _controller.pause,
                                   onResume: _controller.resume,
                                   onExitToMap: _saveAndExit,
+                                  onTutorialComplete: () {
+                                    _controller.progress.hasSeenTutorial = true;
+                                    StorageService().saveProgress(_controller.progress);
+                                  },
                                 ),
                               ),
 

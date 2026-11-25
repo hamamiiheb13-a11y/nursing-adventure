@@ -47,6 +47,7 @@ class _CapsuleWarriorsStageVictoryScreenState
     with TickerProviderStateMixin {
   late final AnimationController _particleController;
   late final AnimationController _starController;
+  late final AnimationController _weaponPreviewController;
   final AudioService _audio = AudioService();
 
   late final int _starsEarned;
@@ -60,13 +61,18 @@ class _CapsuleWarriorsStageVictoryScreenState
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Calculate stars: 3 stars if all questions answered cleanly, 2 stars if completed with mistakes
+    final int incorrectCount = math.max(0, widget.questionsTotal - widget.questionsCorrect);
     if (widget.starsOverride != null) {
       _starsEarned = widget.starsOverride!.clamp(1, 3);
-    } else if (widget.questionsTotal > 0 && widget.questionsCorrect >= widget.questionsTotal && widget.deaths == 0) {
+    } else if (incorrectCount == 0 &&
+        widget.questionsTotal > 0 &&
+        widget.questionsCorrect >= widget.questionsTotal) {
       _starsEarned = 3;
-    } else {
+    } else if (widget.questionsTotal > 0 &&
+        (widget.questionsCorrect / widget.questionsTotal) >= 0.5) {
       _starsEarned = 2;
+    } else {
+      _starsEarned = 1;
     }
 
     _particleController = AnimationController(
@@ -79,6 +85,11 @@ class _CapsuleWarriorsStageVictoryScreenState
       duration: const Duration(milliseconds: 1200),
     )..forward();
 
+    _weaponPreviewController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+
     _audio.playStageComplete();
   }
 
@@ -86,14 +97,19 @@ class _CapsuleWarriorsStageVictoryScreenState
   void dispose() {
     _particleController.dispose();
     _starController.dispose();
+    _weaponPreviewController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final world = GastroWorld.getWorldForLevel(widget.stageId);
+    final nextWorld = widget.stageId < 7
+        ? GastroWorld.getWorldForLevel(widget.stageId + 1)
+        : null;
     final weaponUnlocked = widget.unlockedWeapon ?? world.unlockedWeaponName;
     final earnedXp = _starsEarned * 100 + widget.questionsCorrect * 50;
+    final incorrectCount = math.max(0, widget.questionsTotal - widget.questionsCorrect);
 
     final media = MediaQuery.of(context);
     final isCompact = media.size.height < 520;
@@ -134,12 +150,12 @@ class _CapsuleWarriorsStageVictoryScreenState
           Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: isCompact ? 8 : 20,
+                horizontal: 14,
+                vertical: isCompact ? 8 : 16,
               ),
               child: Container(
-                width: math.min(media.size.width * 0.94, 540),
-                padding: EdgeInsets.all(isCompact ? 16 : 24),
+                width: math.min(media.size.width * 0.94, 580),
+                padding: EdgeInsets.all(isCompact ? 14 : 20),
                 decoration: BoxDecoration(
                   color: CapsuleColors.oceanSurface.withValues(alpha: 0.96),
                   borderRadius: BorderRadius.circular(22),
@@ -151,40 +167,70 @@ class _CapsuleWarriorsStageVictoryScreenState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Trophy Icon
-                    const Icon(
+                    Icon(
                       Icons.military_tech_rounded,
                       color: CapsuleColors.gold,
-                      size: 52,
+                      size: isCompact ? 38 : 48,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
 
-                    // "MISSION ACCOMPLIE!" Title with glow
                     Text(
                       'MISSION ACCOMPLIE !',
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.orbitron(
-                        fontSize: isCompact ? 20 : 24,
+                        fontSize: isCompact ? 18 : 22,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 3.0,
+                        letterSpacing: 2.2,
                         color: Colors.white,
                         shadows: [
                           Shadow(
-                            color: CapsuleColors.gold.withValues(alpha: 0.9),
-                            blurRadius: 18,
+                            color: CapsuleColors.gold.withValues(alpha: 0.85),
+                            blurRadius: 16,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
-                      'STAGE ${widget.stageId} • ${world.name}',
-                      style: GoogleFonts.inter(
+                      'STAGE ${widget.stageId} • ${world.organZone.toUpperCase()}',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
                         color: world.primaryColor,
-                        fontSize: 12.5,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
+
+                    // Defeated Boss Pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: CapsuleColors.mintGreen.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: CapsuleColors.mintGreen.withValues(alpha: 0.55)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_rounded, color: CapsuleColors.mintGreen, size: 14),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'Boss vaincu : ${world.bossName}',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: CapsuleColors.mintGreen,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: isCompact ? 8 : 11),
 
                     // Star Rating (1-3 stars with animation)
                     AnimatedBuilder(
@@ -204,7 +250,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                                   color: filled
                                       ? CapsuleColors.gold.withValues(alpha: starProgress)
                                       : const Color(0xFF334155),
-                                  size: 40,
+                                  size: isCompact ? 32 : 38,
                                 ),
                               ),
                             );
@@ -212,34 +258,43 @@ class _CapsuleWarriorsStageVictoryScreenState
                         );
                       },
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: isCompact ? 8 : 12),
 
-                    // Score Breakdown Stats Grid
+                    // Score Breakdown Stats Grid (explicit Correct & Incorrect counts + Score + XP + Time)
                     Container(
                       width: double.infinity,
-                      padding: EdgeInsets.all(isCompact ? 10 : 12),
+                      padding: EdgeInsets.all(isCompact ? 9 : 11),
                       decoration: BoxDecoration(
                         color: CapsuleColors.deepOcean.withValues(alpha: 0.78),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: CapsuleColors.cardBorder),
                       ),
                       child: Wrap(
                         alignment: WrapAlignment.spaceAround,
                         spacing: 12,
-                        runSpacing: 8,
+                        runSpacing: 7,
                         children: [
-                          _buildStatItem('QUESTIONS', '${widget.questionsCorrect}/${widget.questionsTotal}', CapsuleColors.cyanGlow),
-                          _buildStatItem('SCORE TOTAL', '${widget.score} PTS', CapsuleColors.gold),
+                          _buildStatItem(
+                            'BONNES RÉP.',
+                            '${widget.questionsCorrect}/${widget.questionsTotal}',
+                            CapsuleColors.mintGreen,
+                          ),
+                          _buildStatItem(
+                            'ERREURS',
+                            '$incorrectCount',
+                            incorrectCount == 0 ? CapsuleColors.mintGreen : CapsuleColors.amberGold,
+                          ),
+                          _buildStatItem('SCORE', '${widget.score} PTS', CapsuleColors.gold),
                           _buildStatItem('XP GAGNÉS', '+$earnedXp XP', CapsuleColors.turquoise),
                           _buildStatItem('TEMPS', '${widget.secondsElapsed}s', Colors.white),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: isCompact ? 8 : 11),
 
-                    // Unlocked Weapon or Bonus Display (Animated Reveal)
+                    // Animated Unlocked Weapon Preview Card
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -252,13 +307,21 @@ class _CapsuleWarriorsStageVictoryScreenState
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: CapsuleColors.cyanGlow.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+                          SizedBox(
+                            width: 58,
+                            height: 36,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(9),
+                              child: AnimatedBuilder(
+                                animation: _weaponPreviewController,
+                                builder: (context, _) => CustomPaint(
+                                  painter: _WeaponUnlockPreviewPainter(
+                                    progress: _weaponPreviewController.value,
+                                    accent: world.primaryColor,
+                                  ),
+                                ),
+                              ),
                             ),
-                            child: const Icon(Icons.flash_on_rounded, color: CapsuleColors.cyanGlow, size: 20),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -268,10 +331,10 @@ class _CapsuleWarriorsStageVictoryScreenState
                                 Text(
                                   'NOUVEL ARSENAL DÉBLOQUÉ !',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 10,
+                                    fontSize: 9.5,
                                     color: CapsuleColors.cyanGlow,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.0,
+                                    letterSpacing: 0.9,
                                   ),
                                 ),
                                 Text(
@@ -288,9 +351,95 @@ class _CapsuleWarriorsStageVictoryScreenState
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
 
-                    // Buttons: "STAGE SUIVANT" / "REJOUER" / "CARTE DES STAGES"
+                    // Acquired Clinical Skills
+                    if (world.acquiredSkills.isNotEmpty) ...[
+                      SizedBox(height: isCompact ? 8 : 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: CapsuleColors.deepOcean.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: CapsuleColors.cardBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'COMPÉTENCES CLINIQUES ACQUISES',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: CapsuleColors.mintGreen,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.7,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 5,
+                              children: world.acquiredSkills
+                                  .map(
+                                    (skill) => Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                      decoration: BoxDecoration(
+                                        color: CapsuleColors.mintGreen.withValues(alpha: 0.14),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: CapsuleColors.mintGreen.withValues(alpha: 0.45)),
+                                      ),
+                                      child: Text(
+                                        '✓ $skill',
+                                        style: GoogleFonts.inter(
+                                          color: CapsuleColors.textWhite,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Next Stage Teaser when stageId < 7
+                    if (nextWorld != null) ...[
+                      SizedBox(height: isCompact ? 8 : 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: nextWorld.primaryColor.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: nextWorld.primaryColor.withValues(alpha: 0.45)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.explore_rounded, color: nextWorld.primaryColor, size: 17),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Prochain secteur : ${nextWorld.organZone} — ${nextWorld.name} (Boss : ${nextWorld.bossName})',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  color: CapsuleColors.textWhite,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    SizedBox(height: isCompact ? 12 : 16),
+
+                    // Buttons: "STAGE SUIVANT" / "REJOUER" / "CARTE"
                     Row(
                       children: [
                         // STAGE SUIVANT (Primary)
@@ -485,4 +634,58 @@ class _VictoryExplosionPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _VictoryExplosionPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+class _WeaponUnlockPreviewPainter extends CustomPainter {
+  final double progress;
+  final Color accent;
+
+  const _WeaponUnlockPreviewPainter({
+    required this.progress,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bgRect = Offset.zero & size;
+    canvas.drawRect(
+      bgRect,
+      Paint()..color = CapsuleColors.deepOcean.withValues(alpha: 0.92),
+    );
+
+    final cy = size.height * 0.5;
+    // Mini medical capsule body firing animated projectiles
+    final capsulePaint = Paint()..color = CapsuleColors.cyanGlow;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(15, cy), width: 16, height: 10),
+        const Radius.circular(5),
+      ),
+      capsulePaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(7, cy - 5, 8, 10),
+        const Radius.circular(4),
+      ),
+      Paint()..color = accent,
+    );
+
+    // Animated flying dual beams + energy aura
+    for (int i = 0; i < 2; i++) {
+      final t = (progress + i * 0.5) % 1.0;
+      final bx = 24.0 + t * (size.width - 28.0);
+      final alpha = (1.0 - t * 0.7).clamp(0.0, 1.0);
+      final beamPaint = Paint()
+        ..color = CapsuleColors.gold.withValues(alpha: alpha)
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(bx, cy - 4), Offset(bx + 7, cy - 4), beamPaint);
+      canvas.drawLine(Offset(bx, cy + 4), Offset(bx + 7, cy + 4), beamPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WeaponUnlockPreviewPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.accent != accent;
 }

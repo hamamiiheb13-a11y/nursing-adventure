@@ -89,13 +89,14 @@ void main() {
         expect(find.textContaining(opt), findsOneWidget);
       }
 
-      // Select the correct option, validate, inspect explanation, then continue
+      // Select the correct option, validate, inspect explanation + whyOthersWrong, then continue
       await tester.tap(find.textContaining(q5.options[q5.correctOptionIndex]));
       await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(find.text('Valider ma réponse'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(tester.takeException(), isNull);
       expect(find.textContaining(q5.explanation), findsOneWidget);
+      expect(find.textContaining('POURQUOI LES AUTRES CHOIX NE CONVIENNENT PAS'), findsOneWidget);
       expect(find.text('Poursuivre la mission'), findsOneWidget);
 
       await tester.tap(find.text('Poursuivre la mission'));
@@ -149,6 +150,27 @@ void main() {
             score: 2400,
             starsOverride: 3,
             questionsCorrect: 4,
+            questionsTotal: 4,
+            onNextStage: () {},
+            onReplay: () {},
+            onStageMap: () {},
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('Helicobacter Rex'), findsOneWidget);
+      expect(find.textContaining('ERREURS'), findsOneWidget);
+      expect(find.textContaining('COMPÉTENCES CLINIQUES ACQUISES'), findsOneWidget);
+
+      await pumpAtSize(
+        tester,
+        const Size(740, 340),
+        Scaffold(
+          body: CapsuleWarriorsStageVictoryScreen(
+            stageId: 1,
+            score: 2400,
+            starsOverride: 2,
+            questionsCorrect: 3,
             questionsTotal: 4,
             onNextStage: () {},
             onReplay: () {},

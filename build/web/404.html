@@ -21,11 +21,11 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="description" content="Capsule Warriors : The Stomach Mission - Jeu 2D Arcade Éducatif Médical sur les MICI • ISSIT PFE">
+  <meta name="description" content="GASTRO QUEST — Expédition médicale 2D arcade dans le système digestif. Pilotez la capsule et maîtrisez les 27 questions cliniques sur les MICI • ISSIT PFE">
   <meta name="theme-color" content="#0B253C">
 
   <!-- Open Graph / Partage Réseaux -->
-  <meta property="og:title" content="CAPSULE WARRIORS : THE STOMACH MISSION">
+  <meta property="og:title" content="GASTRO QUEST — Expédition Digestive 2D Arcade">
   <meta property="og:description" content="Expédition médicale 2D arcade dans le système digestif. Neutralisez les pathogènes et maîtrisez les 27 questions cliniques sur les MICI.">
   <meta property="og:type" content="website">
 
@@ -43,7 +43,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>CAPSULE WARRIORS : THE STOMACH MISSION</title>
+  <title>GASTRO QUEST — Expédition Digestive 2D Arcade</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- Synthétiseur Web Audio dynamique intégré -->
@@ -67,152 +67,195 @@
     }
     #loading-container {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, #164B70 0%, #0B253C 100%);
+      background:
+        radial-gradient(circle at 20% 25%, rgba(20, 184, 166, 0.28) 0%, transparent 45%),
+        radial-gradient(circle at 80% 75%, rgba(167, 139, 250, 0.22) 0%, transparent 48%),
+        linear-gradient(135deg, #0B253C 0%, #113552 45%, #154E70 100%);
       color: #FFFFFF;
       z-index: 99999;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      overflow: hidden;
+      padding: 16px;
     }
+    .bio-orb {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid rgba(34, 211, 238, 0.25);
+      background: radial-gradient(circle at 30% 30%, rgba(110, 231, 183, 0.16), transparent 70%);
+      animation: floatBubble 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .bio-orb.o1 { width: 90px; height: 90px; left: 12%; top: 18%; animation-delay: 0s; }
+    .bio-orb.o2 { width: 130px; height: 130px; right: 10%; bottom: 16%; animation-delay: -2s; }
+    .bio-orb.o3 { width: 56px; height: 56px; right: 24%; top: 20%; animation-delay: -4s; }
     .loading-card {
-      background: rgba(16, 24, 44, 0.85);
-      border: 1.5px solid rgba(0, 229, 255, 0.35);
+      position: relative;
+      background: linear-gradient(155deg, rgba(17, 53, 82, 0.88), rgba(23, 66, 102, 0.82));
+      border: 1.5px solid rgba(34, 211, 238, 0.45);
       border-radius: 24px;
-      padding: 32px 28px;
+      padding: 28px 26px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      box-shadow: 0 0 35px rgba(0, 229, 255, 0.2), inset 0 0 20px rgba(0, 102, 255, 0.1);
-      max-width: 360px;
-      width: 90%;
+      box-shadow: 0 18px 42px rgba(4, 20, 38, 0.45), 0 0 28px rgba(34, 211, 238, 0.16);
+      max-width: 400px;
+      width: 92%;
       text-align: center;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
-    .capsule-badge {
-      width: 72px;
-      height: 72px;
-      border-radius: 20px;
-      background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 102, 255, 0.3));
-      border: 1.5px solid #00E5FF;
+    .capsule-stage {
+      width: 140px;
+      height: 74px;
+      border-radius: 38px;
+      background: linear-gradient(90deg, rgba(14, 165, 233, 0.16), rgba(20, 184, 166, 0.22));
+      border: 1px solid rgba(125, 211, 252, 0.35);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 18px;
-      box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-      animation: pulseGlow 2s infinite ease-in-out;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
     }
     .capsule-svg {
-      width: 44px;
+      width: 64px;
       height: 44px;
+      animation: glideCapsule 2.2s ease-in-out infinite;
+    }
+    .loading-badge {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      color: #FBBF24;
+      background: rgba(251, 191, 36, 0.14);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
     }
     .loading-title {
       font-family: 'Orbitron', 'Inter', sans-serif;
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 900;
-      letter-spacing: 2.5px;
-      color: #FFFFFF;
-      text-shadow: 0 0 14px rgba(0, 229, 255, 0.7);
+      letter-spacing: 2.2px;
+      background: linear-gradient(90deg, #FFFFFF 0%, #22D3EE 55%, #A78BFA 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
       margin-bottom: 4px;
     }
     .loading-subtitle {
-      font-family: 'Orbitron', 'Inter', sans-serif;
-      font-size: 11px;
-      letter-spacing: 2px;
-      color: #00E5FF;
+      font-size: 11.5px;
+      letter-spacing: 1.8px;
+      color: #5EEAD4;
       font-weight: 700;
       text-transform: uppercase;
       margin-bottom: 16px;
     }
-    .loading-status {
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      color: #94A3B8;
-      letter-spacing: 0.8px;
-      margin-bottom: 18px;
-      min-height: 16px;
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(11, 37, 60, 0.85);
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      overflow: hidden;
+      margin-bottom: 10px;
     }
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(0, 229, 255, 0.2);
-      border-top-color: #00E5FF;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .progress-fill {
+      height: 100%;
+      width: 24%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #14B8A6, #22D3EE, #FBBF24);
+      animation: fillProgress 3.2s ease-out forwards;
+    }
+    .loading-status {
+      font-size: 11.5px;
+      color: #CBD5E1;
+      letter-spacing: 0.4px;
+      min-height: 16px;
     }
     .fallback-btn {
       display: none;
-      margin-top: 16px;
-      background: linear-gradient(135deg, #00E5FF, #0066FF);
-      color: #FFFFFF;
+      margin-top: 14px;
+      background: linear-gradient(135deg, #22D3EE, #0EA5E9);
+      color: #0B253C;
       border: none;
       padding: 10px 18px;
       border-radius: 12px;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 12px;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    @keyframes glideCapsule {
+      0%, 100% { transform: translate(-4px, 2px) rotate(-2deg); }
+      50% { transform: translate(6px, -3px) rotate(2deg); }
     }
-    @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 229, 255, 0.3); }
-      50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(0, 229, 255, 0.6); }
+    @keyframes floatBubble {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-16px) scale(1.06); }
+    }
+    @keyframes fillProgress {
+      0% { width: 12%; }
+      50% { width: 62%; }
+      100% { width: 92%; }
     }
   </style>
 </head>
 <body>
   <div id="loading-container">
+    <div class="bio-orb o1"></div>
+    <div class="bio-orb o2"></div>
+    <div class="bio-orb o3"></div>
     <div class="loading-card">
-      <div class="capsule-badge">
-        <svg class="capsule-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div class="loading-badge">ISSIT PFE • EXPÉDITION 2D ARCADE</div>
+      <div class="capsule-stage">
+        <svg class="capsule-svg" viewBox="0 0 80 50" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="capGlow" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#00E5FF"/>
-              <stop offset="0.5" stop-color="#0066FF"/>
-              <stop offset="1" stop-color="#7C3AED"/>
+            <linearGradient id="capHull" x1="18" y1="10" x2="66" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#FFFFFF"/>
+              <stop offset="0.55" stop-color="#22D3EE"/>
+              <stop offset="1" stop-color="#0EA5E9"/>
             </linearGradient>
           </defs>
-          <rect x="8" y="18" width="48" height="28" rx="14" fill="url(#capGlow)" stroke="#00E5FF" stroke-width="2.5"/>
-          <line x1="32" y1="18" x2="32" y2="46" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="3 3"/>
-          <circle cx="20" cy="32" r="5" fill="#FFFFFF"/>
-          <path d="M4 32 L10 26 L10 38 Z" fill="#FF9100"/>
+          <path d="M2 25 L16 17 L16 33 Z" fill="#FBBF24" opacity="0.85"/>
+          <rect x="16" y="11" width="50" height="28" rx="14" fill="url(#capHull)" stroke="#7DD3FC" stroke-width="2"/>
+          <path d="M40 11 V39" stroke="#0F766E" stroke-width="3"/>
+          <ellipse cx="52" cy="25" rx="7" ry="8" fill="#E0F2FE" stroke="#0284C7" stroke-width="1.5"/>
+          <circle cx="53" cy="22" r="2" fill="#FFFFFF"/>
         </svg>
       </div>
-      <div class="loading-title">CAPSULE WARRIORS</div>
-      <div class="loading-subtitle">THE STOMACH MISSION</div>
-      <div class="loading-status" id="loading-status">INITIALISATION DE LA CAPSULE...</div>
-      <div class="spinner"></div>
+      <div class="loading-title">GASTRO QUEST</div>
+      <div class="loading-subtitle">CAPSULE WARRIORS • MISSION DIGESTIVE</div>
+      <div class="progress-track"><div class="progress-fill" id="loading-bar"></div></div>
+      <div class="loading-status" id="loading-status">Calibrage de la capsule médicale...</div>
       <button class="fallback-btn" id="loading-fallback" onclick="location.reload(true);">Actualiser</button>
     </div>
   </div>
 
   <script>
-    // Événement Flutter peint premier frame
     window.addEventListener('flutter-first-frame', function () {
+      const bar = document.getElementById('loading-bar');
+      if (bar) bar.style.width = '100%';
       const loader = document.getElementById('loading-container');
       if (loader) {
         loader.style.opacity = '0';
+        loader.style.transform = 'scale(1.03)';
         setTimeout(function () {
           if (loader.parentNode) loader.parentNode.removeChild(loader);
-        }, 400);
+        }, 420);
       }
     });
 
-    // Surveillance watchdog : si le chargement dépasse 7s, informer et proposer un rechargement
     setTimeout(function () {
       const status = document.getElementById('loading-status');
       const fallback = document.getElementById('loading-fallback');
-      if (status) status.innerText = 'Connexion établie, finalisation du rendu...';
+      if (status) status.innerText = 'Finalisation de l\'environnement digestif...';
       if (fallback) fallback.style.display = 'inline-block';
-    }, 7000);
+    }, 8000);
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

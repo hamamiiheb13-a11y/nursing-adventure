@@ -13,6 +13,7 @@ class ArcadeHudOverlay extends StatefulWidget {
   final VoidCallback onPause;
   final VoidCallback onResume;
   final VoidCallback onExitToMap;
+  final VoidCallback? onTutorialComplete;
   final bool isMobileTouch;
 
   const ArcadeHudOverlay({
@@ -21,6 +22,7 @@ class ArcadeHudOverlay extends StatefulWidget {
     required this.onPause,
     required this.onResume,
     required this.onExitToMap,
+    this.onTutorialComplete,
     this.isMobileTouch = true,
   });
 
@@ -32,8 +34,57 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
   bool _firePressed = false;
   bool _shieldPressed = false;
   bool _specialPressed = false;
+  int _tutorialStep = 0;
 
   ArcadeGameController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant ArcadeHudOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onControllerTick);
+      widget.controller.addListener(_onControllerTick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerTick);
+    super.dispose();
+  }
+
+  void _completeTutorial() {
+    if (controller.progress.hasSeenTutorial && _tutorialStep >= 3) return;
+    controller.progress.hasSeenTutorial = true;
+    widget.onTutorialComplete?.call();
+    if (mounted) {
+      setState(() => _tutorialStep = 3);
+    }
+  }
+
+  void _onControllerTick() {
+    if (!mounted ||
+        controller.progress.hasSeenTutorial ||
+        _tutorialStep >= 3 ||
+        controller.state != GameState.playing) {
+      return;
+    }
+    if (_tutorialStep == 0 && controller.player.moveInput.distance > 0.15) {
+      setState(() => _tutorialStep = 1);
+    } else if (_tutorialStep == 1 &&
+        (controller.player.isShooting || controller.playerProjectiles.isNotEmpty)) {
+      setState(() => _tutorialStep = 2);
+    } else if (_tutorialStep == 2 &&
+        (controller.player.isShieldActive || controller.player.specialSkillCooldown > 0)) {
+      _completeTutorial();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,6 +204,21 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
                     ],
                   ),
                 ],
+              ),
+            ),
+
+          // ====================================================================
+          // INTERACTIVE ONBOARDING TUTORIAL (First run until practiced/skipped)
+          // ====================================================================
+          if (!controller.progress.hasSeenTutorial &&
+              _tutorialStep < 3 &&
+              controller.state == GameState.playing)
+            Positioned(
+              top: isTightHeight ? 58 : 72,
+              left: 16,
+              right: 16,
+              child: Center(
+                child: _buildTutorialBanner(isMobile, isTightHeight),
               ),
             ),
 
@@ -447,8 +513,10 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     final cd = controller.player.specialSkillCooldown;
     final maxCd = math.max(1.0, controller.player.specialSkillMaxCooldown);
     final isReady = cd <= 0;
+    final bool isSuper = controller.player.hasSuperAttack;
     final progress = isReady ? 1.0 : (1.0 - (cd / maxCd)).clamp(0.0, 1.0);
     final double size = isTight ? 46 : 52;
+    final Color activeColor = isSuper ? CapsuleColors.gold : CapsuleColors.mintGreen;
 
     return Listener(
       behavior: HitTestBehavior.opaque,
@@ -472,30 +540,49 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isReady
-                    ? CapsuleColors.mintGreen.withValues(alpha: 0.25)
+                    ? activeColor.withValues(alpha: isSuper ? 0.30 : 0.25)
                     : CapsuleColors.deepOcean.withValues(alpha: 0.80),
                 border: Border.all(
-                  color: isReady ? CapsuleColors.mintGreen : CapsuleColors.textMuted.withValues(alpha: 0.4),
-                  width: 2.0,
+                  color: isReady ? activeColor : CapsuleColors.textMuted.withValues(alpha: 0.4),
+                  width: isReady && isSuper ? 2.4 : 2.0,
                 ),
+                boxShadow: isReady && isSuper
+                    ? [
+                        BoxShadow(
+                          color: CapsuleColors.gold.withValues(alpha: 0.45),
+                          blurRadius: 10,
+                        ),
+                      ]
+                    : null,
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.waves_rounded,
-                    color: isReady ? CapsuleColors.mintGreen : CapsuleColors.textMuted,
-                    size: isTight ? 19 : 22,
-                  ),
-                  Text(
-                    isReady ? 'SPÉCIAL' : '${cd.ceil()}s',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: isReady ? Colors.white : CapsuleColors.textMuted,
-                      fontSize: 7.5,
-                      fontWeight: FontWeight.w800,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isSuper ? Icons.auto_awesome_rounded : Icons.waves_rounded,
+                      color: isReady ? activeColor : CapsuleColors.textMuted,
+                      size: isTight ? 18 : 21,
                     ),
-                  ),
-                ],
+                    SizedBox(
+                      width: size - 8,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isReady ? (isSuper ? 'FRAPPE MAX' : 'SPÉCIAL') : '${cd.ceil()}s',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isReady
+                                ? (isSuper ? CapsuleColors.gold : Colors.white)
+                                : CapsuleColors.textMuted,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             if (!isReady)
@@ -505,7 +592,7 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
                 child: CircularProgressIndicator(
                   value: progress,
                   strokeWidth: 2.5,
-                  color: CapsuleColors.mintGreen,
+                  color: activeColor,
                   backgroundColor: Colors.transparent,
                 ),
               ),
@@ -668,6 +755,119 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTutorialBanner(bool isMobile, bool isTight) {
+    final IconData icon;
+    final Color accent;
+    final String stepTitle;
+    final String stepHint;
+
+    if (_tutorialStep == 0) {
+      icon = Icons.open_with_rounded;
+      accent = CapsuleColors.cyanGlow;
+      stepTitle = '1/3 • PILOTAGE';
+      stepHint = isMobile
+          ? 'Glisse le joystick gauche pour déplacer ta capsule'
+          : 'Utilise WASD ou les Flèches pour piloter ta capsule';
+    } else if (_tutorialStep == 1) {
+      icon = Icons.bolt_rounded;
+      accent = CapsuleColors.amberGold;
+      stepTitle = '2/3 • TIR MÉDICAL';
+      stepHint = isMobile
+          ? 'Appuie sur TIRER pour neutraliser les pathogènes'
+          : 'Maintiens ESPACE ou Clic pour tirer';
+    } else {
+      icon = Icons.shield_rounded;
+      accent = CapsuleColors.mintGreen;
+      stepTitle = '3/3 • BOUCLIER & SPÉCIAL';
+      stepHint = isMobile
+          ? 'Active DÉFENSE ou SPÉCIAL face aux vagues critiques'
+          : 'Appuie sur [E] Bouclier ou [Q / F] Arme Spéciale';
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 470),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: isTight ? 6 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: CapsuleColors.deepOcean.withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accent.withValues(alpha: 0.75), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.22),
+              blurRadius: 12,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: accent, size: isTight ? 16 : 19),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    stepTitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: accent,
+                      fontSize: isTight ? 9.5 : 10.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  Text(
+                    stepHint,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      color: CapsuleColors.textWhite,
+                      fontSize: isTight ? 10.5 : 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: _completeTutorial,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: CapsuleColors.oceanSurface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: CapsuleColors.cardBorder),
+                ),
+                child: Text(
+                  'Passer',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.textSubtle,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

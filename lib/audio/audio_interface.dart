@@ -21,9 +21,10 @@ abstract class AudioServiceInterface {
   void playSpecialSkill();
   void playShieldActivate();
   void playBossEntrance();
+  void playBossAttack();
   void playBossDefeat();
   void playRevive();
-  void startBgm();
+  void startBgm([int stageId = 1]);
   void startBossBgm();
   void stopBgm();
   void setBgmEnabled(bool enabled);

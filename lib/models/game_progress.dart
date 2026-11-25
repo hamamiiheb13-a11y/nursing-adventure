@@ -57,9 +57,11 @@ class GameProgress {
   int maxCombo;
   int totalCrystals;
   String equippedWeapon;
+  double masterVolume;
   double musicVolume;
   double sfxVolume;
   bool isMuted;
+  bool hasSeenTutorial;
 
   GameProgress({
     this.currentStage = 1,
@@ -79,9 +81,11 @@ class GameProgress {
     this.maxCombo = 0,
     this.totalCrystals = 0,
     this.equippedWeapon = 'Laser Médical MK-I',
+    this.masterVolume = 1.0,
     this.musicVolume = 0.75,
     this.sfxVolume = 0.85,
     this.isMuted = false,
+    this.hasSeenTutorial = false,
   })  : questionsAnswered = questionsAnswered ?? <int, bool>{},
         stageResults = stageResults ?? <int, StageResult>{},
         unlockedWeapons = unlockedWeapons ?? <String>['Laser Médical MK-I'],
@@ -311,9 +315,11 @@ class GameProgress {
         'maxCombo': maxCombo,
         'totalCrystals': totalCrystals,
         'equippedWeapon': equippedWeapon,
+        'masterVolume': masterVolume,
         'musicVolume': musicVolume,
         'sfxVolume': sfxVolume,
         'isMuted': isMuted,
+        'hasSeenTutorial': hasSeenTutorial,
       };
 
   factory GameProgress.fromJson(Map<String, dynamic> json) {
@@ -329,9 +335,11 @@ class GameProgress {
       maxCombo: json['maxCombo'] as int? ?? 0,
       totalCrystals: json['totalCrystals'] as int? ?? 0,
       equippedWeapon: json['equippedWeapon'] as String? ?? 'Laser Médical MK-I',
+      masterVolume: (json['masterVolume'] as num?)?.toDouble() ?? 1.0,
       musicVolume: (json['musicVolume'] as num?)?.toDouble() ?? 0.75,
       sfxVolume: (json['sfxVolume'] as num?)?.toDouble() ?? 0.85,
       isMuted: json['isMuted'] as bool? ?? false,
+      hasSeenTutorial: json['hasSeenTutorial'] as bool? ?? false,
     );
 
     if (json['questionsAnswered'] is Map) {

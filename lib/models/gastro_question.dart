@@ -8,6 +8,8 @@ class GastroQuestion {
   final String anatomicalTheme;
   final String ficheTitle;
   final List<String> fichePoints;
+  final String whyOthersWrong;
+  final String diagramType;
   final bool validated;
 
   const GastroQuestion({
@@ -20,6 +22,8 @@ class GastroQuestion {
     required this.anatomicalTheme,
     this.ficheTitle = '',
     this.fichePoints = const [],
+    this.whyOthersWrong = '',
+    this.diagramType = '',
     this.validated = true,
   });
 
@@ -66,6 +70,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Sténose = rétrécissement de la lumière intestinale avec risque d\'occlusion.',
       'Complications caractéristiques de l\'atteinte transmurale de la maladie de Crohn.',
     ],
+    whyOthersWrong:
+        'L\'option (b) décrit une sténose (rétrécissement fibreux ou inflammatoire de la lumière intestinale), et non une fistule qui crée un canal de communication anormal.',
+    diagramType: 'fistula_stenosis',
   ),
   const GastroQuestion(
     id: 2,
@@ -88,6 +95,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'L\'inflammation du grêle détruit les villosités et provoque une malabsorption.',
       'Les cryptes de Lieberkühn sont situées à la base et assurent le renouvellement cellulaire.',
     ],
+    whyOthersWrong:
+        'Les enzymes (b) découpent chimiquement les aliments, les sels biliaires (c) émulsionnent les lipides, et les cryptes (d) sont des invaginations glandulaires au pied des villosités : aucune ne constitue ces replis saillants d\'absorption.',
+    diagramType: 'villi_absorption',
   ),
   const GastroQuestion(
     id: 3,
@@ -108,6 +118,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'L\'intestin grêle absorbe l\'immense majorité des nutriments (sucres, graisses, protéines).',
       'Une atteinte colique (RCH, Crohn colique) altère la réabsorption d\'eau et entraîne des diarrhées.',
     ],
+    whyOthersWrong:
+        'La majorité des vitamines (a) et des nutriments tels que sucres, graisses et protéines (b) sont déjà absorbés en amont par l\'intestin grêle avant d\'atteindre le côlon.',
+    diagramType: 'colon_water',
   ),
   const GastroQuestion(
     id: 4,
@@ -127,6 +140,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Siège privilégié de la maladie de Crohn (iléite).',
       'Site spécifique d\'absorption de la vitamine B12 et des sels biliaires.',
     ],
+    whyOthersWrong:
+        'L\'option (a) désigne le rectum et le canal anal situés tout à la fin du tube digestif, alors que l\'iléon terminal clôt l\'intestin grêle juste avant le côlon.',
+    diagramType: 'ileum_valve',
   ),
 
   // =========================================================================
@@ -152,6 +168,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Croissance et scolarité préservées grâce à la mise en rémission rapide.',
       'Un accompagnement infirmier et médical soutient le projet de vie complet de l\'enfant.',
     ],
+    whyOthersWrong:
+        'Les affirmations (a), (b) et (c) sont des idées reçues erronées : une MICI bien traitée n\'ampute ni l\'espérance de vie, ni la taille définitive, ni l\'accès aux études supérieures.',
+    diagramType: 'systemic_mici',
   ),
   const GastroQuestion(
     id: 6,
@@ -174,6 +193,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Atteintes périphériques (grosses articulations) souvent corrélées aux poussées digestives.',
       'Atteintes axiales (rachis, bassin) évoluant indépendamment des poussées coliques.',
     ],
+    whyOthersWrong:
+        'Les pathologies cardiaques (b), pulmonaires (c) ou rénales (d) ne constituent pas les manifestations extra-digestives caractéristiques les plus fréquentes, contrairement aux atteintes articulaires.',
+    diagramType: 'systemic_mici',
   ),
   const GastroQuestion(
     id: 7,
@@ -195,6 +217,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Ne signifie ni guérison définitive (maladie chronique), ni arrêt du traitement.',
       'La rémission endoscopique (cicatrisation muqueuse) est un objectif complémentaire.',
     ],
+    whyOthersWrong:
+        'Les MICI ne se guérissent pas définitivement (a), l\'absence de lésions à la coloscopie définit la rémission endoscopique et non clinique (c), et arrêter le traitement expose à une rechute (d).',
+    diagramType: 'systemic_mici',
   ),
   const GastroQuestion(
     id: 8,
@@ -217,6 +242,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Signes généraux : fièvre (poussée/abcès), asthénie, perte de poids.',
       'Les céphalées ne sont pas un signe d\'appel clinique habituel des MICI.',
     ],
+    whyOthersWrong:
+        'Douleurs abdominales (a), troubles du transit (b) et fièvre lors des poussées ou abcès (d) font bien partie du tableau typique des MICI ; seules les céphalées (c) sont inhabituelles.',
+    diagramType: 'systemic_mici',
   ),
   const GastroQuestion(
     id: 9,
@@ -237,6 +265,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Organes cibles : articulations, peau (érythème noueux), yeux (uvéites), foie/voies biliaires.',
       'Nécessite une prise en charge multidisciplinaire (gastro, rhumato, dermato, ophtalmo).',
     ],
+    whyOthersWrong:
+        'Dire « Faux » (b) méconnaîtrait la nature systémique des MICI, qui touchent souvent les articulations, la peau, les yeux ou les voies biliaires.',
+    diagramType: 'systemic_mici',
   ),
 
   // =========================================================================
@@ -262,6 +293,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Effet protecteur contre le cancer du côlon grâce au contrôle de l\'inflammation chronique.',
       'Bilan pré-thérapeutique rigoureux (recherche de tuberculose latente, sérologies virales).',
     ],
+    whyOthersWrong:
+        'Elles réduisent plutôt le risque colique lié à l\'inflammation (a), n\'élèvent pas significativement en monothérapie le risque de cancers hématologiques (c) et peuvent être discutées au cas par cas après un antécédent néoplasique guéri (d).',
+    diagramType: 'biotherapy_tnf',
   ),
   const GastroQuestion(
     id: 11,
@@ -283,6 +317,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Maintient des taux sanguins thérapeutiques stables de l\'anticorps monoclonal.',
       'En cas de perte d\'efficacité, un dosage pharmacologique (taux + anticorps) guide l\'adaptation.',
     ],
+    whyOthersWrong:
+        'Une perte d\'efficacité secondaire peut survenir (a), la réponse complète prend parfois plus d\'un mois d\'induction (b) et une baisse d\'effet peut souvent être rattrapée par optimisation de dose sans changer de molécule (d).',
+    diagramType: 'biotherapy_tnf',
   ),
   const GastroQuestion(
     id: 12,
@@ -304,6 +341,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Les arrêts intempestifs déclenchent la fabrication d\'anticorps neutralisants.',
       'Risque accru de perte d\'efficacité et de réactions allergiques sévères à la reprise.',
     ],
+    whyOthersWrong:
+        'La régularité conditionne le maintien de la rémission (a), interrompre seul son traitement expose à une rechute (b) et augmente nettement le risque de réaction allergique à la reprise (d).',
+    diagramType: 'biotherapy_tnf',
   ),
 
   // =========================================================================
@@ -328,6 +368,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Hyperleucocytose à polynucléaires neutrophiles et élévation de la CRP.',
       'Baisse fréquente de l\'albumine (syndrome inflammatoire et pertes digestives).',
     ],
+    whyOthersWrong:
+        'Pendant une poussée, l\'albumine baisse par dénutrition et fuite digestive (b) tandis que les globules blancs ont au contraire tendance à augmenter (hyperleucocytose, c).',
+    diagramType: 'biomarker_labs',
   ),
   const GastroQuestion(
     id: 14,
@@ -350,6 +393,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Objectif fondamental : dépister la dysplasie et les lésions précancéreuses.',
       'Utilise la chromoendoscopie (coloration virtuelle ou vitale) pour repérer les anomalies muqueuses planes.',
     ],
+    whyOthersWrong:
+        'La fréquence dépend du niveau de risque (pas d\'office annuelle, a), la dysplasie évolue souvent sans symptôme (b) et la surveillance démarre selon l\'ancienneté de la colite plutôt qu\'à 50 ans (d).',
+    diagramType: 'biomarker_labs',
   ),
   const GastroQuestion(
     id: 15,
@@ -371,6 +417,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Une élévation persistante et silencieuse impose des examens complémentaires.',
       'La calprotectine fécale est un marqueur plus sensible et spécifique de l\'inflammation muqueuse intestinale.',
     ],
+    whyOthersWrong:
+        'La CRP augmente aussi lors d\'infections banales (a), reste un outil utile de suivi (b) mais demeure moins spécifique de la muqueuse intestinale que la calprotectine fécale (d).',
+    diagramType: 'biomarker_labs',
   ),
   const GastroQuestion(
     id: 16,
@@ -392,6 +441,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Les formes coliques étendues (pancolite) nécessitent une surveillance régulière après 8-10 ans.',
       'L\'association avec une cholangite sclérosante primitive impose un dépistage annuel immédiat.',
     ],
+    whyOthersWrong:
+        'Les options (b) durée de colite de 8-10 ans et (c) début jeune augmentent bien le sur-risque justifiant un dépistage ; seule la rectite strictement limitée au rectum (a) ne l\'exige pas.',
+    diagramType: 'biomarker_labs',
   ),
   const GastroQuestion(
     id: 17,
@@ -413,6 +465,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Traitement de choix en pédiatrie pour induire la rémission dans la maladie de Crohn.',
       'Corrige la dénutrition et favorise la régénération de la muqueuse digestive.',
     ],
+    whyOthersWrong:
+        'Ils sont pauvres en résidus et non riches en fibres (a), et se présentent en solutions liquides buvables ou pour sonde plutôt qu\'en comprimés (c).',
+    diagramType: 'villi_absorption',
   ),
 
   // =========================================================================
@@ -436,6 +491,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Le risque pour un enfant reste modéré (environ 2 à 5 % si un parent est touché).',
       'Facteurs déclenchants indispensables : microbiote intestinal, immunité, environnement.',
     ],
+    whyOthersWrong:
+        'Répondre « Faux » (b) ignorerait les plus de 200 gènes de susceptibilité identifiés (dont NOD2/CARD15) qui expliquent les formes familiales.',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 19,
@@ -456,6 +514,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Hypofertilité temporaire lors des poussées actives ou après chirurgie pelvienne.',
       'Rien ne contre-indique un projet de grossesse lorsque la maladie est contrôlée.',
     ],
+    whyOthersWrong:
+        'La grossesse n\'est nullement déconseillée (b) et évolue sans complication majeure dans la grande majorité des cas lorsque la rémission est obtenue (c).',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 20,
@@ -477,6 +538,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Ne jamais interrompre son traitement de fond sans concertation médicale.',
       'L\'arrêt du tabac est impératif, en particulier dans la maladie de Crohn.',
     ],
+    whyOthersWrong:
+        'Arrêter tout traitement déclenche des poussées dangereuses (a), une consultation pré-conceptionnelle est essentielle (c) et l\'arrêt du tabac reste impératif (d).',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 21,
@@ -498,6 +562,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Césarienne indiquée en cas de lésions anopérinéales actives (fistule/abcès anal).',
       'Césarienne également recommandée après anastomose iléo-anale avec réservoir.',
     ],
+    whyOthersWrong:
+        'La césarienne n\'est ni interdite (a) ni systématique (b), et la voie basse devient contre-indiquée en cas de lésions périnéales actives pour protéger le sphincter (c).',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 22,
@@ -519,6 +586,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Risque accru de faible poids de naissance pour le nouveau-né.',
       'Le traitement médical adapté protège la santé du fœtus en éteignant l\'inflammation.',
     ],
+    whyOthersWrong:
+        'Une poussée inflammatoire expose au contraire à un petit poids de naissance plutôt qu\'à un gros bébé (a) et favorise la prématurité plutôt qu\'un dépassement de terme (c, d).',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 23,
@@ -542,6 +612,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Les traitements d\'entretien usuels (anti-TNF, dérivés salicylés) ne sont pas tératogènes.',
       'Seul le méthotrexate est formellement contre-indiqué (tératogène avéré).',
     ],
+    whyOthersWrong:
+        'Le taux de malformations reste identique à la population générale (a, b fausses), les traitements de fond habituels hors méthotrexate ne sont pas tératogènes (c) et la vaccination n\'est pas un facteur préventif de malformations (d).',
+    diagramType: 'pregnancy_genetics',
   ),
   const GastroQuestion(
     id: 24,
@@ -563,6 +636,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Allaitement tout à fait possible sous 5-ASA, azathioprine et anti-TNF.',
       'Accompagnement soignant bienveillant pour sécuriser la décision de la jeune maman.',
     ],
+    whyOthersWrong:
+        'L\'allaitement ne transmet pas la MICI (a), des poussées post-partum peuvent survenir (b) et un échange avec l\'équipe médicale permet toujours de sécuriser le choix (d).',
+    diagramType: 'pregnancy_genetics',
   ),
 
   // =========================================================================
@@ -589,6 +665,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Critères de Truelove-Witts : évaluation pronostique et décisionnelle immédiate.',
       'Risque majeur de perforation colique et de choc septique : alerte médicale sans délai.',
     ],
+    whyOthersWrong:
+        'La douleur ulcéreuse calmée par les aliments (b) évoque un ulcère gastrique ; une simple constipation avec ballonnements (c) ou une déshydratation buccale isolée (d) ne traduisent pas le choc toxinique de la CAG.',
+    diagramType: 'emergency_nursing',
   ),
   const GastroQuestion(
     id: 26,
@@ -611,6 +690,9 @@ final List<GastroQuestion> allGastroQuestions = [
       'Bilan hépatique (ASAT, ALAT, PAL, Bilirubine) : contrôle de la tolérance hépatique.',
       'Sensibilisation du patient aux signes d\'infection fébrile et à la photoprotection.',
     ],
+    whyOthersWrong:
+        'Calcémie/TSH (b), uricémie/bilan lipidique (c) ou créatinine isolée (d) ne ciblent pas les toxicités hématologique (myélosuppression) et hépatique propres aux thiopurines.',
+    diagramType: 'emergency_nursing',
   ),
   const GastroQuestion(
     id: 27,
@@ -633,5 +715,8 @@ final List<GastroQuestion> allGastroQuestions = [
       'L\'HBPM préventive est OBLIGATOIRE, même en présence de saignements digestifs.',
       'Rôle infirmier : administrer la dose prescrite et assurer une surveillance clinique étroite.',
     ],
+    whyOthersWrong:
+        'Réduire la dose (a), suspendre l\'HBPM sans avis (b) ou la remplacer par des bas seuls (c) exposerait le patient à une embolie pulmonaire grave due à l\'hypercoagulabilité.',
+    diagramType: 'emergency_nursing',
   ),
 ];

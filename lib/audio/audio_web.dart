@@ -67,6 +67,9 @@ external void _nursingAudioPlayShieldActivate();
 @JS('NursingAudio.playBossEntrance')
 external void _nursingAudioPlayBossEntrance();
 
+@JS('NursingAudio.playBossAttack')
+external void _nursingAudioPlayBossAttack();
+
 @JS('NursingAudio.playBossDefeat')
 external void _nursingAudioPlayBossDefeat();
 
@@ -74,7 +77,7 @@ external void _nursingAudioPlayBossDefeat();
 external void _nursingAudioPlayRevive();
 
 @JS('NursingAudio.startBgm')
-external void _nursingAudioStartBgm();
+external void _nursingAudioStartBgm(int stageId);
 
 @JS('NursingAudio.startBossBgm')
 external void _nursingAudioStartBossBgm();
@@ -256,6 +259,13 @@ class AudioPlatformService implements AudioServiceInterface {
   }
 
   @override
+  void playBossAttack() {
+    try {
+      _nursingAudioPlayBossAttack();
+    } catch (_) {}
+  }
+
+  @override
   void playBossDefeat() {
     try {
       _nursingAudioPlayBossDefeat();
@@ -270,9 +280,9 @@ class AudioPlatformService implements AudioServiceInterface {
   }
 
   @override
-  void startBgm() {
+  void startBgm([int stageId = 1]) {
     try {
-      _nursingAudioStartBgm();
+      _nursingAudioStartBgm(stageId);
     } catch (_) {}
   }
 

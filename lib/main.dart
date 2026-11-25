@@ -27,6 +27,7 @@ void main() async {
   // Preload progress and apply saved audio settings
   final initialProgress = await StorageService().loadProgress();
   AudioService().applySettings(
+    masterVolume: initialProgress.masterVolume,
     musicVolume: initialProgress.musicVolume,
     sfxVolume: initialProgress.sfxVolume,
     isMuted: initialProgress.isMuted,
@@ -41,31 +42,31 @@ class CapsuleWarriorsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CAPSULE WARRIORS : THE STOMACH MISSION',
+      title: 'GASTRO QUEST — 2D Arcade Médical',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: CapsuleColors.darkNavy,
+        scaffoldBackgroundColor: CapsuleColors.deepOcean,
         primaryColor: CapsuleColors.cyanGlow,
-        canvasColor: CapsuleColors.darkNavy,
-        cardColor: CapsuleColors.cardNavy,
+        canvasColor: CapsuleColors.deepOcean,
+        cardColor: CapsuleColors.cardOcean,
         colorScheme: const ColorScheme.dark(
           primary: CapsuleColors.cyanGlow,
           secondary: CapsuleColors.electricBlue,
-          surface: CapsuleColors.surfaceNavy,
+          surface: CapsuleColors.oceanSurface,
           error: CapsuleColors.dangerRed,
-          onPrimary: Colors.black,
+          onPrimary: CapsuleColors.deepOcean,
           onSecondary: Colors.white,
           onSurface: Colors.white,
         ),
-        textTheme: GoogleFonts.interTextTheme(
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(
           ThemeData.dark().textTheme,
         ),
         appBarTheme: AppBarTheme(
-          backgroundColor: CapsuleColors.surfaceNavy,
+          backgroundColor: CapsuleColors.oceanSurface,
           foregroundColor: Colors.white,
           elevation: 0,
-          titleTextStyle: GoogleFonts.orbitron(
+          titleTextStyle: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: Colors.white,

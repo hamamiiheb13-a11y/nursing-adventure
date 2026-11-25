@@ -46,11 +46,13 @@ class AudioPlatformService implements AudioServiceInterface {
   @override
   void playBossEntrance() {}
   @override
+  void playBossAttack() {}
+  @override
   void playBossDefeat() {}
   @override
   void playRevive() {}
   @override
-  void startBgm() {}
+  void startBgm([int stageId = 1]) {}
   @override
   void startBossBgm() {}
   @override

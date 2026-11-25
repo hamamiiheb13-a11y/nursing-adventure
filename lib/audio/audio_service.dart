@@ -27,10 +27,12 @@ class AudioService {
   }
 
   void applySettings({
+    double? masterVolume,
     double? musicVolume,
     double? sfxVolume,
     bool? isMuted,
   }) {
+    if (masterVolume != null) setMasterVolume(masterVolume);
     if (musicVolume != null) setMusicVolume(musicVolume);
     if (sfxVolume != null) setSfxVolume(sfxVolume);
     if (isMuted != null) setMuted(isMuted);
@@ -120,8 +122,16 @@ class AudioService {
     if (sfxEnabled) _platform.playBossEntrance();
   }
 
+  void playBossAttack() {
+    if (sfxEnabled) _platform.playBossAttack();
+  }
+
   void playBossDefeat() {
     if (sfxEnabled) _platform.playBossDefeat();
+  }
+
+  void playRewardUnlock() {
+    if (sfxEnabled) _platform.playWorldUnlock();
   }
 
   void playRevive() {
@@ -132,9 +142,9 @@ class AudioService {
     if (sfxEnabled) _platform.playVictory();
   }
 
-  void startBgm() {
+  void startBgm([int stageId = 1]) {
     if (bgmEnabled) {
-      _platform.startBgm();
+      _platform.startBgm(stageId);
     }
   }
 

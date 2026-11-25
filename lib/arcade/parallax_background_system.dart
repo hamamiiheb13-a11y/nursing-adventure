@@ -26,32 +26,32 @@ class StageBackgroundTheme {
   /// Factory by stage ID (1-7) — bright, colorful, clean contrast (zero black voids!)
   factory StageBackgroundTheme.forStage(int stageId) {
     switch (stageId) {
-      case 1: // Stage 1: Estomac & Muqueuse — Coral, Warm Salmon & Golden Dew
+      case 1: // Stage 1: Œsophage & Cardia — Luminous Ocean-Rose & Pearl Teal
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF471A30),
-          midLumenBg: Color(0xFF6E2744),
-          vesselColor: Color(0xFF9D3456),
+          topSkyBg: Color(0xFF163D5E),
+          midLumenBg: Color(0xFF225A7D),
+          vesselColor: Color(0xFFE15B72),
           cellColor: Color(0xFFFB7185),
-          wallColor: Color(0xFFE15B72),
+          wallColor: Color(0xFF287494),
           villiColor: Color(0xFFFDA4AF),
-          bubbleColor: Color(0xFFFED7AA),
+          bubbleColor: Color(0xFFBAE6FD),
           particleGlow: Color(0xFFFDE68A),
         );
-      case 2: // Stage 2: Intestin Grêle — Ocean Teal & Warm Orange Villi
+      case 2: // Stage 2: Estomac & Muqueuse — Ocean Teal & Warm Apricot Gold
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF103754),
-          midLumenBg: Color(0xFF185378),
-          vesselColor: Color(0xFF1E6B94),
+          topSkyBg: Color(0xFF154363),
+          midLumenBg: Color(0xFF1E5D85),
+          vesselColor: Color(0xFF0E7490),
           cellColor: Color(0xFF38BDF8),
           wallColor: Color(0xFF0E7490),
           villiColor: Color(0xFFFB923C),
           bubbleColor: Color(0xFFFDBA74),
           particleGlow: Color(0xFF7DD3FC),
         );
-      case 3: // Stage 3: Iléon Terminal — Turquoise & Mint Emerald Therapy
+      case 3: // Stage 3: Intestin Grêle — Turquoise & Mint Emerald Therapy
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF0C3C42),
-          midLumenBg: Color(0xFF135C63),
+          topSkyBg: Color(0xFF0E454C),
+          midLumenBg: Color(0xFF15676E),
           vesselColor: Color(0xFF0F766E),
           cellColor: Color(0xFF2DD4BF),
           wallColor: Color(0xFF14B8A6),
@@ -59,10 +59,10 @@ class StageBackgroundTheme {
           bubbleColor: Color(0xFFA7F3D0),
           particleGlow: Color(0xFF5EEAD4),
         );
-      case 4: // Stage 4: Côlon Transverse — Azure Sky & Probiotic Green
+      case 4: // Stage 4: Iléon Terminal — Azure Sky & Probiotic Green
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF0F3159),
-          midLumenBg: Color(0xFF1A4F8A),
+          topSkyBg: Color(0xFF113C6B),
+          midLumenBg: Color(0xFF1D5B99),
           vesselColor: Color(0xFF0369A1),
           cellColor: Color(0xFF38BDF8),
           wallColor: Color(0xFF0EA5E9),
@@ -70,10 +70,10 @@ class StageBackgroundTheme {
           bubbleColor: Color(0xFF7DD3FC),
           particleGlow: Color(0xFFA78BFA),
         );
-      case 5: // Stage 5: Zone Vasculaire & Grossesse — Soft Violet & Coral Rose
+      case 5: // Stage 5: Côlon Transverse — Soft Violet & Coral Rose
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF2E225C),
-          midLumenBg: Color(0xFF47338A),
+          topSkyBg: Color(0xFF2D2666),
+          midLumenBg: Color(0xFF433794),
           vesselColor: Color(0xFF6D28D9),
           cellColor: Color(0xFFA78BFA),
           wallColor: Color(0xFF8B5CF6),
@@ -81,10 +81,10 @@ class StageBackgroundTheme {
           bubbleColor: Color(0xFFFBCFE8),
           particleGlow: Color(0xFFC4B5FD),
         );
-      case 6: // Stage 6: Secteur Soins Aigus — Cobalt Clinical Blue & Sunny Gold
+      case 6: // Stage 6: Rectum & Urgences — Cobalt Clinical Blue & Sunny Gold
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF0E2C54),
-          midLumenBg: Color(0xFF194982),
+          topSkyBg: Color(0xFF103463),
+          midLumenBg: Color(0xFF1B5294),
           vesselColor: Color(0xFF1D4ED8),
           cellColor: Color(0xFF60A5FA),
           wallColor: Color(0xFF2563EB),
@@ -95,8 +95,8 @@ class StageBackgroundTheme {
       case 7: // Stage 7: Sanctuaire Immunitaire — Golden Dawn & Radiant Cyan
       default:
         return const StageBackgroundTheme(
-          topSkyBg: Color(0xFF0C3A4E),
-          midLumenBg: Color(0xFF165C73),
+          topSkyBg: Color(0xFF0F4057),
+          midLumenBg: Color(0xFF17637C),
           vesselColor: Color(0xFF0E7490),
           cellColor: Color(0xFF22D3EE),
           wallColor: Color(0xFF06B6D4),
@@ -133,8 +133,8 @@ class ParallaxBackgroundSystem {
 
   void _renderLumenGradient(Canvas canvas, Size size, double bossMix) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final topColor = Color.lerp(theme.topSkyBg, const Color(0xFF3E1938), bossMix * 0.5)!;
-    final midColor = Color.lerp(theme.midLumenBg, const Color(0xFF5A2348), bossMix * 0.45)!;
+    final topColor = Color.lerp(theme.topSkyBg, const Color(0xFF2B2259), bossMix * 0.52)!;
+    final midColor = Color.lerp(theme.midLumenBg, const Color(0xFF422F7D), bossMix * 0.45)!;
 
     final paint = Paint()
       ..shader = LinearGradient(

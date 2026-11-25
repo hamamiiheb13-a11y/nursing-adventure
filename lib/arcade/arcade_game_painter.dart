@@ -338,11 +338,15 @@ class ArcadeGamePainter extends CustomPainter {
 
   // Smiling Cell Bubble (Direct homage to Reference Image 1)
   void _drawCellBubble(Canvas canvas, Offset pos, double r) {
-    // Outer glowing membrane
+    // Soft luminous radial glow (fast on all devices)
     final glowPaint = Paint()
-      ..color = const Color(0xFFF43F5E).withValues(alpha: 0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6.0);
-    canvas.drawCircle(pos, r + 4, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFB7185).withValues(alpha: 0.35),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: pos, radius: r + 7));
+    canvas.drawCircle(pos, r + 7, glowPaint);
 
     final membranePaint = Paint()
       ..shader = const RadialGradient(
@@ -375,9 +379,13 @@ class ArcadeGamePainter extends CustomPainter {
   // Golden ATP Crystal
   void _drawAtpCrystal(Canvas canvas, Offset pos, double r) {
     final glowPaint = Paint()
-      ..color = const Color(0xFFFFD166).withValues(alpha: 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
-    canvas.drawCircle(pos, r + 5, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFBBF24).withValues(alpha: 0.42),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: pos, radius: r + 8));
+    canvas.drawCircle(pos, r + 8, glowPaint);
 
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
@@ -1159,73 +1167,151 @@ class ArcadeGamePainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: Offset.zero, radius: pulseSize));
     canvas.drawCircle(Offset.zero, pulseSize, auraPaint);
 
-    // Boss Body (Luminous 2D cartoon pathogen boss)
+    final Color coreTop = boss.isHit
+        ? Colors.white
+        : Color.lerp(auraCol, Colors.white, 0.36)!;
+    final Color coreMid = boss.isHit ? const Color(0xFFFDA4AF) : auraCol;
+    final Color coreDark = Color.lerp(auraCol, const Color(0xFF0B253C), 0.55)!;
     final bodyPaint = Paint()
       ..shader = RadialGradient(
-        colors: boss.isHit
-            ? [Colors.white, const Color(0xFFFDA4AF), const Color(0xFFE11D48)]
-            : [
-                Color.lerp(auraCol, Colors.white, 0.35)!,
-                auraCol,
-                const Color(0xFF1E293B),
-              ],
+        colors: [coreTop, coreMid, coreDark],
       ).createShader(Rect.fromCircle(center: Offset.zero, radius: 66));
-    canvas.drawCircle(Offset.zero, 62.0, bodyPaint);
 
-    // Boss Outline
-    canvas.drawCircle(
-      Offset.zero,
-      62.0,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
-    );
-
-    // Animated Boss Flagella / Appendages
-    final tentaclePaint = Paint()
-      ..color = auraCol
+    final t = controller.gameTime;
+    final outlinePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.55)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 2.5;
 
-    for (int i = 0; i < 6; i++) {
-      final angle = (i * math.pi) / 3 + math.sin(controller.gameTime * 2.0 + i) * 0.12;
-      final wave = math.sin(controller.gameTime * 4.5 + i) * 14.0;
-      final start = Offset(math.cos(angle) * 52, math.sin(angle) * 52);
-      final end = Offset(math.cos(angle) * 96 + wave, math.sin(angle) * 96 + wave);
-      canvas.drawLine(start, end, tentaclePaint);
+    // Distinct stage-themed 2D Boss silhouette per anatomical sector!
+    switch (controller.level) {
+      case 1: // Helicobacter Rex: Helical spiral bacillus with whirling polar flagella
+        final tailPaint = Paint()
+          ..color = auraCol.withValues(alpha: 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.0
+          ..strokeCap = StrokeCap.round;
+        for (int f = -1; f <= 1; f++) {
+          final p = Path()..moveTo(46, f * 12.0);
+          p.quadraticBezierTo(78, f * 18.0 + math.sin(t * 7 + f) * 16, 108, f * 14.0 + math.cos(t * 6 + f) * 18);
+          canvas.drawPath(p, tailPaint);
+        }
+        final helixRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-64, -40, 122, 80), const Radius.circular(40));
+        canvas.drawRRect(helixRect, bodyPaint);
+        canvas.drawRRect(helixRect, outlinePaint);
+        break;
+
+      case 2: // Colossus Inflammatio: Hulking jagged cytokine titan with twin acid horns
+        final hornPaint = Paint()..color = const Color(0xFFFBBF24);
+        canvas.drawPath(Path()..moveTo(-25, -52)..lineTo(-42, -84)..lineTo(-5, -56)..close(), hornPaint);
+        canvas.drawPath(Path()..moveTo(15, -52)..lineTo(35, -84)..lineTo(38, -48)..close(), hornPaint);
+        canvas.drawCircle(Offset.zero, 62.0, bodyPaint);
+        canvas.drawCircle(Offset.zero, 62.0, outlinePaint);
+        break;
+
+      case 3: // Auto-Immuno Titan: Hexagonal armored golem with orbiting Y-shaped antibodies
+        final armPaint = Paint()
+          ..color = const Color(0xFF5EEAD4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4.5
+          ..strokeCap = StrokeCap.round;
+        for (int i = 0; i < 4; i++) {
+          final a = i * math.pi * 0.5 + t * 1.4;
+          final s = Offset(math.cos(a) * 58, math.sin(a) * 58);
+          final m = Offset(math.cos(a) * 84, math.sin(a) * 84);
+          canvas.drawLine(s, m, armPaint);
+          canvas.drawLine(m, m + Offset(math.cos(a + 0.5) * 16, math.sin(a + 0.5) * 16), armPaint);
+          canvas.drawLine(m, m + Offset(math.cos(a - 0.5) * 16, math.sin(a - 0.5) * 16), armPaint);
+        }
+        final hex = Path();
+        for (int i = 0; i < 6; i++) {
+          final a = i * math.pi / 3;
+          final pt = Offset(math.cos(a) * 62, math.sin(a) * 62);
+          if (i == 0) { hex.moveTo(pt.dx, pt.dy); } else { hex.lineTo(pt.dx, pt.dy); }
+        }
+        hex.close();
+        canvas.drawPath(hex, bodyPaint);
+        canvas.drawPath(hex, outlinePaint);
+        break;
+
+      case 4: // Calprotectin Behemoth: Crystalline biomarker golem with dual enzymatic claws
+        final clawPaint = Paint()..color = const Color(0xFF34D399);
+        final cWave = math.sin(t * 5.0) * 8.0;
+        canvas.drawCircle(Offset(-62, -26 + cWave), 18, clawPaint);
+        canvas.drawCircle(Offset(-62, 26 - cWave), 18, clawPaint);
+        final shellRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-56, -54, 112, 108), const Radius.circular(28));
+        canvas.drawRRect(shellRect, bodyPaint);
+        canvas.drawRRect(shellRect, outlinePaint);
+        break;
+
+      case 5: // Chromosoma Prime: Floating violet archon with orbiting double-helix rings
+        final ringPaint = Paint()
+          ..color = const Color(0xFFFBCFE8).withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.2;
+        canvas.save();
+        canvas.rotate(t * 0.9);
+        canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 152, height: 52), ringPaint);
+        canvas.rotate(math.pi / 2);
+        canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 152, height: 52), ringPaint);
+        canvas.restore();
+        canvas.drawCircle(Offset.zero, 56.0, bodyPaint);
+        canvas.drawCircle(Offset.zero, 56.0, outlinePaint);
+        break;
+
+      case 6: // Thrombosis Hydra: Three-lobed coagulation hydra core with warning spikes
+        for (final off in [const Offset(-18, -42), const Offset(-26, 40)]) {
+          canvas.drawCircle(off, 24, bodyPaint);
+          canvas.drawCircle(off, 24, outlinePaint);
+        }
+        canvas.drawCircle(Offset.zero, 56.0, bodyPaint);
+        canvas.drawCircle(Offset.zero, 56.0, outlinePaint);
+        break;
+
+      case 7: // Alpha-Cure Prime: Radiant crowned grand guardian
+      default:
+        final rayPaint = Paint()
+          ..color = const Color(0xFFFBBF24).withValues(alpha: 0.75)
+          ..strokeWidth = 5.0
+          ..strokeCap = StrokeCap.round;
+        for (int i = 0; i < 8; i++) {
+          final a = i * math.pi / 4 + t * 1.2;
+          canvas.drawLine(Offset(math.cos(a) * 58, math.sin(a) * 58), Offset(math.cos(a) * 90, math.sin(a) * 90), rayPaint);
+        }
+        canvas.drawCircle(Offset.zero, 60.0, bodyPaint);
+        canvas.drawCircle(Offset.zero, 60.0, outlinePaint);
+        break;
     }
 
     // Glowing Expressive Eyes
     final eyePaint = Paint()..color = boss.isHit ? Colors.white : const Color(0xFFFEF08A);
-    canvas.drawOval(Rect.fromCenter(center: const Offset(-22, -14), width: 20, height: 24), eyePaint);
-    canvas.drawOval(Rect.fromCenter(center: const Offset(18, -14), width: 20, height: 24), eyePaint);
+    canvas.drawOval(Rect.fromCenter(center: const Offset(-22, -14), width: 20, height: 22), eyePaint);
+    canvas.drawOval(Rect.fromCenter(center: const Offset(16, -14), width: 20, height: 22), eyePaint);
 
-    final pupilPaint = Paint()..color = const Color(0xFF0F172A);
-    canvas.drawCircle(const Offset(-25, -14), 6.0, pupilPaint);
-    canvas.drawCircle(const Offset(15, -14), 6.0, pupilPaint);
+    final pupilPaint = Paint()..color = const Color(0xFF0B253C);
+    canvas.drawCircle(const Offset(-25, -14), 5.5, pupilPaint);
+    canvas.drawCircle(const Offset(13, -14), 5.5, pupilPaint);
 
-    // Tooth-filled Cartoon Jaw
+    // Expressive Cartoon Jaw
     final jawPath = Path()
-      ..moveTo(-32, 16)
-      ..quadraticBezierTo(-2, 46, 28, 16)
-      ..quadraticBezierTo(-2, 22, -32, 16);
-    final jawPaint = Paint()..color = const Color(0xFF881337);
+      ..moveTo(-28, 16)
+      ..quadraticBezierTo(-2, 42, 24, 16)
+      ..quadraticBezierTo(-2, 22, -28, 16);
+    final jawPaint = Paint()..color = const Color(0xFF4C1D3D);
     canvas.drawPath(jawPath, jawPaint);
 
     // Overhead Smooth Continuous Boss Health Bar
     const barW = 136.0;
-    final barBgRect = Rect.fromCenter(center: const Offset(0, -84), width: barW, height: 12);
+    final barBgRect = Rect.fromCenter(center: const Offset(0, -86), width: barW, height: 12);
     canvas.drawRRect(
       RRect.fromRectAndRadius(barBgRect, const Radius.circular(6)),
-      Paint()..color = const Color(0xCC0F172A),
+      Paint()..color = const Color(0xD90B253C),
     );
     final fillW = (barW - 4.0) * boss.healthRatio;
     if (fillW > 0) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(-barW / 2 + 2.0, -88.0, fillW, 8.0),
+          Rect.fromLTWH(-barW / 2 + 2.0, -90.0, fillW, 8.0),
           const Radius.circular(4),
         ),
         Paint()
@@ -1272,8 +1358,33 @@ class ArcadeGamePainter extends CustomPainter {
       }
     }
 
+    // --- PICKUP SPARKLE & SHIELD DEFLECTION RINGS ---
+    if (p.collectFlashTimer > 0) {
+      final frac = 1.0 - (p.collectFlashTimer / 0.35);
+      canvas.drawCircle(
+        p.position,
+        p.radius + 10.0 + frac * 22.0,
+        Paint()
+          ..color = const Color(0xFFFBBF24).withValues(alpha: ((1.0 - frac) * 0.8).clamp(0.0, 0.8))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0,
+      );
+    }
+    if (p.shieldDeflectTimer > 0) {
+      final frac = 1.0 - (p.shieldDeflectTimer / 0.35);
+      canvas.drawCircle(
+        p.position,
+        p.radius + 14.0 + frac * 28.0,
+        Paint()
+          ..color = const Color(0xFF22D3EE).withValues(alpha: ((1.0 - frac) * 0.85).clamp(0.0, 0.85))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.5,
+      );
+    }
+
     // Recoil nudge backward on shot
     final recoilOffset = p.shootRecoilTimer > 0 ? -(p.shootRecoilTimer / 0.10) * 3.5 : 0.0;
+    final int arsenalTier = controller.progress.unlockedWeapons.length;
 
     canvas.save();
     canvas.translate(p.position.dx + recoilOffset, p.position.dy);
@@ -1368,25 +1479,25 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.drawPath(topFin, finPaint);
     canvas.drawPath(bottomFin, finPaint);
 
-    // Oval Capsule Pod Body
+    // Oval Capsule Pod Body (tints cleanly on damage flash, gleams on arsenal evolution!)
     final podRect = Rect.fromCenter(center: Offset.zero, width: p.radius * 2.3, height: p.radius * 1.8);
     final podPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFFFFFFFF),
-          Color(0xFFE2E8F0),
-          Color(0xFF94A3B8),
-        ],
+        colors: p.damageFlashTimer > 0
+            ? const [Color(0xFFFDA4AF), Color(0xFFFB7185), Color(0xFFE11D48)]
+            : arsenalTier >= 4
+                ? const [Color(0xFFFFFFFF), Color(0xFFE0F2FE), Color(0xFF38BDF8)]
+                : const [Color(0xFFFFFFFF), Color(0xFFE2E8F0), Color(0xFF94A3B8)],
       ).createShader(podRect);
     canvas.drawOval(podRect, podPaint);
 
-    // Medical Stripe
+    // Medical Stripe (upgrades to Gold trim when 3+ weapons unlocked!)
     final stripePaint = Paint()
-      ..color = const Color(0xFF0D9488)
+      ..color = arsenalTier >= 3 ? const Color(0xFFFBBF24) : const Color(0xFF14B8A6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
+      ..strokeWidth = arsenalTier >= 3 ? 4.0 : 3.5;
     canvas.drawArc(podRect, -math.pi * 0.35, math.pi * 0.7, false, stripePaint);
 
     // Cockpit Visor / Headlamp Dome (Glowing Cyan Glass)
@@ -1407,17 +1518,18 @@ class ArcadeGamePainter extends CustomPainter {
 
     // Outer outline
     final outlinePaint = Paint()
-      ..color = const Color(0xFF0F172A)
+      ..color = p.damageFlashTimer > 0 ? const Color(0xFFFB7185) : const Color(0xFF0B253C)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6;
     canvas.drawOval(podRect, outlinePaint);
 
-    // --- E. WEAPON CANNONS & MUZZLE EMITTERS ---
+    // --- E. WEAPON CANNONS & MUZZLE EMITTERS (Visually evolve!) ---
     final weaponConfig = controller.equippedWeaponConfig;
-    final cannonPaint = Paint()..color = const Color(0xFF1E293B);
+    final cannonPaint = Paint()..color = const Color(0xFF1E3A5F);
     final muzzleGlow = Paint()
-      ..color = weaponConfig.glowColor.withValues(alpha: 0.85)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.5);
+      ..shader = RadialGradient(
+        colors: [Colors.white, weaponConfig.glowColor, Colors.transparent],
+      ).createShader(Rect.fromCircle(center: Offset(p.radius * 0.4 + 11, -p.radius * 0.55 + 1.75), radius: p.shootRecoilTimer > 0 ? 11.0 : 5.5));
 
     // Primary Top Cannon
     canvas.drawRRect(
@@ -1427,10 +1539,14 @@ class ArcadeGamePainter extends CustomPainter {
       ),
       cannonPaint,
     );
-    canvas.drawCircle(Offset(p.radius * 0.4 + 11, -p.radius * 0.55 + 1.75), 2.5, muzzleGlow);
+    canvas.drawCircle(
+      Offset(p.radius * 0.4 + 11, -p.radius * 0.55 + 1.75),
+      p.shootRecoilTimer > 0 ? 8.0 : 3.2,
+      muzzleGlow,
+    );
 
-    // Secondary Bottom Cannon (Double shot or upgraded)
-    if (p.hasDoubleShot || weaponConfig.type == WeaponType.doubleLaser) {
+    // Secondary Bottom Cannon (Double shot or unlocked weapon >= 2)
+    if (p.hasDoubleShot || weaponConfig.type == WeaponType.doubleLaser || arsenalTier >= 2) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(p.radius * 0.4, p.radius * 0.35, 11, 3.5),
@@ -1438,25 +1554,29 @@ class ArcadeGamePainter extends CustomPainter {
         ),
         cannonPaint,
       );
-      canvas.drawCircle(Offset(p.radius * 0.4 + 11, p.radius * 0.35 + 1.75), 2.5, muzzleGlow);
+      canvas.drawCircle(
+        Offset(p.radius * 0.4 + 11, p.radius * 0.35 + 1.75),
+        p.shootRecoilTimer > 0 ? 7.0 : 3.0,
+        Paint()..color = weaponConfig.glowColor,
+      );
     }
 
-    // --- F. ACTIVE BIOMAGNETIC ENERGY SHIELD ---
+    // --- F. ACTIVE BIOMAGNETIC ENERGY SHIELD (lightweight glow, zero blur bottleneck!) ---
     if (p.isShieldActive) {
       final shieldRadius = p.radius + 14.0;
       final shieldPulse = math.sin(controller.gameTime * 8.0) * 2.0;
 
-      // Outer glow
+      // Soft outer halo gradient
       final shieldGlow = Paint()
-        ..color = const Color(0xFF818CF8).withValues(alpha: 0.45)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
-      canvas.drawCircle(Offset.zero, shieldRadius + shieldPulse + 4, shieldGlow);
-
-      // Translucent hex barrier
-      final barrierPaint = Paint()
-        ..color = const Color(0xFF818CF8).withValues(alpha: 0.22)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset.zero, shieldRadius + shieldPulse, barrierPaint);
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFF22D3EE).withValues(alpha: 0.10),
+            const Color(0xFF818CF8).withValues(alpha: 0.36),
+            Colors.transparent,
+          ],
+          stops: const [0.4, 0.78, 1.0],
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: shieldRadius + shieldPulse + 8));
+      canvas.drawCircle(Offset.zero, shieldRadius + shieldPulse + 8, shieldGlow);
 
       // Pulsing hex border
       final hexPath = Path();
@@ -1466,14 +1586,18 @@ class ArcadeGamePainter extends CustomPainter {
           math.cos(angle) * (shieldRadius + shieldPulse),
           math.sin(angle) * (shieldRadius + shieldPulse),
         );
-        if (i == 0) hexPath.moveTo(pt.dx, pt.dy); else hexPath.lineTo(pt.dx, pt.dy);
+        if (i == 0) {
+          hexPath.moveTo(pt.dx, pt.dy);
+        } else {
+          hexPath.lineTo(pt.dx, pt.dy);
+        }
       }
       hexPath.close();
 
       final hexPaint = Paint()
-        ..color = const Color(0xFFC7D2FE)
+        ..color = const Color(0xFF67E8F9)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
+        ..strokeWidth = 2.2;
       canvas.drawPath(hexPath, hexPaint);
     }
 

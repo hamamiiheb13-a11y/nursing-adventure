@@ -17,8 +17,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('CAPSULE WARRIORS'), findsWidgets);
-    expect(find.text('THE STOMACH MISSION'), findsOneWidget);
+    expect(find.text('GASTRO QUEST'), findsWidgets);
+    expect(find.text('CAPSULE WARRIORS • EXPÉDITION DIGESTIVE'), findsOneWidget);
     expect(find.text('🎮 JOUER'), findsOneWidget);
     expect(find.text('❓ COMMENT JOUER'), findsOneWidget);
     expect(find.text('⚙ PARAMÈTRES'), findsOneWidget);
