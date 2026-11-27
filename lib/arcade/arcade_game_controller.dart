@@ -39,8 +39,13 @@ class ArcadeGameController extends ChangeNotifier {
   final List<CapsuleProjectile> playerProjectiles = [];
   final List<CapsuleProjectile> enemyProjectiles = [];
   final List<ArcadeEnemy> enemies = [];
+  final List<DefeatedEnemyEffect> defeatedEnemies = [];
 
   WeaponConfig get equippedWeaponConfig => WeaponConfig.getByName(progress.equippedWeapon);
+
+  /// Smooth progressive level pace from Stage 1 (1.0x) to Stage 7 (1.36x)
+  double get stagePaceMultiplier => (1.0 + (level - 1) * 0.06).clamp(1.0, 1.38);
+  double get _playerAgilityMultiplier => (1.0 + (level - 1) * 0.045).clamp(1.0, 1.30);
 
   GameState state = GameState.ready;
   double cameraX = 0.0;
@@ -66,6 +71,8 @@ class ArcadeGameController extends ChangeNotifier {
   // Boss Battle State Timers
   double bossIntroTimer = 0.0;
   double bossDefeatTimer = 0.0;
+  double _bossDefeatBurstTick = 0.0;
+  bool _bossPurifyWaveDone = false;
   double bossArenaMix = 0.0; // 0.0 exploration -> 1.0 boss chamber
   double arenaSupportTimer = 4.0;
   double specialWaveFlashTimer = 0.0;
@@ -357,8 +364,10 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _generateEnemies() {
     enemies.clear();
+    defeatedEnemies.clear();
     final rand = math.Random(level * 555);
     int enemyId = 1;
+    final pace = stagePaceMultiplier;
 
     void addEnemyAt(double x) {
       final ceilY = tunnel.getCeilingY(x, 0.0);
@@ -372,66 +381,68 @@ class ArcadeGameController extends ChangeNotifier {
       int scoreReward;
       int xpReward;
 
-      if (roll < 0.32) {
+      if (roll < 0.28) {
         eType = EnemyType.helicoGrub;
         hp = 3 + (level / 3).floor();
         radius = 20.0;
-        scoreReward = 140;
-        xpReward = 30;
+        scoreReward = 150;
+        xpReward = 35;
       } else if (roll < 0.54) {
         eType = EnemyType.spikeVirion;
         hp = 4 + (level / 3).floor();
         radius = 19.0;
-        scoreReward = 160;
-        xpReward = 35;
+        scoreReward = 175;
+        xpReward = 40;
       } else if (roll < 0.74) {
         eType = EnemyType.cytokineBlob;
-        hp = 4 + (level / 4).floor();
+        hp = 4 + (level / 3).floor();
         radius = 22.0;
-        scoreReward = 180;
-        xpReward = 40;
+        scoreReward = 190;
+        xpReward = 45;
       } else if (roll < 0.89) {
         eType = EnemyType.acidSentry;
-        hp = 6 + (level / 3).floor();
+        hp = 6 + (level / 2).floor();
         radius = 24.0;
-        scoreReward = 220;
-        xpReward = 45;
+        scoreReward = 230;
+        xpReward = 50;
       } else {
         eType = EnemyType.toxicSpore;
-        hp = 3;
-        radius = 17.0;
-        scoreReward = 110;
-        xpReward = 25;
+        hp = 3 + (level / 4).floor();
+        radius = 18.0;
+        scoreReward = 135;
+        xpReward = 30;
       }
 
-      final enemyY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, (floorY - ceilY) * 0.36);
+      final enemyY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, (floorY - ceilY) * 0.38);
+      final baseSpeed = (42.0 + rand.nextDouble() * 20.0) * (0.94 + pace * 0.06);
       enemies.add(
         ArcadeEnemy(
           id: enemyId++,
           position: Offset(x, enemyY.clamp(ceilY + 36.0, floorY - 36.0)),
-          velocity: Offset(-36.0 - rand.nextDouble() * 18.0, 0),
+          velocity: Offset(-baseSpeed, 0),
           type: eType,
           maxHp: hp,
           radius: radius,
           scoreReward: scoreReward,
           xpReward: xpReward,
-          shootInterval: 2.6 + rand.nextDouble() * 1.4,
+          shootInterval: (2.5 - (level - 1) * 0.09).clamp(1.65, 2.6) + rand.nextDouble() * 1.1,
         ),
       );
     }
 
-    for (double x = 520.0; x < totalDistance - 1100.0; x += 290.0 + rand.nextDouble() * 90.0) {
-      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 120.0);
-      bool nearObstacle = obstacles.any((o) => (o.position.dx - x).abs() < 105.0);
+    final double stepBase = math.max(220.0, 290.0 - (level - 1) * 9.0);
+    for (double x = 480.0; x < totalDistance - 1080.0; x += stepBase + rand.nextDouble() * 85.0) {
+      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 115.0);
+      bool nearObstacle = obstacles.any((o) => (o.position.dx - x).abs() < 95.0);
       if (nearCheckpoint || nearObstacle) continue;
       addEnemyAt(x);
     }
 
     // Guarantee enemies appear cleanly mid-way between checkpoints if spacing skipped all candidates
-    if (enemies.length < 2) {
+    if (enemies.length < 3) {
       for (int i = 0; i < checkpoints.length - 1; i++) {
         final midX = (checkpoints[i].worldX + checkpoints[i + 1].worldX) * 0.5;
-        if (!obstacles.any((o) => (o.position.dx - midX).abs() < 80.0)) {
+        if (!obstacles.any((o) => (o.position.dx - midX).abs() < 75.0)) {
           addEnemyAt(midX);
         }
       }
@@ -458,8 +469,8 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // Live 2D Arcade Boss HP scales logically per mission (balanced for ~10-20s exciting fight!)
-    final int bossHp = 22 + level * 6;
+    // Live 2D Arcade Boss HP scales substantially for a true climactic encounter!
+    final int bossHp = 44 + level * 12;
     final bossStartPos = Offset(totalDistance - 240.0, viewportHeight * 0.5);
 
     boss = ArcadeBoss(
@@ -767,11 +778,12 @@ class ArcadeGameController extends ChangeNotifier {
     for (final enemy in enemies) {
       if (enemy.isDead) continue;
       if ((enemy.position - player.position).distance < 420.0) {
-        enemy.takeDamage(specialDmg);
+        final dir = enemy.position - player.position;
+        final normDir = dir.distance > 1.0 ? dir / dir.distance : const Offset(1, 0);
+        enemy.takeDamage(specialDmg, hitDirection: normDir);
         _emitHitSparks(enemy.position, color: const Color(0xFF34D399));
         if (enemy.isDead) {
-          score += enemy.scoreReward;
-          earnedXp += enemy.xpReward;
+          _onEnemyDefeated(enemy, dropChance: 0.20);
         }
       }
     }
@@ -837,6 +849,7 @@ class ArcadeGameController extends ChangeNotifier {
     // State-specific orchestration
     if (state == GameState.bossIntro) {
       _updateBossIntro(dt);
+      _updateDefeatedEnemies(dt);
       _updateParticles(dt);
       _updateFloatingTexts(dt);
       notifyListeners();
@@ -845,6 +858,7 @@ class ArcadeGameController extends ChangeNotifier {
 
     if (state == GameState.bossDefeatAnim) {
       _updateBossDefeatAnim(dt);
+      _updateDefeatedEnemies(dt);
       _updateParticles(dt);
       _updateFloatingTexts(dt);
       notifyListeners();
@@ -859,6 +873,7 @@ class ArcadeGameController extends ChangeNotifier {
     _updateCamera();
     _updateProjectiles(dt);
     _updateEnemies(dt);
+    _updateDefeatedEnemies(dt);
     _updateCollectibles(dt);
     _updateObstacles(dt);
     _updateBoss(dt);
@@ -906,10 +921,29 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _updateBossDefeatAnim(double dt) {
     bossDefeatTimer = math.max(0.0, bossDefeatTimer - dt);
-    screenShake = math.max(screenShake, 0.35);
+    _bossDefeatBurstTick -= dt;
+    screenShake = math.max(screenShake, bossDefeatTimer > 1.0 ? 0.55 : 0.25);
 
-    if (math.Random().nextDouble() < 0.35) {
-      _emitVictoryConfetti(burstCount: 8);
+    // Sequential multi-point explosions across boss silhouette
+    if (_bossDefeatBurstTick <= 0 && bossDefeatTimer > 0.75) {
+      _bossDefeatBurstTick = 0.16;
+      final rand = math.Random();
+      final burstPos = boss.position +
+          Offset((rand.nextDouble() - 0.5) * 90.0, (rand.nextDouble() - 0.5) * 80.0);
+      _emitHitSparks(
+        burstPos,
+        color: rand.nextBool() ? const Color(0xFFFBBF24) : const Color(0xFF22D3EE),
+      );
+      _emitVictoryConfetti(burstCount: 10);
+    }
+
+    // Mid-sequence golden purification shockwave ring & hero capsule celebration flare
+    if (!_bossPurifyWaveDone && bossDefeatTimer <= 1.15) {
+      _bossPurifyWaveDone = true;
+      specialWaveFlashTimer = 0.65;
+      _emitVictoryConfetti(burstCount: 38);
+      _addFloatingText('VICTOIRE !', boss.position + const Offset(-20, -60), const Color(0xFF34D399));
+      audio.playRewardUnlock();
     }
 
     if (bossDefeatTimer <= 0) {
@@ -948,9 +982,13 @@ class ArcadeGameController extends ChangeNotifier {
 
     player.animPhase += dt * 4.5;
 
-    // Progressive capsule speed upgrade based on unlocked arsenal (tuned -18% for crisp control!)
+    // Progressive capsule speed upgrade based on arsenal + gentle progressive stage pace
     final double speedUpgradeMult = (1.0 + (progress.unlockedWeapons.length - 1) * 0.03).clamp(1.0, 1.18);
-    final double maxSpeed = (player.isBoosted ? 285.0 : 220.0) * speedUpgradeMult * player.joystickSensitivity;
+    final double paceMult = _playerAgilityMultiplier;
+    final double maxSpeed = (player.isBoosted ? 285.0 : 220.0) *
+        speedUpgradeMult *
+        paceMult *
+        player.joystickSensitivity;
 
     double targetVx = player.moveInput.dx * maxSpeed;
     double targetVy = player.moveInput.dy * maxSpeed;
@@ -964,7 +1002,10 @@ class ArcadeGameController extends ChangeNotifier {
       // Arena mode: unrestricted 360° piloting without forced forward drift
     } else {
       if (player.moveInput.dx >= -0.12) {
-        targetVx = math.max(targetVx, (player.isBoosted ? 195.0 : 118.0) * speedUpgradeMult);
+        targetVx = math.max(
+          targetVx,
+          (player.isBoosted ? 195.0 : 118.0) * speedUpgradeMult * paceMult,
+        );
       }
       _checkMidStageSurprises();
     }
@@ -1167,12 +1208,74 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _updateEnemies(double dt) {
+    final pace = stagePaceMultiplier;
     for (int i = enemies.length - 1; i >= 0; i--) {
       final enemy = enemies[i];
-      enemy.update(dt, player.position, enemyProjectiles);
+      final ceilY = tunnel.getCeilingY(enemy.position.dx, gameTime);
+      final floorY = tunnel.getFloorY(enemy.position.dx, gameTime);
+      enemy.update(
+        dt,
+        player.position,
+        enemyProjectiles,
+        playerProjectiles: playerProjectiles,
+        ceilY: ceilY,
+        floorY: floorY,
+        speedMultiplier: pace,
+      );
       if (enemy.isDead) {
         enemies.removeAt(i);
       }
+    }
+  }
+
+  void _updateDefeatedEnemies(double dt) {
+    for (int i = defeatedEnemies.length - 1; i >= 0; i--) {
+      defeatedEnemies[i].life -= dt;
+      if (defeatedEnemies[i].isDead) {
+        defeatedEnemies.removeAt(i);
+      }
+    }
+  }
+
+  void _onEnemyDefeated(ArcadeEnemy enemy, {double dropChance = 0.30}) {
+    score += enemy.scoreReward * (1 + (combo / 4).floor());
+    earnedXp += enemy.xpReward;
+    combo++;
+    if (combo > highestCombo) highestCombo = combo;
+
+    Color burstCol = const Color(0xFF38BDF8);
+    if (enemy.type == EnemyType.cytokineBlob || enemy.type == EnemyType.acidSentry) {
+      burstCol = const Color(0xFFFB923C);
+    } else if (enemy.type == EnemyType.toxicSpore || enemy.type == EnemyType.helicoGrub) {
+      burstCol = const Color(0xFF34D399);
+    } else if (enemy.type == EnemyType.spikeVirion) {
+      burstCol = const Color(0xFFEC4899);
+    }
+
+    defeatedEnemies.add(
+      DefeatedEnemyEffect(
+        position: enemy.position,
+        radius: enemy.radius,
+        color: burstCol,
+        spinDir: enemy.id.isEven ? 1.0 : -1.0,
+      ),
+    );
+    _addFloatingText('+${enemy.xpReward} XP', enemy.position, const Color(0xFF38BDF8));
+    _emitExplosion(enemy.position, enemy.type);
+    audio.playCombo();
+
+    if (math.Random().nextDouble() < dropChance) {
+      collectibles.add(
+        ArcadeCollectible(
+          id: 9000 + (_nextDynamicId++),
+          position: enemy.position,
+          type: math.Random().nextBool()
+              ? CollectibleType.heartBoost
+              : CollectibleType.shieldBoost,
+          xpValue: 50,
+          scoreValue: 120,
+        ),
+      );
     }
   }
 
@@ -1189,14 +1292,15 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _updateObstacles(double dt) {
+    final obsPace = 0.90 + stagePaceMultiplier * 0.12;
     for (final obs in obstacles) {
-      obs.animPhase += dt * 2.5;
+      obs.animPhase += dt * 2.5 * obsPace;
       if (obs.sootheTimer > 0) {
         obs.sootheTimer = math.max(0.0, obs.sootheTimer - dt);
       }
 
       if (obs.type == ObstacleType.acidDroplet) {
-        double newY = obs.position.dy + obs.velocityY * dt;
+        double newY = obs.position.dy + obs.velocityY * obsPace * dt;
         final floorY = tunnel.getFloorY(obs.position.dx, gameTime);
         if (newY >= floorY - 10.0) {
           _emitSplashParticles(obs.position, const Color(0xFFFB923C));
@@ -1213,12 +1317,22 @@ class ArcadeGameController extends ChangeNotifier {
   void _updateBoss(double dt) {
     if (boss.isDefeated) return;
 
-    boss.animPhase += dt * (boss.isPhase2 ? 3.2 : 2.1);
+    final double pace = stagePaceMultiplier;
+    boss.animPhase += dt * (boss.isPhase2 ? 3.2 : 2.1) * (0.9 + pace * 0.1);
     if (boss.hitTimer > 0) {
       boss.hitTimer = math.max(0.0, boss.hitTimer - dt);
       if (boss.hitTimer <= 0) {
         boss.isHit = false;
       }
+    }
+    if (boss.attackAnimTimer > 0) {
+      boss.attackAnimTimer = math.max(0.0, boss.attackAnimTimer - dt);
+    }
+    if (boss.dodgeCooldown > 0) {
+      boss.dodgeCooldown = math.max(0.0, boss.dodgeCooldown - dt);
+    }
+    if (boss.dodgeTimer > 0) {
+      boss.dodgeTimer = math.max(0.0, boss.dodgeTimer - dt);
     }
 
     if (state != GameState.bossFight) {
@@ -1227,10 +1341,23 @@ class ArcadeGameController extends ChangeNotifier {
       return;
     }
 
+    // Dramatic Phase 2 Awakening shockwave when dropping below 50% HP
+    if (!boss.phase2Announced && boss.isPhase2) {
+      boss.phase2Announced = true;
+      screenShake = 0.85;
+      _emitHitSparks(boss.position, color: const Color(0xFFFB7185));
+      _addFloatingText(
+        'PHASE 2 • FURIE DU BOSS !',
+        boss.position + const Offset(-45, -75),
+        const Color(0xFFFB7185),
+      );
+      audio.playBossEntrance();
+    }
+
     // Periodic Support Pickups inside Boss Chamber so player never gets stuck!
     arenaSupportTimer -= dt;
     if (arenaSupportTimer <= 0) {
-      arenaSupportTimer = player.hearts <= 1 ? 6.0 : 10.5;
+      arenaSupportTimer = player.hearts <= 1 ? 6.0 : 10.0;
       final dropType = player.hearts < player.maxHearts
           ? CollectibleType.heartBoost
           : (math.Random().nextBool() ? CollectibleType.shieldBoost : CollectibleType.weaponUpgrade);
@@ -1252,22 +1379,50 @@ class ArcadeGameController extends ChangeNotifier {
     // Live Boss Attack State Machine
     if (boss.currentPattern == BossAttackPattern.chargeDash) {
       boss.position += boss.velocity * dt;
-      // Check if reached left charge turn point or elapsed
+      boss.facingTilt = -0.18;
       if (boss.position.dx <= cameraX + viewportWidth * 0.34 || boss.attackCooldown <= 0) {
         boss.currentPattern = BossAttackPattern.hoverSpread;
         boss.velocity = Offset.zero;
-        boss.attackCooldown = boss.isPhase2 ? 1.4 : 2.0;
+        boss.attackCooldown = boss.isPhase2 ? 1.3 : 1.85;
       } else {
         boss.attackCooldown -= dt;
       }
       return;
     }
 
-    // Smooth glide back toward home X & oscillate vertically
-    final hoverY = viewportHeight * 0.5 + math.sin(boss.animPhase * 0.9) * (viewportHeight * 0.22);
-    final newBossX = boss.position.dx + (boss.homePosition.dx - boss.position.dx) * math.min(1.0, 4.0 * dt);
-    final newBossY = boss.position.dy + (hoverY - boss.position.dy) * math.min(1.0, 3.5 * dt);
+    // Reactive Boss dodge if player lands sustained hits in one lane
+    if (boss.burstHitsTaken >= 4 && boss.dodgeCooldown <= 0 && !boss.isTelegraphing) {
+      boss.burstHitsTaken = 0;
+      boss.dodgeCooldown = boss.isPhase2 ? 2.4 : 3.2;
+      boss.dodgeTimer = 0.65;
+      boss.verticalDodgeOffset = (boss.position.dy >= player.position.dy ? 1.0 : -1.0) *
+          (viewportHeight * 0.24);
+    }
+
+    // Reactive player-tracking hover + corridor safety clamping
+    final double bossCeil = tunnel.getCeilingY(boss.position.dx, gameTime) + 74.0;
+    final double bossFloor = tunnel.getFloorY(boss.position.dx, gameTime) - 74.0;
+    final double dodgeOffset = boss.dodgeTimer > 0 ? boss.verticalDodgeOffset : 0.0;
+    final double trackWeight = boss.isPhase2 ? 0.58 : 0.40;
+    final double targetHoverY = (viewportHeight * 0.5 * (1.0 - trackWeight) +
+            player.position.dy * trackWeight +
+            math.sin(boss.animPhase * 0.95) * (viewportHeight * 0.16) +
+            dodgeOffset)
+        .clamp(math.min(bossCeil, bossFloor), math.max(bossCeil, bossFloor));
+
+    final double stalkOffsetX = (player.position.dx - boss.homePosition.dx).abs() > 360
+        ? -26.0
+        : (boss.isHit ? 14.0 : 0.0);
+    final double targetBossX = boss.homePosition.dx + stalkOffsetX;
+
+    final double moveRateY = (boss.dodgeTimer > 0 ? 6.5 : (boss.isPhase2 ? 4.4 : 3.3)) * dt;
+    final double prevY = boss.position.dy;
+    final newBossX = boss.position.dx + (targetBossX - boss.position.dx) * math.min(1.0, 4.2 * dt);
+    final newBossY = boss.position.dy + (targetHoverY - boss.position.dy) * math.min(1.0, moveRateY);
     boss.position = Offset(newBossX, newBossY);
+
+    final double instVy = (newBossY - prevY) / math.max(0.001, dt);
+    boss.facingTilt += ((instVy / 380.0).clamp(-0.22, 0.22) - boss.facingTilt) * math.min(1.0, 8.0 * dt);
 
     if (boss.telegraphTimer > 0) {
       boss.telegraphTimer -= dt;
@@ -1277,7 +1432,7 @@ class ArcadeGameController extends ChangeNotifier {
       return;
     }
 
-    boss.attackCooldown -= dt;
+    boss.attackCooldown -= dt * (0.92 + pace * 0.08);
     if (boss.attackCooldown <= 0) {
       _chooseNextBossTelegraph();
     }
@@ -1285,20 +1440,24 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _chooseNextBossTelegraph() {
     _bossAttackIndex++;
-    final mod = _bossAttackIndex % (boss.isPhase2 ? 4 : 3);
+    final int cycleCount = boss.isPhase2 ? 5 : 4;
+    final mod = _bossAttackIndex % cycleCount;
     if (mod == 0) {
       boss.currentPattern = BossAttackPattern.hoverSpread;
-      boss.telegraphTimer = 0.65;
+      boss.telegraphTimer = 0.62;
     } else if (mod == 1) {
       boss.currentPattern = BossAttackPattern.waveSweep;
-      boss.telegraphTimer = 0.65;
+      boss.telegraphTimer = 0.62;
     } else if (mod == 2) {
       boss.currentPattern = BossAttackPattern.chargeTelegraph;
       boss.chargeTargetY = player.position.dy.clamp(
-        tunnel.getCeilingY(boss.position.dx, gameTime) + 60.0,
-        tunnel.getFloorY(boss.position.dx, gameTime) - 60.0,
+        tunnel.getCeilingY(boss.position.dx, gameTime) + 64.0,
+        tunnel.getFloorY(boss.position.dx, gameTime) - 64.0,
       );
-      boss.telegraphTimer = 0.85; // Clear visual aim line before lunging!
+      boss.telegraphTimer = 0.88; // Clear visual aim line before lunging!
+    } else if (mod == 3) {
+      boss.currentPattern = BossAttackPattern.radialBurst;
+      boss.telegraphTimer = 0.70;
     } else {
       boss.currentPattern = BossAttackPattern.spawnMinions;
       boss.telegraphTimer = 0.60;
@@ -1307,7 +1466,8 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _executeBossPattern() {
-    final speedMul = boss.isPhase2 ? 1.22 : 1.0;
+    final speedMul = (boss.isPhase2 ? 1.20 : 1.0) * (0.92 + stagePaceMultiplier * 0.08);
+    boss.attackAnimTimer = 0.32;
 
     switch (boss.currentPattern) {
       case BossAttackPattern.hoverSpread:
@@ -1320,36 +1480,37 @@ class ArcadeGameController extends ChangeNotifier {
           enemyProjectiles.add(
             CapsuleProjectile(
               position: boss.position + const Offset(-40, 0),
-              velocity: Offset(math.cos(angle), math.sin(angle)) * (250.0 * speedMul),
+              velocity: Offset(math.cos(angle), math.sin(angle)) * (255.0 * speedMul),
               damage: 1,
               color: const Color(0xFFFB7185),
-              radius: 7.5,
+              radius: 7.8,
               isEnemy: true,
               lifeTime: 4.0,
             ),
           );
         }
         audio.playBossAttack();
-        boss.attackCooldown = boss.isPhase2 ? 1.55 : 2.1;
+        boss.attackCooldown = boss.isPhase2 ? 1.45 : 1.95;
         break;
 
       case BossAttackPattern.waveSweep:
         for (int i = -2; i <= 2; i++) {
           if (i == 0 && !boss.isPhase2) continue; // Wide central gap for fair dodging
+          if (i == 1 && boss.isPhase2) continue; // Fair dodge corridor in Phase 2 too
           enemyProjectiles.add(
             CapsuleProjectile(
               position: boss.position + Offset(-45, i * 26.0),
               velocity: Offset(-280.0 * speedMul, i * 32.0),
               damage: 1,
               color: const Color(0xFFFB923C),
-              radius: 7.0,
+              radius: 7.2,
               isEnemy: true,
               lifeTime: 4.0,
             ),
           );
         }
         audio.playBossAttack();
-        boss.attackCooldown = boss.isPhase2 ? 1.5 : 2.0;
+        boss.attackCooldown = boss.isPhase2 ? 1.4 : 1.9;
         break;
 
       case BossAttackPattern.chargeTelegraph:
@@ -1360,23 +1521,45 @@ class ArcadeGameController extends ChangeNotifier {
         audio.playThruster();
         break;
 
+      case BossAttackPattern.radialBurst:
+        final int spokeCount = boss.isPhase2 ? 7 : 5;
+        for (int s = 0; s < spokeCount; s++) {
+          // Fan westward toward player with clean dodging gaps between spokes
+          final double frac = s / math.max(1, spokeCount - 1);
+          final double ang = math.pi + (frac - 0.5) * 1.45;
+          enemyProjectiles.add(
+            CapsuleProjectile(
+              position: boss.position + Offset(math.cos(ang), math.sin(ang)) * 34.0,
+              velocity: Offset(math.cos(ang), math.sin(ang)) * (235.0 * speedMul),
+              damage: 1,
+              color: const Color(0xFFA78BFA),
+              radius: 7.2,
+              isEnemy: true,
+              lifeTime: 4.2,
+            ),
+          );
+        }
+        audio.playBossAttack();
+        boss.attackCooldown = boss.isPhase2 ? 1.5 : 2.0;
+        break;
+
       case BossAttackPattern.spawnMinions:
-        final spawnCount = enemies.length < 3 ? 2 : 1;
+        final spawnCount = enemies.length < 2 ? 2 : 1;
         for (int s = 0; s < spawnCount; s++) {
           enemies.add(
             ArcadeEnemy(
               id: _nextDynamicId++,
-              position: boss.position + Offset(-50.0, s == 0 ? -55.0 : 55.0),
+              position: boss.position + Offset(-52.0, s == 0 ? -55.0 : 55.0),
               velocity: const Offset(-65.0, 0.0),
-              type: EnemyType.toxicSpore,
-              maxHp: 3,
-              radius: 17.0,
-              scoreReward: 120,
-              xpReward: 25,
+              type: s == 0 ? EnemyType.spikeVirion : EnemyType.helicoGrub,
+              maxHp: 3 + (level / 4).floor(),
+              radius: 18.0,
+              scoreReward: 130,
+              xpReward: 30,
             ),
           );
         }
-        boss.attackCooldown = 1.8;
+        boss.attackCooldown = 1.75;
         break;
 
       case BossAttackPattern.chargeDash:
@@ -1385,6 +1568,9 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _updateParticles(double dt) {
+    if (particles.length > 150) {
+      particles.removeRange(0, particles.length - 150);
+    }
     for (int i = particles.length - 1; i >= 0; i--) {
       final p = particles[i];
       p.position += p.velocity * dt;
@@ -1469,34 +1655,16 @@ class ArcadeGameController extends ChangeNotifier {
 
         final dist = (p.position - enemy.position).distance;
         if (dist < p.radius + enemy.radius) {
-          enemy.takeDamage(p.damage);
+          final dir = p.position - enemy.position;
+          final normDir = dir.distance > 1.0 ? -dir / dir.distance : const Offset(1, 0);
+          enemy.takeDamage(p.damage, hitDirection: normDir);
           p.hitEnemyIds.add(enemy.id);
           if (!p.isPiercing) removeBullet = true;
 
           _emitHitSparks(enemy.position, color: p.color);
 
           if (enemy.isDead) {
-            score += enemy.scoreReward * (1 + (combo / 4).floor());
-            earnedXp += enemy.xpReward;
-            combo++;
-            if (combo > highestCombo) highestCombo = combo;
-            _addFloatingText('+${enemy.xpReward} XP', enemy.position, const Color(0xFF38BDF8));
-            _emitExplosion(enemy.position, enemy.type);
-            audio.playCombo();
-
-            if (math.Random().nextDouble() < 0.30) {
-              collectibles.add(
-                ArcadeCollectible(
-                  id: 9000 + (_nextDynamicId++),
-                  position: enemy.position,
-                  type: math.Random().nextBool()
-                      ? CollectibleType.heartBoost
-                      : CollectibleType.shieldBoost,
-                  xpValue: 50,
-                  scoreValue: 120,
-                ),
-              );
-            }
+            _onEnemyDefeated(enemy, dropChance: 0.30);
           }
           if (removeBullet) break;
         }
@@ -1549,7 +1717,10 @@ class ArcadeGameController extends ChangeNotifier {
         if (player.isShieldActive) {
           player.triggerShieldDeflect();
           _emitShieldDeflect(player.position);
-          enemy.takeDamage(4);
+          enemy.takeDamage(4, hitDirection: const Offset(1, 0));
+          if (enemy.isDead) {
+            _onEnemyDefeated(enemy, dropChance: 0.30);
+          }
           _addFloatingText('CHOC BOUCLIER !', enemy.position + const Offset(0, -20), const Color(0xFF22D3EE));
         } else if (!player.isInvulnerable) {
           _damagePlayer();
@@ -1658,11 +1829,12 @@ class ArcadeGameController extends ChangeNotifier {
         _addFloatingText('NOTION MAÎTRISÉE !', player.position + const Offset(0, -45), const Color(0xFFFBBF24));
       }
 
-      // Link knowledge directly to combat effectiveness & weaken the Boss!
+      // Link knowledge directly to combat effectiveness & weaken the Boss while keeping a real fight!
       player.knowledgeDamageMultiplier = (1.0 + correctAnswersInStage * 0.30).clamp(1.0, 2.5);
       player.weaponPowerLevel = (1 + (correctAnswersInStage / 2).floor()).clamp(1, 4);
-      if (boss.currentHp > 6) {
-        boss.takeDamage(2);
+      final minBossFloor = (boss.maxHp * 0.55).round();
+      if (boss.currentHp > minBossFloor) {
+        boss.takeDamage(math.min(3, boss.currentHp - minBossFloor));
       }
 
       if (wrongAnswersInStage == 0 && correctAnswersInStage >= checkpoints.length && checkpoints.isNotEmpty) {
@@ -1682,18 +1854,22 @@ class ArcadeGameController extends ChangeNotifier {
         player.specialSkillCooldown = 0.0; // Combo streak charges Special!
       }
       player.boostTimer = 3.0;
+      player.invulnerableTimer = math.max(player.invulnerableTimer, 2.0);
       player.heal();
       audio.playCorrect();
-      _addFloatingText('+30% ARME • -2 PV BOSS', player.position + const Offset(55, -36), const Color(0xFF35D39A));
+      _addFloatingText('+30% ARME • -3 PV BOSS', player.position + const Offset(55, -36), const Color(0xFF35D39A));
     } else {
       wrongAnswersInStage++;
       combo = 0;
       earnedXp += 35;
       audio.playWrong();
-      // Gently shield player briefly on resume instead of harshly killing them
-      player.invulnerableTimer = 1.5;
+      // Generous grace invulnerability shield when resuming gameplay after reading
+      player.invulnerableTimer = 2.5;
       _addFloatingText('EXPLICATION VALIDÉE', player.position + const Offset(55, -36), const Color(0xFFFFB547));
     }
+
+    // Clear nearby enemy projectiles so student never takes an unfair hit right on resume
+    enemyProjectiles.removeWhere((ep) => (ep.position - player.position).distance < 240.0);
 
     activeCheckpoint = null;
     state = GameState.playing;
@@ -1733,10 +1909,12 @@ class ArcadeGameController extends ChangeNotifier {
   void _startBossDefeatSequence() {
     isBossDefeated = true;
     state = GameState.bossDefeatAnim;
-    bossDefeatTimer = 1.6;
+    bossDefeatTimer = 2.3;
+    _bossDefeatBurstTick = 0.0;
+    _bossPurifyWaveDone = false;
     enemyProjectiles.clear();
     audio.playBossDefeat();
-    _emitVictoryConfetti(burstCount: 42);
+    _emitVictoryConfetti(burstCount: 48);
     _addFloatingText('BOSS ÉRADIQUÉ !', boss.position, const Color(0xFFFFB547));
     notifyListeners();
   }

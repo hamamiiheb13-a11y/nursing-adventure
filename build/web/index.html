@@ -106,8 +106,6 @@
       max-width: 400px;
       width: 92%;
       text-align: center;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
     }
     .capsule-stage {
       width: 140px;
@@ -237,25 +235,59 @@
   </div>
 
   <script>
-    window.addEventListener('flutter-first-frame', function () {
-      const bar = document.getElementById('loading-bar');
-      if (bar) bar.style.width = '100%';
-      const loader = document.getElementById('loading-container');
-      if (loader) {
-        loader.style.opacity = '0';
-        loader.style.transform = 'scale(1.03)';
-        setTimeout(function () {
-          if (loader.parentNode) loader.parentNode.removeChild(loader);
-        }, 420);
+    (function () {
+      var loaderDismissed = false;
+      function dismissLoader() {
+        if (loaderDismissed) return;
+        loaderDismissed = true;
+        var bar = document.getElementById('loading-bar');
+        if (bar) bar.style.width = '100%';
+        var loader = document.getElementById('loading-container');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transform = 'scale(1.03)';
+          loader.style.pointerEvents = 'none';
+          setTimeout(function () {
+            if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 380);
+        }
       }
-    });
 
-    setTimeout(function () {
-      const status = document.getElementById('loading-status');
-      const fallback = document.getElementById('loading-fallback');
-      if (status) status.innerText = 'Finalisation de l\'environnement digestif...';
-      if (fallback) fallback.style.display = 'inline-block';
-    }, 8000);
+      // Désenregistre tout ancien Service Worker Flutter obsolète qui pourrait bloquer sur l'écran de chargement
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          for (var i = 0; i < regs.length; i++) {
+            var scriptURL = regs[i].active && regs[i].active.scriptURL ? regs[i].active.scriptURL : '';
+            if (scriptURL.indexOf('flutter_service_worker') !== -1) {
+              regs[i].unregister();
+            }
+          }
+        }).catch(function () {});
+      }
+
+      window.addEventListener('flutter-first-frame', dismissLoader);
+
+      // Sécurité additionnelle si le canvas Flutter apparaît avant/sans l'événement
+      var probeCount = 0;
+      var probeInterval = setInterval(function () {
+        probeCount++;
+        var view = document.querySelector('flutter-view, flt-glass-pane');
+        if (view && view.getBoundingClientRect().width > 0) {
+          clearInterval(probeInterval);
+          dismissLoader();
+        } else if (probeCount > 60) {
+          clearInterval(probeInterval);
+        }
+      }, 250);
+
+      setTimeout(function () {
+        if (loaderDismissed) return;
+        var status = document.getElementById('loading-status');
+        var fallback = document.getElementById('loading-fallback');
+        if (status) status.innerText = 'Connexion lente détectée — ouverture imminente...';
+        if (fallback) fallback.style.display = 'inline-block';
+      }, 9000);
+    })();
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

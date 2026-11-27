@@ -87,9 +87,15 @@ void main() {
         ),
       );
       expect(tester.takeException(), isNull);
+      expect(find.text('90s'), findsOneWidget);
       for (final opt in q5.options) {
         expect(find.textContaining(opt), findsOneWidget);
       }
+
+      // Verify generous 90s comfort timer never locks out or closes when elapsing past 0s
+      await tester.pump(const Duration(seconds: 92));
+      expect(find.text('Temps libre'), findsOneWidget);
+      expect(find.text('Valider ma réponse'), findsOneWidget);
 
       // Select the correct option, validate, inspect centered Comprendre la réponse window, then continue
       await tester.tap(find.textContaining(q5.options[q5.correctOptionIndex]));

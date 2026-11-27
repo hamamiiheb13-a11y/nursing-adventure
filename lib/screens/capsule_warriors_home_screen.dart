@@ -34,11 +34,13 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
   GameProgress _progress = GameProgress();
   bool _hasSave = false;
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+
+    _progress = _storageService.currentProgress;
+    _hasSave = _progress.totalScore > 0 || _progress.stageResults.isNotEmpty;
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -57,8 +59,8 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 850),
-    );
+      duration: const Duration(milliseconds: 650),
+    )..forward();
 
     _loadSaveData();
   }
@@ -78,9 +80,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         _hasSave =
             hasSave && (progress.totalScore > 0 || progress.stageResults.isNotEmpty);
         _progress = progress;
-        _isLoading = false;
       });
-      _entranceController.forward(from: 0.0);
     }
   }
 
@@ -190,15 +190,6 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: CapsuleColors.deepOcean,
-        body: Center(
-          child: CircularProgressIndicator(color: CapsuleColors.cyanGlow),
-        ),
-      );
-    }
-
     final size = MediaQuery.of(context).size;
     final isPortraitMobile = size.width < 680 && size.height > size.width;
     final isCompact = size.height < 640 || size.width < 880;

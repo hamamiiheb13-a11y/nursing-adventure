@@ -565,23 +565,24 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
     final bool isSelected = _selectedIndex == index;
     final bool isRightOption = index == q.correctOptionIndex;
 
-    Color cardBg = const Color(0xFFF4F9FF);
-    Color borderColor = const Color(0xFF0EA5E9).withValues(alpha: 0.30);
-    Color textColor = const Color(0xFF0C3154);
+    Color cardBg = const Color(0xFF144C7C);
+    Color borderColor = const Color(0xFF38BDF8).withValues(alpha: 0.42);
+    Color textColor = const Color(0xFFF8FBFF);
 
     if (_isValidated) {
       if (isRightOption) {
-        cardBg = const Color(0xFFECFDF5);
-        borderColor = const Color(0xFF10B981);
-        textColor = const Color(0xFF064E3B);
+        cardBg = const Color(0xFF0D5C54);
+        borderColor = const Color(0xFF34D399);
+        textColor = const Color(0xFFECFDF5);
       } else if (isSelected && !isRightOption) {
-        cardBg = const Color(0xFFFFF1F2);
+        cardBg = const Color(0xFF74213B);
         borderColor = const Color(0xFFFB7185);
-        textColor = const Color(0xFF9F1239);
+        textColor = const Color(0xFFFFE4E6);
       }
     } else if (isSelected) {
-      cardBg = const Color(0xFFE0F7FA);
-      borderColor = const Color(0xFF0284C7);
+      cardBg = const Color(0xFF0E7490);
+      borderColor = const Color(0xFF22D3EE);
+      textColor = Colors.white;
     }
 
     return Padding(
@@ -591,24 +592,24 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
         onTap: _isValidated ? null : () => setState(() => _selectedIndex = index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: borderColor,
-              width: isSelected || (_isValidated && isRightOption) ? 1.9 : 1.1,
+              width: isSelected || (_isValidated && isRightOption) ? 2.0 : 1.2,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 25,
-                height: 25,
+                width: 26,
+                height: 26,
                 margin: const EdgeInsets.only(right: 10, top: 1),
                 decoration: BoxDecoration(
-                  color: isSelected ? borderColor : const Color(0xFFE6F2FE),
+                  color: isSelected ? borderColor : const Color(0xFF0E4170),
                   shape: BoxShape.circle,
                   border: Border.all(color: borderColor),
                 ),
@@ -616,9 +617,9 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                   child: Text(
                     String.fromCharCode(65 + index),
                     style: GoogleFonts.inter(
-                      color: isSelected ? Colors.white : const Color(0xFF0E4170),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+                      color: isSelected ? const Color(0xFF0E4170) : const Color(0xFFF8FBFF),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
@@ -628,9 +629,9 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                   opt,
                   style: GoogleFonts.inter(
                     color: textColor,
-                    fontSize: 13.0,
+                    fontSize: 13.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    height: 1.32,
+                    height: 1.35,
                   ),
                 ),
               ),
@@ -645,11 +646,11 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: isCorrect ? const Color(0xFFECFDF5) : const Color(0xFFF4F9FF),
+        color: isCorrect ? const Color(0xFF0D5C54) : const Color(0xFF134A78),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCorrect ? const Color(0xFF10B981) : const Color(0xFFFB7185),
-          width: 1.5,
+          color: isCorrect ? const Color(0xFF34D399) : const Color(0xFFFB7185),
+          width: 1.6,
         ),
       ),
       child: Column(
@@ -659,7 +660,7 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
             children: [
               Icon(
                 isCorrect ? Icons.flash_on_rounded : Icons.menu_book_rounded,
-                color: isCorrect ? const Color(0xFF059669) : const Color(0xFFE11D48),
+                color: isCorrect ? const Color(0xFF6EE7B7) : const Color(0xFFFDA4AF),
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -669,7 +670,7 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
                       ? 'Comprendre la réponse • SUPER TIR TOUCHÉ (-1 HP)'
                       : 'Comprendre la réponse • Réponse exacte : ${q.correctOptionText}',
                   style: GoogleFonts.plusJakartaSans(
-                    color: isCorrect ? const Color(0xFF065F46) : const Color(0xFF9F1239),
+                    color: isCorrect ? const Color(0xFFECFDF5) : const Color(0xFFFFE4E6),
                     fontSize: 12.2,
                     fontWeight: FontWeight.w800,
                   ),
@@ -681,9 +682,9 @@ class _BossChallengeDialogState extends State<BossChallengeDialog>
           Text(
             q.explanation,
             style: GoogleFonts.inter(
-              color: const Color(0xFF0C3154),
-              fontSize: 12.4,
-              height: 1.42,
+              color: const Color(0xFFE0F2FE),
+              fontSize: 12.6,
+              height: 1.44,
             ),
           ),
         ],

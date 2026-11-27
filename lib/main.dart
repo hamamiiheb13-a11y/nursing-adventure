@@ -13,29 +13,40 @@ import 'screens/capsule_warriors_world_select_screen.dart';
 import 'services/storage_service.dart';
 import 'theme/capsule_theme.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Prefer landscape orientation for full arcade game immersion
-  await SystemChrome.setPreferredOrientations([
+  // Apply cached defaults synchronously if available so the first frame renders immediately
+  final cached = StorageService().currentProgress;
+  AudioService().applySettings(
+    masterVolume: cached.masterVolume,
+    musicVolume: cached.musicVolume,
+    sfxVolume: cached.sfxVolume,
+    musicEnabled: cached.musicEnabled,
+    sfxEnabled: cached.sfxEnabled,
+    isMuted: cached.isMuted,
+  );
+
+  runApp(const CapsuleWarriorsApp());
+
+  // Non-blocking background orientation hint & persistent save hydration
+  SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Preload progress and apply saved audio settings
-  final initialProgress = await StorageService().loadProgress();
-  AudioService().applySettings(
-    masterVolume: initialProgress.masterVolume,
-    musicVolume: initialProgress.musicVolume,
-    sfxVolume: initialProgress.sfxVolume,
-    musicEnabled: initialProgress.musicEnabled,
-    sfxEnabled: initialProgress.sfxEnabled,
-    isMuted: initialProgress.isMuted,
-  );
-
-  runApp(const CapsuleWarriorsApp());
+  StorageService().loadProgress().then((progress) {
+    AudioService().applySettings(
+      masterVolume: progress.masterVolume,
+      musicVolume: progress.musicVolume,
+      sfxVolume: progress.sfxVolume,
+      musicEnabled: progress.musicEnabled,
+      sfxEnabled: progress.sfxEnabled,
+      isMuted: progress.isMuted,
+    );
+  });
 }
 
 class CapsuleWarriorsApp extends StatelessWidget {

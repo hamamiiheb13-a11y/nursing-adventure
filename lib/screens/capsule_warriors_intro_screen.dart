@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,6 +27,7 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   final AudioService _audio = AudioService();
+  Timer? _failsafeTimer;
   bool _finished = false;
 
   @override
@@ -37,10 +39,10 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Total sequence duration: 4.6 seconds (snappy on mobile & desktop)
+    // Total sequence duration: 4.2 seconds with automatic failsafe transition
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4600),
+      duration: const Duration(milliseconds: 4200),
     );
 
     _animController.addStatusListener((status) {
@@ -50,17 +52,21 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
     });
 
     _animController.forward();
+    // Failsafe guarantees player never remains stuck on intro even if browser throttles ticker
+    _failsafeTimer = Timer(const Duration(milliseconds: 4600), _finishIntro);
   }
 
   @override
   void dispose() {
+    _failsafeTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }
 
   void _finishIntro() {
-    if (_finished) return;
+    if (_finished || !mounted) return;
     _finished = true;
+    _failsafeTimer?.cancel();
     _audio.playClick();
 
     if (widget.onContinue != null) {
@@ -189,18 +195,17 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
 }
 
 class _CinematicIntroPainter extends CustomPainter {
-  final double progress; // 0.0 to 1.0 (over 6.1s)
+  final double progress; // 0.0 to 1.0 (over 4.2s)
 
   _CinematicIntroPainter({required this.progress});
 
-  // Step ranges:
-  // 1: 0.000 -> 0.246 (1.5s): Black screen -> Logo fades in with particle burst
-  // 2: 0.246 -> 0.377 (0.8s): Logo fades out -> Capsule appears powered down
-  // 3: 0.377 -> 0.459 (0.5s): Propulsion lights up: orange glow trail
-  // 4: 0.459 -> 0.623 (1.0s): Capsule moves right, stomach walls slide in
-  // 5: 0.623 -> 0.787 (1.0s): Enemy appears, capsule fires, enemy explodes
-  // 6: 0.787 -> 0.918 (0.8s): "LA MISSION COMMENCE..." slides in
-  // 7: 0.918 -> 1.000 (0.5s): Transition wipe
+  // Step ranges over 4.2s:
+  // 0.0s -> 1.1s: Logo fades in smoothly with bio-particles & subtle capsule silhouette behind (never isolated!)
+  // 1.1s -> 1.6s: Logo fades cleanly into Capsule awakening
+  // 1.6s -> 2.1s: Propulsion lights up (orange/cyan energy trail)
+  // 2.1s -> 2.9s: Capsule glides right as digestive mucosal walls slide in
+  // 2.9s -> 3.6s: Pathogen appears, capsule fires laser, pathogen bursts cleanly
+  // 3.6s -> 4.2s: "LA MISSION COMMENCE..." & smooth oceanic wipe transition
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -217,17 +222,26 @@ class _CinematicIntroPainter extends CustomPainter {
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
-    final t = progress * 6.1; // Elapsed seconds
+    // Subtle continuous floating bio-bubbles throughout intro (never a frozen flat screen)
+    final bubblePaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2;
+    for (int i = 0; i < 10; i++) {
+      final bx = size.width * ((0.08 + i * 0.11 + progress * 0.14) % 1.0);
+      final by = size.height * ((0.85 - i * 0.08 - progress * 0.35 + 1.0) % 1.0);
+      bubblePaint.color = CapsuleColors.cyanGlow.withValues(alpha: 0.22);
+      canvas.drawCircle(Offset(bx, by), 5.0 + (i % 4) * 3.0, bubblePaint);
+    }
 
-    if (t < 2.3) {
+    final t = progress * 4.2;
+
+    if (t < 1.6) {
       _paintStep1And2(canvas, size, t);
-    } else if (t < 2.8) {
+    } else if (t < 2.1) {
       _paintStep3(canvas, size, t);
-    } else if (t < 3.8) {
+    } else if (t < 2.9) {
       _paintStep4(canvas, size, t);
-    } else if (t < 4.8) {
+    } else if (t < 3.6) {
       _paintStep5(canvas, size, t);
-    } else if (t < 5.6) {
+    } else if (t < 4.0) {
       _paintStep6(canvas, size, t);
     } else {
       _paintStep7(canvas, size, t);
@@ -235,37 +249,44 @@ class _CinematicIntroPainter extends CustomPainter {
   }
 
   void _paintStep1And2(Canvas canvas, Size size, double t) {
-    // 0.0s to 1.5s: Logo fades in with particle burst.
-    // 1.5s to 2.3s: Logo fades out, capsule appears at left powered down.
+    // 0.0s -> 1.1s: Logo reveal with energetic particles
+    // 1.1s -> 1.6s: Logo fades out smoothly while powered-down capsule fades in
     double logoAlpha = 0.0;
-    if (t <= 1.2) {
-      logoAlpha = (t / 1.0).clamp(0.0, 1.0);
-    } else if (t <= 1.5) {
+    if (t <= 0.45) {
+      logoAlpha = (t / 0.45).clamp(0.0, 1.0);
+    } else if (t <= 1.15) {
       logoAlpha = 1.0;
     } else {
-      logoAlpha = (1.0 - (t - 1.5) / 0.8).clamp(0.0, 1.0);
+      logoAlpha = (1.0 - (t - 1.15) / 0.45).clamp(0.0, 1.0);
     }
 
     if (logoAlpha > 0.01) {
-      // Particle burst behind logo
-      final pProgress = (t / 1.8).clamp(0.0, 1.0);
+      final pProgress = (t / 1.4).clamp(0.0, 1.0);
       final rand = math.Random(101);
       final burstPaint = Paint()..style = PaintingStyle.fill;
-      for (int i = 0; i < 40; i++) {
+      for (int i = 0; i < 28; i++) {
         final angle = rand.nextDouble() * math.pi * 2;
-        final speed = 80.0 + rand.nextDouble() * 180.0;
+        final speed = 70.0 + rand.nextDouble() * 170.0;
         final dist = pProgress * speed;
         final px = size.width / 2 + math.cos(angle) * dist;
         final py = size.height / 2 + math.sin(angle) * dist;
-        final r = (3.5 - pProgress * 2.0).clamp(1.0, 4.0);
+        final r = (3.4 - pProgress * 1.8).clamp(1.0, 4.0);
 
-        final pAlpha = (logoAlpha * (1.0 - pProgress * 0.7)).clamp(0.0, 1.0);
+        final pAlpha = (logoAlpha * (1.0 - pProgress * 0.65)).clamp(0.0, 1.0);
         burstPaint.color = (i % 2 == 0 ? CapsuleColors.cyanGlow : CapsuleColors.turquoise)
             .withValues(alpha: pAlpha);
         canvas.drawCircle(Offset(px, py), r, burstPaint);
       }
 
-      // Draw "GASTRO QUEST" Title
+      // Animated subtle capsule silhouette gliding softly during logo phase
+      _drawCapsuleBody(
+        canvas,
+        Offset(size.width * (0.14 + (t / 1.6) * 0.06), size.height * 0.5),
+        poweredOn: t > 0.9,
+        thrusterIntensity: t > 0.9 ? ((t - 0.9) / 0.7).clamp(0.0, 0.5) : 0.0,
+        alpha: 0.35 + 0.65 * ((t - 1.0) / 0.6).clamp(0.0, 1.0),
+      );
+
       final titleSpan = TextSpan(
         text: 'GASTRO QUEST',
         style: GoogleFonts.orbitron(
@@ -276,7 +297,7 @@ class _CinematicIntroPainter extends CustomPainter {
           shadows: [
             Shadow(
               color: CapsuleColors.cyanGlow.withValues(alpha: logoAlpha),
-              blurRadius: 20,
+              blurRadius: 14,
             ),
           ],
         ),
@@ -287,52 +308,42 @@ class _CinematicIntroPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2));
-    }
-
-    // Logo fading out, capsule appears at left powered down (t in 1.5 -> 2.3)
-    if (t > 1.5) {
-      final capAlpha = ((t - 1.5) / 0.8).clamp(0.0, 1.0);
+    } else {
       final capPos = Offset(size.width * 0.2, size.height * 0.5);
-      _drawCapsuleBody(canvas, capPos, poweredOn: false, alpha: capAlpha);
+      _drawCapsuleBody(canvas, capPos, poweredOn: false, alpha: 1.0);
     }
   }
 
   void _paintStep3(Canvas canvas, Size size, double t) {
-    // 2.3s -> 2.8s: Propulsion lights up: orange glow trail appears
-    final stepProgress = ((t - 2.3) / 0.5).clamp(0.0, 1.0);
+    final stepProgress = ((t - 1.6) / 0.5).clamp(0.0, 1.0);
     final capPos = Offset(size.width * 0.2, size.height * 0.5);
 
-    // Thruster ignition flash
     _drawCapsuleBody(canvas, capPos, poweredOn: true, thrusterIntensity: stepProgress, alpha: 1.0);
 
-    // Flash glow
     canvas.drawCircle(
       Offset(capPos.dx - 30, capPos.dy),
       35 * stepProgress,
       Paint()
-        ..color = CapsuleColors.dangerOrange.withValues(alpha: 0.4 * stepProgress)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+        ..shader = RadialGradient(
+          colors: [
+            CapsuleColors.dangerOrange.withValues(alpha: 0.5 * stepProgress),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(capPos.dx - 30, capPos.dy), radius: math.max(1.0, 35 * stepProgress))),
     );
   }
 
   void _paintStep4(Canvas canvas, Size size, double t) {
-    // 2.8s -> 3.8s: Capsule starts moving right, stomach walls slide in from edges
-    final stepProgress = ((t - 2.8) / 1.0).clamp(0.0, 1.0);
-
-    // Stomach walls slide in from top and bottom
+    final stepProgress = ((t - 2.1) / 0.8).clamp(0.0, 1.0);
     _drawSlidingStomachWalls(canvas, size, stepProgress);
 
-    // Capsule moves from 0.2 to 0.45 width
     final curX = size.width * (0.2 + 0.25 * Curves.easeInOut.transform(stepProgress));
     final curY = size.height * 0.5 + math.sin(stepProgress * math.pi * 3) * 8.0;
     _drawCapsuleBody(canvas, Offset(curX, curY), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
   }
 
   void _paintStep5(Canvas canvas, Size size, double t) {
-    // 3.8s -> 4.8s: First enemy appears on right, capsule fires, enemy explodes
-    final stepProgress = ((t - 3.8) / 1.0).clamp(0.0, 1.0);
-
-    // Stomach walls visible
+    final stepProgress = ((t - 2.9) / 0.7).clamp(0.0, 1.0);
     _drawSlidingStomachWalls(canvas, size, 1.0);
 
     final capPos = Offset(size.width * 0.45, size.height * 0.5);
@@ -340,57 +351,48 @@ class _CinematicIntroPainter extends CustomPainter {
 
     final enemyPos = Offset(size.width * 0.78, size.height * 0.5);
 
-    // Sub-phases:
-    // 0.0 -> 0.35: Enemy enters from right
-    // 0.35 -> 0.55: Laser shoots from capsule to enemy
-    // 0.55 -> 1.00: Enemy explodes into shockwave and sparks!
     if (stepProgress < 0.55) {
       final enemyAlpha = (stepProgress / 0.2).clamp(0.0, 1.0);
       _drawEnemy(canvas, enemyPos, enemyAlpha);
     }
 
     if (stepProgress >= 0.30 && stepProgress <= 0.60) {
-      // Laser beam flying
       final laserP = ((stepProgress - 0.30) / 0.25).clamp(0.0, 1.0);
       final lx1 = capPos.dx + 30;
       final lx2 = lx1 + (enemyPos.dx - lx1) * laserP;
-      final laserPaint = Paint()
-        ..color = CapsuleColors.cyanGlow
-        ..strokeWidth = 4.0
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(lx1, capPos.dy), Offset(lx2, capPos.dy), laserPaint);
-
-      // Glow around beam
       canvas.drawLine(
         Offset(lx1, capPos.dy),
         Offset(lx2, capPos.dy),
         Paint()
-          ..color = CapsuleColors.electricBlue.withValues(alpha: 0.6)
-          ..strokeWidth = 8.0
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+          ..color = CapsuleColors.electricBlue.withValues(alpha: 0.45)
+          ..strokeWidth = 9.0
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        Offset(lx1, capPos.dy),
+        Offset(lx2, capPos.dy),
+        Paint()
+          ..color = CapsuleColors.cyanGlow
+          ..strokeWidth = 4.0
+          ..strokeCap = StrokeCap.round,
       );
     }
 
     if (stepProgress > 0.55) {
-      // Enemy explosion
       final expProgress = ((stepProgress - 0.55) / 0.45).clamp(0.0, 1.0);
       _drawExplosion(canvas, enemyPos, expProgress);
     }
   }
 
   void _paintStep6(Canvas canvas, Size size, double t) {
-    // 4.8s -> 5.6s: Text: "LA MISSION COMMENCE..." slides in
-    final stepProgress = ((t - 4.8) / 0.8).clamp(0.0, 1.0);
-
+    final stepProgress = ((t - 3.6) / 0.4).clamp(0.0, 1.0);
     _drawSlidingStomachWalls(canvas, size, 1.0);
 
-    // Capsule continues gliding
     final capX = size.width * (0.45 + 0.15 * stepProgress);
     _drawCapsuleBody(canvas, Offset(capX, size.height * 0.5), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
 
-    // Text slides in with glow
     final textAlpha = Curves.easeOut.transform(stepProgress);
-    final textOffset = (1.0 - textAlpha) * 40.0;
+    final textOffset = (1.0 - textAlpha) * 32.0;
 
     final missionSpan = TextSpan(
       text: 'LA MISSION COMMENCE...',
@@ -402,7 +404,7 @@ class _CinematicIntroPainter extends CustomPainter {
         shadows: [
           Shadow(
             color: CapsuleColors.cyanGlow.withValues(alpha: textAlpha),
-            blurRadius: 20,
+            blurRadius: 16,
           ),
         ],
       ),
@@ -419,25 +421,21 @@ class _CinematicIntroPainter extends CustomPainter {
   }
 
   void _paintStep7(Canvas canvas, Size size, double t) {
-    // 5.6s -> 6.1s: Transition wipe (iris wipe / cyan curtain)
-    final stepProgress = ((t - 5.6) / 0.5).clamp(0.0, 1.0);
+    final stepProgress = ((t - 4.0) / 0.2).clamp(0.0, 1.0);
 
     _drawSlidingStomachWalls(canvas, size, 1.0);
     _drawCapsuleBody(canvas, Offset(size.width * 0.65, size.height * 0.5), poweredOn: true, thrusterIntensity: 1.0, alpha: 1.0);
 
-    // Fullscreen Wipe Overlay
-    final wipePaint = Paint()..color = CapsuleColors.deepOcean.withValues(alpha: stepProgress);
+    final wipePaint = Paint()..color = CapsuleColors.deepOcean.withValues(alpha: stepProgress * 0.85);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), wipePaint);
 
-    // Cyan wipe scanline
     final lineX = size.width * stepProgress;
     canvas.drawLine(
       Offset(lineX, 0),
       Offset(lineX, size.height),
       Paint()
-        ..color = CapsuleColors.cyanGlow.withValues(alpha: (1.0 - stepProgress) * 0.8)
-        ..strokeWidth = 6.0
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        ..color = CapsuleColors.cyanGlow.withValues(alpha: (1.0 - stepProgress) * 0.75)
+        ..strokeWidth = 5.0,
     );
   }
 

@@ -9,9 +9,40 @@ import 'parallax_background_system.dart';
 class ArcadeGamePainter extends CustomPainter {
   final ArcadeGameController controller;
   late final ParallaxBackgroundSystem _parallax;
+  final Map<String, TextPainter> _labelCache = {};
 
   ArcadeGamePainter({required this.controller}) : super(repaint: controller) {
     _parallax = ParallaxBackgroundSystem(stageId: controller.level);
+  }
+
+  TextPainter _getCachedLabelPainter(
+    String text, {
+    required double fontSize,
+    required Color color,
+    FontWeight fontWeight = FontWeight.w800,
+    List<Shadow>? shadows,
+  }) {
+    final key = '$text|${fontSize.toStringAsFixed(1)}|${color.toARGB32()}|${fontWeight.value}';
+    final cached = _labelCache[key];
+    if (cached != null) return cached;
+    if (_labelCache.length > 96) {
+      _labelCache.clear();
+    }
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          letterSpacing: 0.7,
+          shadows: shadows,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    _labelCache[key] = tp;
+    return tp;
   }
 
   @override
@@ -264,67 +295,134 @@ class ArcadeGamePainter extends CustomPainter {
   }
 
   // ==========================================================================
-  // 4. CHECKPOINT NANOGATES
+  // 4. CHECKPOINT QUESTION PORTALS (PROMINENT, INVITING & CLEARLY VISIBLE)
   // ==========================================================================
   void _drawCheckpoints(Canvas canvas, Size size) {
     for (final cp in controller.checkpoints) {
-      if (cp.worldX < controller.cameraX - 100 || cp.worldX > controller.cameraX + size.width + 100) {
+      if (cp.worldX < controller.cameraX - 120 || cp.worldX > controller.cameraX + size.width + 120) {
         continue;
       }
 
       final ceilY = controller.tunnel.getCeilingY(cp.worldX, controller.gameTime);
       final floorY = controller.tunnel.getFloorY(cp.worldX, controller.gameTime);
+      final midY = (ceilY + floorY) / 2;
 
-      final color = cp.isCompleted
-          ? (cp.isAnswerCorrect ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
-          : const Color(0xFF00E5FF);
+      final Color color = cp.isCompleted
+          ? (cp.isAnswerCorrect ? const Color(0xFF10B981) : const Color(0xFFFBBF24))
+          : (cp.isRevision ? const Color(0xFFFBBF24) : const Color(0xFF22D3EE));
 
-      // Light column
+      final double pulse = 1.0 + math.sin(controller.gameTime * 4.0 + cp.index) * 0.09;
+
+      // Luminous light column portal
       final gatePaint = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            color.withValues(alpha: 0.1),
-            color.withValues(alpha: 0.45),
-            color.withValues(alpha: 0.1),
+            color.withValues(alpha: 0.08),
+            color.withValues(alpha: 0.42),
+            color.withValues(alpha: 0.08),
           ],
-        ).createShader(Rect.fromLTRB(cp.worldX - 16, ceilY, cp.worldX + 16, floorY));
+        ).createShader(Rect.fromLTRB(cp.worldX - 24, ceilY, cp.worldX + 24, floorY));
 
-      canvas.drawRect(Rect.fromLTRB(cp.worldX - 16, ceilY, cp.worldX + 16, floorY), gatePaint);
+      canvas.drawRect(Rect.fromLTRB(cp.worldX - 24, ceilY, cp.worldX + 24, floorY), gatePaint);
 
-      // Border arches
       final beamPaint = Paint()
-        ..color = color
+        ..color = color.withValues(alpha: 0.85)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5;
+        ..strokeWidth = 3.2;
       canvas.drawLine(Offset(cp.worldX, ceilY), Offset(cp.worldX, floorY), beamPaint);
 
-      // Rotating beacon rings
-      final midY = (ceilY + floorY) / 2;
+      // Orbiting portal rings
       for (int i = 0; i < 3; i++) {
         final ringY = ceilY + (floorY - ceilY) * ((i + 1) / 4);
-        final ringWidth = 24.0 + math.sin(controller.gameTime * 3.0 + i) * 8.0;
-        final ringPaint = Paint()
-          ..color = color.withValues(alpha: 0.8)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5;
+        final ringWidth = 30.0 + math.sin(controller.gameTime * 3.2 + i) * 9.0;
         canvas.drawOval(
-          Rect.fromCenter(center: Offset(cp.worldX, ringY), width: ringWidth, height: 12.0),
-          ringPaint,
+          Rect.fromCenter(center: Offset(cp.worldX, ringY), width: ringWidth, height: 13.0),
+          Paint()
+            ..color = color.withValues(alpha: 0.72)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.4,
         );
       }
 
-      // Checkpoint Emblem
-      final emblemPaint = Paint()..color = color;
-      canvas.drawCircle(Offset(cp.worldX, midY), 16.0, emblemPaint);
-      final iconPaint = Paint()
-        ..color = Colors.black
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0;
-      // Medical cross
-      canvas.drawLine(Offset(cp.worldX - 7, midY), Offset(cp.worldX + 7, midY), iconPaint);
-      canvas.drawLine(Offset(cp.worldX, midY - 7), Offset(cp.worldX, midY + 7), iconPaint);
+      // Larger, inviting Question Beacon Core
+      final double badgeR = 23.0 * pulse;
+      canvas.drawCircle(
+        Offset(cp.worldX, midY),
+        badgeR + 10.0,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.50),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromCircle(center: Offset(cp.worldX, midY), radius: badgeR + 10.0)),
+      );
+
+      canvas.drawCircle(
+        Offset(cp.worldX, midY),
+        badgeR,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFF165B94),
+              const Color(0xFF0E4170),
+            ],
+          ).createShader(Rect.fromCircle(center: Offset(cp.worldX, midY), radius: badgeR)),
+      );
+      canvas.drawCircle(
+        Offset(cp.worldX, midY),
+        badgeR,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.8,
+      );
+
+      // Question mark or checkmark emblem inside portal
+      final String symbol = cp.isCompleted ? '✓' : '?';
+      final tpSymbol = _getCachedLabelPainter(
+        symbol,
+        fontSize: 22.0,
+        color: cp.isCompleted ? color : Colors.white,
+        fontWeight: FontWeight.w900,
+      );
+      tpSymbol.paint(
+        canvas,
+        Offset(cp.worldX - tpSymbol.width / 2, midY - tpSymbol.height / 2),
+      );
+
+      // Floating "QUESTION #N" tag above beacon when active
+      if (!cp.isCompleted) {
+        final label = cp.isRevision ? 'RÉVISION #${cp.index}' : 'QUESTION #${cp.index}';
+        final tpLabel = _getCachedLabelPainter(
+          label,
+          fontSize: 10.5,
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+        );
+        final pillRect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(cp.worldX, midY - badgeR - 18.0),
+            width: tpLabel.width + 16.0,
+            height: 20.0,
+          ),
+          const Radius.circular(10),
+        );
+        canvas.drawRRect(pillRect, Paint()..color = const Color(0xFF0E4170).withValues(alpha: 0.92));
+        canvas.drawRRect(
+          pillRect,
+          Paint()
+            ..color = color
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+        tpLabel.paint(
+          canvas,
+          Offset(cp.worldX - tpLabel.width / 2, midY - badgeR - 18.0 - tpLabel.height / 2),
+        );
+      }
     }
   }
 
@@ -480,9 +578,13 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.scale(scale);
 
     final glowPaint = Paint()
-      ..color = const Color(0xFF10B981).withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
-    canvas.drawCircle(Offset.zero, r + 4, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF10B981).withValues(alpha: 0.45),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: r + 8));
+    canvas.drawCircle(Offset.zero, r + 8, glowPaint);
 
     final heartPath = Path()
       ..moveTo(0, r * 0.35)
@@ -503,9 +605,13 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.scale(scale);
 
     final glowPaint = Paint()
-      ..color = const Color(0xFF818CF8).withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
-    canvas.drawCircle(Offset.zero, r + 5, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF818CF8).withValues(alpha: 0.45),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: r + 9));
+    canvas.drawCircle(Offset.zero, r + 9, glowPaint);
 
     final shieldPath = Path()
       ..moveTo(0, -r)
@@ -539,9 +645,13 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.scale(scale);
 
     final glowPaint = Paint()
-      ..color = const Color(0xFF38BDF8).withValues(alpha: 0.55)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9.0);
-    canvas.drawCircle(Offset.zero, r + 5, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF38BDF8).withValues(alpha: 0.50),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: r + 9));
+    canvas.drawCircle(Offset.zero, r + 9, glowPaint);
 
     final orbPaint = Paint()
       ..shader = const RadialGradient(
@@ -782,15 +892,19 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.restore();
   }
 
-  // Dripping Neon Acid Droplet
+  // Dripping Acid Droplet (fast radial halo without slow GPU MaskFilter blur)
   void _drawAcidDroplet(Canvas canvas, ArcadeObstacle obs) {
     final pos = obs.position;
     final r = obs.radius;
 
     final glowPaint = Paint()
-      ..color = const Color(0xFF84CC16).withValues(alpha: 0.45)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6.0);
-    canvas.drawCircle(pos, r + 4, glowPaint);
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF84CC16).withValues(alpha: 0.45),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: pos, radius: r + 8));
+    canvas.drawCircle(pos, r + 8, glowPaint);
 
     final dropPath = Path()
       ..moveTo(pos.dx, pos.dy - r * 1.3)
@@ -805,9 +919,40 @@ class ArcadeGamePainter extends CustomPainter {
   }
 
   // ==========================================================================
-  // 6B. 2D ANIMATED ENEMIES (5 DISTINCT GASTRIC THREATS)
+  // 6B. 2D ANIMATED ENEMIES (5 REACTIVE BIOLOGICAL ARCHETYPES + ANIMATIONS)
   // ==========================================================================
   void _drawEnemies(Canvas canvas, Size size) {
+    // Draw Defeat Dissolve / Shockwave Animations first
+    for (final eff in controller.defeatedEnemies) {
+      if (eff.position.dx < controller.cameraX - 80 ||
+          eff.position.dx > controller.cameraX + size.width + 80) {
+        continue;
+      }
+      final t = eff.progress;
+      final fade = (1.0 - t).clamp(0.0, 1.0);
+      final ringR = eff.radius * (0.9 + t * 2.1);
+
+      canvas.save();
+      canvas.translate(eff.position.dx, eff.position.dy);
+      canvas.drawCircle(
+        Offset.zero,
+        ringR,
+        Paint()
+          ..color = eff.color.withValues(alpha: fade * 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = (4.5 * fade).clamp(1.0, 4.5),
+      );
+      canvas.rotate(t * math.pi * 2.4 * eff.spinDir);
+      final implodeScale = (1.0 - t * 0.85).clamp(0.1, 1.0);
+      canvas.scale(implodeScale, implodeScale);
+      canvas.drawCircle(
+        Offset.zero,
+        eff.radius * 0.85,
+        Paint()..color = Colors.white.withValues(alpha: fade * 0.65),
+      );
+      canvas.restore();
+    }
+
     for (final enemy in controller.enemies) {
       if (enemy.isDead) continue;
       if (enemy.position.dx < controller.cameraX - 80 ||
@@ -817,8 +962,59 @@ class ArcadeGamePainter extends CustomPainter {
 
       canvas.save();
       canvas.translate(enemy.position.dx, enemy.position.dy);
+      canvas.rotate(enemy.facingTilt);
+
+      // Squash-and-stretch on Damage, Attack Windup Swell, or Attack Recoil
+      double scaleX = 1.0;
+      double scaleY = 1.0;
+      if (enemy.damageWobbleTimer > 0) {
+        final wob = math.sin(enemy.damageWobbleTimer * 48.0) * (enemy.damageWobbleTimer / 0.34) * 0.22;
+        scaleX = 1.0 - wob;
+        scaleY = 1.0 + wob;
+      } else if (enemy.isWindingUpAttack) {
+        final swell = 1.0 + math.sin(controller.gameTime * 22.0) * 0.10 + 0.08;
+        scaleX = swell;
+        scaleY = swell;
+      } else if (enemy.attackRecoilTimer > 0) {
+        final rec = (enemy.attackRecoilTimer / 0.24) * 0.18;
+        scaleX = 1.0 + rec;
+        scaleY = 1.0 - rec * 0.65;
+      }
+      canvas.scale(scaleX, scaleY);
 
       final isFlashing = enemy.isFlashing;
+
+      // Behavior state aura cue (flee/dodge wake vs chase/windup crimson glow)
+      if (enemy.isWindingUpAttack) {
+        canvas.drawCircle(
+          Offset.zero,
+          enemy.radius + 9.0,
+          Paint()
+            ..color = const Color(0xFFFBBF24).withValues(alpha: 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.4,
+        );
+      } else if (enemy.isChasing && enemy.type == EnemyType.spikeVirion) {
+        canvas.drawCircle(
+          Offset.zero,
+          enemy.radius + 7.0,
+          Paint()
+            ..shader = RadialGradient(
+              colors: [
+                const Color(0xFFFB7185).withValues(alpha: 0.36),
+                Colors.transparent,
+              ],
+            ).createShader(Rect.fromCircle(center: Offset.zero, radius: enemy.radius + 7.0)),
+        );
+      } else if (enemy.isDodging || enemy.isFleeing) {
+        // Subtle cyan/emerald speed wake lines when dodging or escaping
+        final wakePaint = Paint()
+          ..color = const Color(0xFF5EEAD4).withValues(alpha: 0.45)
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(-enemy.radius * 1.1, -6), Offset(-enemy.radius * 1.65, -8), wakePaint);
+        canvas.drawLine(Offset(-enemy.radius * 1.1, 6), Offset(-enemy.radius * 1.65, 8), wakePaint);
+      }
 
       switch (enemy.type) {
         case EnemyType.helicoGrub:
@@ -838,27 +1034,30 @@ class ArcadeGamePainter extends CustomPainter {
           break;
       }
 
-      // HP Bar overhead
+      // Reset tilt/scale slightly for level crisp HP bar above enemy
+      canvas.scale(1.0 / scaleX, 1.0 / scaleY);
+      canvas.rotate(-enemy.facingTilt);
+
       if (enemy.currentHp < enemy.maxHp) {
         final barWidth = enemy.radius * 2.2;
-        const barHeight = 4.0;
-        final barY = -enemy.radius - 12.0;
+        const barHeight = 4.5;
+        final barY = -enemy.radius - 13.0;
 
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(-barWidth / 2, barY, barWidth, barHeight),
-            const Radius.circular(2),
+            const Radius.circular(2.5),
           ),
-          Paint()..color = Colors.black54,
+          Paint()..color = const Color(0xCC0E4170),
         );
 
         final hpRatio = (enemy.currentHp / enemy.maxHp).clamp(0.0, 1.0);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(-barWidth / 2, barY, barWidth * hpRatio, barHeight),
-            const Radius.circular(2),
+            const Radius.circular(2.5),
           ),
-          Paint()..color = hpRatio > 0.4 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+          Paint()..color = hpRatio > 0.45 ? const Color(0xFF34D399) : const Color(0xFFFB7185),
         );
       }
 
@@ -1177,23 +1376,64 @@ class ArcadeGamePainter extends CustomPainter {
     }
 
     final pos = boss.position;
+    final bool isDying = controller.state == GameState.bossDefeatAnim;
+    final double defeatFrac = isDying
+        ? (1.0 - (controller.bossDefeatTimer / 2.3)).clamp(0.0, 1.0)
+        : 0.0;
+    final double defeatScale = isDying ? (1.0 - defeatFrac * 0.55).clamp(0.35, 1.0) : 1.0;
+
     canvas.save();
-    canvas.translate(pos.dx, pos.dy);
+    // Subtle hit-vibration shake & attack lunge motion
+    final double hitShakeX = boss.isHit ? math.sin(controller.gameTime * 65.0) * 5.0 : 0.0;
+    final double attackLungeX = boss.isAttackingAnim ? -math.sin((boss.attackAnimTimer / 0.32) * math.pi) * 14.0 : 0.0;
+    canvas.translate(pos.dx + hitShakeX + attackLungeX, pos.dy);
+    canvas.rotate(boss.facingTilt);
+    canvas.scale(defeatScale, defeatScale);
 
     final Color auraCol = boss.isHit
         ? Colors.white
         : (boss.isPhase2 ? const Color(0xFFFB7185) : boss.auraColor);
 
-    // Boss Aura (pulses when telegraphing or in Phase 2)
-    final double pulseSize = 86.0 + (boss.isTelegraphing ? math.sin(controller.gameTime * 18.0) * 10.0 : 0.0);
+    // Boss Aura (pulses intensely when telegraphing or in Phase 2)
+    final double pulseSize = 86.0 +
+        (boss.isTelegraphing
+            ? 12.0 + math.sin(controller.gameTime * 18.0) * 10.0
+            : (boss.isPhase2 ? math.sin(controller.gameTime * 6.0) * 6.0 : 0.0));
     final auraPaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          auraCol.withValues(alpha: boss.isTelegraphing ? 0.55 : 0.35),
+          auraCol.withValues(alpha: boss.isTelegraphing ? 0.62 : 0.36),
           Colors.transparent,
         ],
       ).createShader(Rect.fromCircle(center: Offset.zero, radius: pulseSize));
     canvas.drawCircle(Offset.zero, pulseSize, auraPaint);
+
+    // Clear pre-attack energy charge orb & warning ring when telegraphing pattern
+    if (controller.state == GameState.bossFight && boss.isTelegraphing) {
+      final double chargePulse = 0.5 + 0.5 * math.sin(controller.gameTime * 22.0);
+      final Offset corePos = const Offset(-54, 0);
+      final Color chargeCol = boss.currentPattern == BossAttackPattern.radialBurst
+          ? const Color(0xFFA78BFA)
+          : const Color(0xFFFBBF24);
+      canvas.drawCircle(
+        corePos,
+        14.0 + chargePulse * 9.0,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [Colors.white, chargeCol, Colors.transparent],
+          ).createShader(Rect.fromCircle(center: corePos, radius: 24.0)),
+      );
+      if (boss.currentPattern == BossAttackPattern.radialBurst) {
+        canvas.drawCircle(
+          Offset.zero,
+          76.0 + chargePulse * 12.0,
+          Paint()
+            ..color = chargeCol.withValues(alpha: 0.45)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.6,
+        );
+      }
+    }
 
     final Color coreTop = boss.isHit
         ? Colors.white
@@ -1713,27 +1953,21 @@ class ArcadeGamePainter extends CustomPainter {
         continue;
       }
 
-      final textSpan = TextSpan(
-        text: txt.text,
-        style: TextStyle(
-          color: txt.color.withValues(alpha: txt.life.clamp(0.0, 1.0)),
-          fontSize: txt.fontSize,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.8,
-          shadows: [
-            Shadow(
-              color: Colors.black.withValues(alpha: 0.8 * txt.life),
-              offset: const Offset(1.5, 1.5),
-              blurRadius: 3.0,
-            ),
-          ],
-        ),
+      // Quantize alpha into 8 steps so TextPainter stays cached instead of re-laying out at 60 FPS
+      final double qAlpha = ((txt.life.clamp(0.0, 1.0) * 8).round() / 8.0).clamp(0.125, 1.0);
+      final textPainter = _getCachedLabelPainter(
+        txt.text,
+        fontSize: txt.fontSize,
+        color: txt.color.withValues(alpha: qAlpha),
+        fontWeight: FontWeight.w900,
+        shadows: [
+          Shadow(
+            color: const Color(0xFF062542).withValues(alpha: 0.75 * qAlpha),
+            offset: const Offset(1.5, 1.5),
+            blurRadius: 3.0,
+          ),
+        ],
       );
-
-      final textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
-      )..layout();
 
       textPainter.paint(
         canvas,

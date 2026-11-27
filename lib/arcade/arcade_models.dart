@@ -27,7 +27,29 @@ enum BossAttackPattern {
   waveSweep,        // Onde sinusoïdale rythmée
   chargeTelegraph,  // Ligne de visée prévenant d'une charge
   chargeDash,       // Charge rapide sur la voie télégraphiée
-  spawnMinions,     // Invocation de spores alliées (Phase 2)
+  radialBurst,      // Salve radiale tourbillonnante avec couloir d'esquive
+  spawnMinions,     // Invocation d'escorte réactive (Phase 2)
+}
+
+class DefeatedEnemyEffect {
+  Offset position;
+  final double radius;
+  final Color color;
+  double life;
+  final double maxLife;
+  final double spinDir;
+
+  DefeatedEnemyEffect({
+    required this.position,
+    required this.radius,
+    required this.color,
+    this.life = 0.40,
+    this.maxLife = 0.40,
+    this.spinDir = 1.0,
+  });
+
+  double get progress => (1.0 - (life / math.max(0.01, maxLife))).clamp(0.0, 1.0);
+  bool get isDead => life <= 0.0;
 }
 
 class CapsulePlayer {
@@ -323,6 +345,15 @@ class ArcadeBoss {
   double entranceProgress;
   final List<GastroQuestion> challengeQuestions;
 
+  // Dynamic Boss combat animations & reactive AI fields
+  double attackAnimTimer = 0.0;
+  double dodgeTimer = 0.0;
+  double dodgeCooldown = 0.0;
+  double verticalDodgeOffset = 0.0;
+  int burstHitsTaken = 0;
+  double facingTilt = 0.0;
+  bool phase2Announced = false;
+
   ArcadeBoss({
     required this.name,
     required this.title,
@@ -348,12 +379,14 @@ class ArcadeBoss {
 
   bool get isPhase2 => currentHp <= (maxHp * 0.5).ceil();
   bool get isTelegraphing => telegraphTimer > 0;
+  bool get isAttackingAnim => attackAnimTimer > 0;
   double get healthRatio => (currentHp / math.max(1, maxHp)).clamp(0.0, 1.0);
 
   void takeDamage([int amount = 1]) {
     currentHp = math.max(0, currentHp - math.max(1, amount));
     isHit = true;
-    hitTimer = 0.18;
+    hitTimer = 0.22;
+    burstHitsTaken++;
     if (currentHp <= 0) {
       isDefeated = true;
     }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../audio/audio_service.dart';
 import '../models/gastro_question.dart';
 import '../theme/capsule_theme.dart';
-import '../widgets/tactile_button.dart';
 
 class CheckpointQuestionDialog extends StatefulWidget {
   final GastroQuestion question;
@@ -28,8 +28,12 @@ class CheckpointQuestionDialog extends StatefulWidget {
 
 class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     with TickerProviderStateMixin {
+  static const int _comfortSecondsTotal = 90;
+
   int? _selectedIndex;
   bool _isValidated = false;
+  int _secondsRemaining = _comfortSecondsTotal;
+  Timer? _comfortTimer;
 
   late final AnimationController _enterController;
   late final Animation<double> _scaleAnim;
@@ -47,9 +51,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
 
     _enterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 340),
+      duration: const Duration(milliseconds: 300),
     );
-    _scaleAnim = Tween<double>(begin: 0.93, end: 1.0).animate(
+    _scaleAnim = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(parent: _enterController, curve: Curves.easeOutBack),
     );
     _fadeAnim = CurvedAnimation(parent: _enterController, curve: Curves.easeOut);
@@ -59,6 +63,24 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     );
+
+    _startComfortTimer();
+  }
+
+  void _startComfortTimer() {
+    _comfortTimer?.cancel();
+    _secondsRemaining = _comfortSecondsTotal;
+    _comfortTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _isValidated) {
+        timer.cancel();
+        return;
+      }
+      if (_secondsRemaining > 0) {
+        setState(() => _secondsRemaining--);
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   @override
@@ -70,11 +92,13 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       _isValidated = false;
       _celebrationController.reset();
       _enterController.forward(from: 0.0);
+      _startComfortTimer();
     }
   }
 
   @override
   void dispose() {
+    _comfortTimer?.cancel();
     _enterController.dispose();
     _celebrationController.dispose();
     _questionScroll.dispose();
@@ -85,6 +109,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
 
   void _onValidate() {
     if (_selectedIndex == null || _isValidated) return;
+    _comfortTimer?.cancel();
     final bool isCorrect = _selectedIndex == widget.question.correctOptionIndex;
     if (isCorrect) {
       _audio.playCorrect();
@@ -98,7 +123,6 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       _isValidated = true;
     });
 
-    // Positionne automatiquement tout en haut de la fenêtre d'explication (zéro scroll vers le haut requis)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_explanationScroll.hasClients) {
@@ -125,7 +149,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     final bool isCompact = media.size.height < 440;
 
     final Color frameBorder = _isValidated
-        ? (isCorrect ? CapsuleColors.successGreen : CapsuleColors.coral)
+        ? (isCorrect ? CapsuleColors.mintGreen : CapsuleColors.coral)
         : CapsuleColors.cyanGlow;
 
     return FadeTransition(
@@ -133,43 +157,43 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       child: ScaleTransition(
         scale: _scaleAnim,
         child: Container(
-          // Fond océan lumineux translucide (jamais bleu-noir)
-          color: CapsuleColors.deepOcean.withValues(alpha: 0.72),
+          color: CapsuleColors.deepOcean.withValues(alpha: 0.78),
           child: SafeArea(
             child: Center(
               child: Container(
                 width: isLandscape
-                    ? math.min(media.size.width * 0.95, 960)
-                    : math.min(media.size.width * 0.95, 580),
+                    ? math.min(media.size.width * 0.96, 980)
+                    : math.min(media.size.width * 0.96, 600),
                 constraints: BoxConstraints(
                   maxHeight: isLandscape
-                      ? math.min(media.size.height * 0.94, 580)
-                      : media.size.height * 0.92,
+                      ? math.min(media.size.height * 0.95, 600)
+                      : media.size.height * 0.93,
                 ),
                 margin: EdgeInsets.symmetric(
                   horizontal: isCompact ? 10 : 18,
-                  vertical: isCompact ? 6 : 12,
+                  vertical: isCompact ? 5 : 12,
                 ),
                 decoration: BoxDecoration(
-                  // Carte clinique blanche-glacée lumineuse encadrée par l'océan
+                  // Palette océanique bioluminescente intégrée au jeu (aucun fond blanc)
                   gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      CapsuleColors.frostSurface,
-                      CapsuleColors.frostCard,
+                      Color(0xFF10497A),
+                      Color(0xFF155B94),
+                      Color(0xFF0E4170),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: frameBorder, width: 2.4),
                   boxShadow: [
                     BoxShadow(
-                      color: frameBorder.withValues(alpha: 0.28),
+                      color: frameBorder.withValues(alpha: 0.32),
                       blurRadius: 28,
                       spreadRadius: 1,
                     ),
                     BoxShadow(
-                      color: CapsuleColors.deepOcean.withValues(alpha: 0.35),
+                      color: const Color(0xFF062542).withValues(alpha: 0.45),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),
@@ -178,13 +202,13 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(21),
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
+                    duration: const Duration(milliseconds: 280),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeIn,
                     transitionBuilder: (child, anim) => FadeTransition(
                       opacity: anim,
                       child: ScaleTransition(
-                        scale: Tween<double>(begin: 0.96, end: 1.0).animate(anim),
+                        scale: Tween<double>(begin: 0.97, end: 1.0).animate(anim),
                         child: child,
                       ),
                     ),
@@ -211,7 +235,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
   }
 
   // ===========================================================================
-  // PHASE A : ÉCRAN DE QUESTION LUMINEUX, GRAND ET LISIBLE
+  // PHASE A : QUESTION INTÉGRÉE AU JEU (OCÉAN LUMINEUX + TEMPS CONFORTABLE)
   // ===========================================================================
   Widget _buildQuestionSelectionView(
     GastroQuestion q,
@@ -221,11 +245,16 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     final topHeaderBar = Container(
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? 14 : 20,
-        vertical: isCompact ? 9 : 12,
+        vertical: isCompact ? 7 : 11,
       ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [CapsuleColors.oceanSurface, CapsuleColors.cardOcean],
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B365C), CapsuleColors.oceanSurface],
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: CapsuleColors.cyanGlow.withValues(alpha: 0.35),
+          ),
         ),
       ),
       child: _buildQuestionHeader(q, isCompact),
@@ -234,15 +263,22 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     final questionPanel = Container(
       padding: EdgeInsets.all(isCompact ? 13 : 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF175E96),
+            Color(0xFF134B7A),
+          ],
+        ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: CapsuleColors.oceanBlue.withValues(alpha: 0.25),
-          width: 1.4,
+          color: CapsuleColors.cyanGlow.withValues(alpha: 0.48),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: CapsuleColors.oceanBlue.withValues(alpha: 0.08),
+            color: CapsuleColors.cyanGlow.withValues(alpha: 0.12),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -255,10 +291,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           Row(
             children: [
               Container(
-                width: 4,
+                width: 4.5,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: CapsuleColors.oceanBlue,
+                  color: CapsuleColors.cyanGlow,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -266,10 +302,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               Text(
                 'QUESTION CLINIQUE',
                 style: GoogleFonts.plusJakartaSans(
-                  color: CapsuleColors.oceanBlue,
+                  color: CapsuleColors.cyanGlow,
                   fontSize: isCompact ? 10.5 : 11.5,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
+                  letterSpacing: 0.85,
                 ),
               ),
             ],
@@ -278,21 +314,20 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           Text(
             q.questionText,
             style: GoogleFonts.plusJakartaSans(
-              color: CapsuleColors.inkDark,
-              fontSize: isCompact ? 15.5 : 18.5,
+              color: CapsuleColors.textWhite,
+              fontSize: isCompact ? 15.8 : 19.0,
               fontWeight: FontWeight.w800,
-              height: 1.40,
+              height: 1.42,
             ),
           ),
         ],
       ),
     );
 
-    final validateBtn = TactileButton(
+    final validateBtn = _GastroActionButton(
       label: 'Valider ma réponse',
       icon: Icons.check_circle_rounded,
-      style: TactileButtonStyle.primary,
-      height: isCompact ? 36 : 50,
+      height: isCompact ? 40 : 54,
       onPressed: _selectedIndex != null ? _onValidate : null,
     );
 
@@ -309,46 +344,46 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Gauche (44%) : Grande carte question lisible
-                  Expanded(
-                    flex: 44,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: Scrollbar(
-                            controller: _questionScroll,
-                            thumbVisibility: false,
-                            child: SingleChildScrollView(
+                    Expanded(
+                      flex: 44,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Scrollbar(
                               controller: _questionScroll,
-                              physics: const BouncingScrollPhysics(),
-                              child: questionPanel,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isCompact ? 5 : 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.touch_app_rounded,
-                              color: CapsuleColors.electricBlue,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Choisissez une proposition puis validez.',
-                                style: GoogleFonts.inter(
-                                  color: CapsuleColors.inkMuted,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              thumbVisibility: false,
+                              child: SingleChildScrollView(
+                                controller: _questionScroll,
+                                physics: const BouncingScrollPhysics(),
+                                child: questionPanel,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          SizedBox(height: isCompact ? 5 : 8),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.touch_app_rounded,
+                                color: CapsuleColors.cyanGlow,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Choisissez une proposition puis validez.',
+                                  style: GoogleFonts.inter(
+                                    color: CapsuleColors.textSubtle,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
                   SizedBox(width: isCompact ? 10 : 18),
 
@@ -450,7 +485,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     bool isCompact,
   ) {
     final Color resultColor =
-        isCorrect ? CapsuleColors.successGreen : CapsuleColors.coral;
+        isCorrect ? CapsuleColors.mintGreen : CapsuleColors.coral;
     final String resultLabel =
         isCorrect ? 'Bonne réponse' : 'Réponse incorrecte';
     final String bonusLabel = isCorrect
@@ -468,8 +503,13 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isCorrect
-                  ? const [Color(0xFF0D9488), Color(0xFF10B981)]
-                  : const [CapsuleColors.oceanSurface, CapsuleColors.cardOcean],
+                  ? const [Color(0xFF0D7A6E), Color(0xFF10B981)]
+                  : const [Color(0xFF0B365C), CapsuleColors.oceanSurface],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: resultColor.withValues(alpha: 0.45),
+              ),
             ),
           ),
           child: Row(
@@ -477,7 +517,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
+                  color: Colors.white.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -517,11 +557,12 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CapsuleColors.deepOcean,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: resultColor, width: 1.4),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
+                      color: resultColor.withValues(alpha: 0.25),
                       blurRadius: 8,
                     ),
                   ],
@@ -579,9 +620,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
         vertical: isCompact ? 9 : 12,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5),
+        color: const Color(0xFF0B4F4A),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: CapsuleColors.successGreen, width: 1.5),
+        border: Border.all(color: CapsuleColors.mintGreen, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,7 +633,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
               children: [
                 const Icon(
                   Icons.close_rounded,
-                  color: CapsuleColors.dangerRed,
+                  color: CapsuleColors.coral,
                   size: 17,
                 ),
                 const SizedBox(width: 6),
@@ -600,8 +641,8 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                   child: Text(
                     'Votre choix : $chosenText',
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF9F1239),
-                      fontSize: isCompact ? 12.0 : 12.8,
+                      color: const Color(0xFFFFE4E6),
+                      fontSize: isCompact ? 12.2 : 13.0,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -617,7 +658,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 padding: EdgeInsets.only(top: 1),
                 child: Icon(
                   Icons.verified_rounded,
-                  color: CapsuleColors.successGreen,
+                  color: CapsuleColors.mintGreen,
                   size: 19,
                 ),
               ),
@@ -629,7 +670,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                     Text(
                       'RÉPONSE EXACTE',
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF047857),
+                        color: const Color(0xFF6EE7B7),
                         fontSize: 10.2,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.7,
@@ -639,8 +680,8 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                     Text(
                       q.correctOptionText,
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF064E3B),
-                        fontSize: isCompact ? 13.0 : 14.5,
+                        color: const Color(0xFFECFDF5),
+                        fontSize: isCompact ? 13.2 : 14.8,
                         fontWeight: FontWeight.w800,
                         height: 1.32,
                       ),
@@ -665,14 +706,14 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     final scientificExplanationCard = Container(
       padding: EdgeInsets.all(isCompact ? 12 : 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF134A78),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: CapsuleColors.oceanBlue.withValues(alpha: 0.22),
+          color: CapsuleColors.cyanGlow.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: CapsuleColors.oceanBlue.withValues(alpha: 0.06),
+            color: CapsuleColors.cyanGlow.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -685,14 +726,14 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
             children: [
               const Icon(
                 Icons.science_rounded,
-                color: CapsuleColors.electricBlue,
+                color: CapsuleColors.cyanGlow,
                 size: 17,
               ),
               const SizedBox(width: 7),
               Text(
                 'EXPLICATION SCIENTIFIQUE',
                 style: GoogleFonts.plusJakartaSans(
-                  color: CapsuleColors.electricBlue,
+                  color: CapsuleColors.cyanGlow,
                   fontSize: 10.8,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.7,
@@ -704,8 +745,8 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           Text(
             q.explanation,
             style: GoogleFonts.inter(
-              color: CapsuleColors.inkDark,
-              fontSize: isCompact ? 13.2 : 14.8,
+              color: CapsuleColors.textWhite,
+              fontSize: isCompact ? 13.4 : 15.0,
               fontWeight: FontWeight.w500,
               height: 1.48,
             ),
@@ -725,10 +766,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           Container(
             padding: EdgeInsets.all(isCompact ? 11 : 13),
             decoration: BoxDecoration(
-              color: const Color(0xFFE0F2FE),
+              color: const Color(0xFF104E75),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: CapsuleColors.oceanBlue.withValues(alpha: 0.35),
+                color: CapsuleColors.turquoise.withValues(alpha: 0.45),
               ),
             ),
             child: Column(
@@ -738,7 +779,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                   children: [
                     const Icon(
                       Icons.school_rounded,
-                      color: CapsuleColors.electricBlue,
+                      color: CapsuleColors.turquoise,
                       size: 16,
                     ),
                     const SizedBox(width: 6),
@@ -746,7 +787,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                       child: Text(
                         'À RETENIR : ${q.ficheTitle.toUpperCase()}',
                         style: GoogleFonts.plusJakartaSans(
-                          color: CapsuleColors.deepOcean,
+                          color: const Color(0xFF99F6E4),
                           fontSize: 10.8,
                           fontWeight: FontWeight.w900,
                         ),
@@ -764,7 +805,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                         const Text(
                           '• ',
                           style: TextStyle(
-                            color: CapsuleColors.successGreen,
+                            color: CapsuleColors.mintGreen,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -772,8 +813,8 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                           child: Text(
                             point,
                             style: GoogleFonts.inter(
-                              color: CapsuleColors.inkDark,
-                              fontSize: isCompact ? 12.0 : 13.0,
+                              color: CapsuleColors.textWhite,
+                              fontSize: isCompact ? 12.2 : 13.2,
                               fontWeight: FontWeight.w600,
                               height: 1.35,
                             ),
@@ -792,10 +833,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: const Color(0xFF3E3019),
               borderRadius: BorderRadius.circular(13),
               border: Border.all(
-                color: const Color(0xFFF59E0B).withValues(alpha: 0.50),
+                color: CapsuleColors.gold.withValues(alpha: 0.55),
               ),
             ),
             child: Column(
@@ -804,7 +845,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 Text(
                   'POURQUOI LES AUTRES CHOIX NE CONVIENNENT PAS',
                   style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFFB45309),
+                    color: CapsuleColors.gold,
                     fontSize: 10.2,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.5,
@@ -814,8 +855,8 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 Text(
                   q.whyOthersWrong,
                   style: GoogleFonts.inter(
-                    color: const Color(0xFF78350F),
-                    fontSize: isCompact ? 12.0 : 13.0,
+                    color: const Color(0xFFFEF3C7),
+                    fontSize: isCompact ? 12.2 : 13.2,
                     fontWeight: FontWeight.w500,
                     height: 1.38,
                   ),
@@ -827,11 +868,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
       ],
     );
 
-    final continueButton = TactileButton(
+    final continueButton = _GastroActionButton(
       label: 'Poursuivre la mission',
       icon: Icons.play_arrow_rounded,
-      style: TactileButtonStyle.primary,
-      height: isCompact ? 44 : 50,
+      height: isCompact ? 42 : 54,
       onPressed: _onContinue,
     );
 
@@ -866,10 +906,10 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                                       vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: CapsuleColors.deepOcean,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: resultColor.withValues(alpha: 0.45),
+                                        color: resultColor.withValues(alpha: 0.55),
                                       ),
                                     ),
                                     child: Row(
@@ -886,7 +926,7 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                                           child: Text(
                                             bonusLabel,
                                             style: GoogleFonts.plusJakartaSans(
-                                              color: CapsuleColors.inkDark,
+                                              color: CapsuleColors.textWhite,
                                               fontSize: isCompact ? 10.5 : 11.5,
                                               fontWeight: FontWeight.w800,
                                             ),
@@ -954,67 +994,233 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
   Widget _buildQuestionHeader(GastroQuestion q, bool isCompact) {
     final badgeAccent =
         widget.isRevisionMode ? CapsuleColors.gold : CapsuleColors.cyanGlow;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 5,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final bool hasTimeLeft = _secondsRemaining > 0;
+    final Color timerColor = _secondsRemaining > 25
+        ? CapsuleColors.mintGreen
+        : (hasTimeLeft ? CapsuleColors.gold : CapsuleColors.cyanGlow);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 9 : 11,
-            vertical: isCompact ? 4 : 5,
-          ),
-          decoration: BoxDecoration(
-            color: badgeAccent.withValues(alpha: 0.20),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: badgeAccent.withValues(alpha: 0.75)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.isRevisionMode ? Icons.replay_rounded : Icons.radar_rounded,
-                color: badgeAccent,
-                size: isCompact ? 13 : 15,
+        Row(
+          children: [
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 5,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 9 : 11,
+                      vertical: isCompact ? 4 : 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeAccent.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: badgeAccent.withValues(alpha: 0.80)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.isRevisionMode
+                              ? Icons.replay_rounded
+                              : Icons.radar_rounded,
+                          color: badgeAccent,
+                          size: isCompact ? 13 : 15,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          widget.isRevisionMode
+                              ? 'RÉVISION #${widget.checkpointIndex}'
+                              : 'CHECKPOINT #${widget.checkpointIndex}',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: isCompact ? 10.5 : 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.cardOcean,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: CapsuleColors.cyanGlow.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    child: Text(
+                      'Q${q.originalNumber}',
+                      style: GoogleFonts.orbitron(
+                        color: Colors.white,
+                        fontSize: isCompact ? 10 : 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    q.anatomicalTheme,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF99F6E4),
+                      fontSize: isCompact ? 11.0 : 12.2,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 5),
-              Text(
-                widget.isRevisionMode
-                    ? 'RÉVISION #${widget.checkpointIndex}'
-                    : 'CHECKPOINT #${widget.checkpointIndex}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: isCompact ? 10.5 : 11.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'Q${q.originalNumber}',
-            style: GoogleFonts.orbitron(
-              color: Colors.white,
-              fontSize: isCompact ? 10 : 11,
-              fontWeight: FontWeight.w800,
             ),
-          ),
+            const SizedBox(width: 8),
+            // Indicateur de temps généreux (90s de confort, sans jamais pénaliser ni couper la lecture)
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 9 : 11,
+                vertical: isCompact ? 4 : 5,
+              ),
+              decoration: BoxDecoration(
+                color: timerColor.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: timerColor.withValues(alpha: 0.72)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    hasTimeLeft ? Icons.timer_rounded : Icons.all_inclusive_rounded,
+                    color: timerColor,
+                    size: isCompact ? 13 : 15,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    hasTimeLeft ? '${_secondsRemaining}s' : 'Temps libre',
+                    style: GoogleFonts.orbitron(
+                      color: timerColor,
+                      fontSize: isCompact ? 10.2 : 11.2,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        Text(
-          q.anatomicalTheme,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF99F6E4),
-            fontSize: isCompact ? 11.0 : 12.2,
-            fontWeight: FontWeight.w700,
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: hasTimeLeft
+                ? (_secondsRemaining / _comfortSecondsTotal).clamp(0.0, 1.0)
+                : 1.0,
+            minHeight: 3.2,
+            backgroundColor: CapsuleColors.deepOcean,
+            valueColor: AlwaysStoppedAnimation<Color>(timerColor),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GastroActionButton extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final double height;
+  final VoidCallback? onPressed;
+
+  const _GastroActionButton({
+    required this.label,
+    required this.icon,
+    required this.height,
+    required this.onPressed,
+  });
+
+  @override
+  State<_GastroActionButton> createState() => _GastroActionButtonState();
+}
+
+class _GastroActionButtonState extends State<_GastroActionButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = widget.onPressed != null;
+    final double scale = _pressed && enabled ? 0.98 : (_hovered && enabled ? 1.012 : 1.0);
+
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 110),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(15),
+            onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+            onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
+            onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+            onTap: widget.onPressed,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: widget.height,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                gradient: enabled
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF22D3EE), Color(0xFF14B8A6)],
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF1A4F7A), Color(0xFF144269)],
+                      ),
+                border: Border.all(
+                  color: enabled
+                      ? const Color(0xFFA5F3FC)
+                      : CapsuleColors.cyanGlow.withValues(alpha: 0.25),
+                  width: enabled ? 1.8 : 1.2,
+                ),
+                boxShadow: enabled
+                    ? [
+                        BoxShadow(
+                          color: CapsuleColors.cyanGlow.withValues(alpha: _hovered ? 0.45 : 0.28),
+                          blurRadius: _hovered ? 18 : 12,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 20,
+                    color: enabled ? CapsuleColors.deepOcean : CapsuleColors.textMuted,
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    widget.label,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: enabled ? CapsuleColors.deepOcean : CapsuleColors.textMuted,
+                      fontSize: widget.height < 45 ? 13.5 : 15.2,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1048,17 +1254,20 @@ class _InteractiveOptionCardState extends State<_InteractiveOptionCard> {
         ? 0.985
         : (widget.isSelected ? 1.012 : (_hovered ? 1.008 : 1.0));
 
-    final Color bg = widget.isSelected
-        ? const Color(0xFFE0F7FA)
-        : (_hovered ? Colors.white : const Color(0xFFFDFEFF));
+    final List<Color> bgGradient = widget.isSelected
+        ? const [Color(0xFF0EA5E9), Color(0xFF0284C7)]
+        : (_hovered
+            ? const [Color(0xFF1D67A3), Color(0xFF16578C)]
+            : const [Color(0xFF155387), Color(0xFF124673)]);
+
     final Color borderColor = widget.isSelected
-        ? CapsuleColors.electricBlue
+        ? const Color(0xFF5EEAD4)
         : (_hovered
             ? CapsuleColors.cyanGlow
-            : CapsuleColors.oceanBlue.withValues(alpha: 0.22));
+            : CapsuleColors.cyanGlow.withValues(alpha: 0.35));
 
     return Padding(
-      padding: EdgeInsets.only(bottom: widget.isCompact ? 3.5 : 10),
+      padding: EdgeInsets.only(bottom: widget.isCompact ? 4.0 : 10),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hovered = true),
@@ -1079,20 +1288,24 @@ class _InteractiveOptionCardState extends State<_InteractiveOptionCard> {
                 duration: const Duration(milliseconds: 180),
                 padding: EdgeInsets.symmetric(
                   horizontal: widget.isCompact ? 11 : 15,
-                  vertical: widget.isCompact ? 4.5 : 12.5,
+                  vertical: widget.isCompact ? 5.2 : 13.0,
                 ),
                 decoration: BoxDecoration(
-                  color: bg,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: bgGradient,
+                  ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: borderColor,
-                    width: widget.isSelected ? 2.1 : 1.2,
+                    width: widget.isSelected ? 2.1 : 1.25,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: widget.isSelected
-                          ? CapsuleColors.electricBlue.withValues(alpha: 0.20)
-                          : CapsuleColors.oceanBlue.withValues(alpha: 0.06),
+                          ? CapsuleColors.cyanGlow.withValues(alpha: 0.30)
+                          : const Color(0xFF072947).withValues(alpha: 0.25),
                       blurRadius: widget.isSelected ? 12 : 6,
                       offset: const Offset(0, 3),
                     ),
@@ -1103,24 +1316,24 @@ class _InteractiveOptionCardState extends State<_InteractiveOptionCard> {
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      width: widget.isCompact ? 22 : 29,
-                      height: widget.isCompact ? 22 : 29,
+                      width: widget.isCompact ? 23 : 30,
+                      height: widget.isCompact ? 23 : 30,
                       margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
                         color: widget.isSelected
-                            ? CapsuleColors.electricBlue
-                            : const Color(0xFFE6F2FE),
+                            ? CapsuleColors.gold
+                            : CapsuleColors.deepOcean,
                         shape: BoxShape.circle,
-                        border: Border.all(color: borderColor),
+                        border: Border.all(color: borderColor, width: 1.4),
                       ),
                       child: Center(
                         child: Text(
                           widget.letter,
                           style: GoogleFonts.plusJakartaSans(
                             color: widget.isSelected
-                                ? Colors.white
-                                : CapsuleColors.deepOcean,
-                            fontSize: widget.isCompact ? 10.5 : 12.5,
+                                ? CapsuleColors.deepOcean
+                                : Colors.white,
+                            fontSize: widget.isCompact ? 10.8 : 13.0,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -1130,12 +1343,12 @@ class _InteractiveOptionCardState extends State<_InteractiveOptionCard> {
                       child: Text(
                         widget.text,
                         style: GoogleFonts.inter(
-                          color: CapsuleColors.inkDark,
-                          fontSize: widget.isCompact ? 12.4 : 14.8,
+                          color: Colors.white,
+                          fontSize: widget.isCompact ? 12.6 : 15.2,
                           fontWeight: widget.isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,
-                          height: widget.isCompact ? 1.22 : 1.32,
+                          height: widget.isCompact ? 1.22 : 1.34,
                         ),
                       ),
                     ),
@@ -1145,9 +1358,9 @@ class _InteractiveOptionCardState extends State<_InteractiveOptionCard> {
                           ? Icons.check_circle_rounded
                           : Icons.radio_button_off_rounded,
                       color: widget.isSelected
-                          ? CapsuleColors.electricBlue
-                          : CapsuleColors.inkMuted.withValues(alpha: 0.55),
-                      size: 20,
+                          ? const Color(0xFF5EEAD4)
+                          : CapsuleColors.cyanGlow.withValues(alpha: 0.55),
+                      size: widget.isCompact ? 19 : 22,
                     ),
                   ],
                 ),

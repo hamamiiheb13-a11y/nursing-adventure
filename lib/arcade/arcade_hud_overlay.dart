@@ -322,13 +322,31 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
   }
 
   Widget _buildStageProgress(int percent, bool isTight) {
+    final totalQuestions = controller.checkpoints.length;
+    final answeredQuestions = controller.checkpoints.where((c) => c.isCompleted).length;
+    final nextCp = controller.checkpoints.where((c) => !c.isCompleted).firstOrNull;
+    final bool isQuestionNear = nextCp != null &&
+        (nextCp.worldX - controller.player.position.dx) > 0 &&
+        (nextCp.worldX - controller.player.position.dx) < 280.0;
+
     return Container(
-      constraints: const BoxConstraints(maxWidth: 320),
+      constraints: const BoxConstraints(maxWidth: 360),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: isTight ? 5 : 7),
       decoration: BoxDecoration(
-        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: CapsuleColors.cardBorder),
+        border: Border.all(
+          color: isQuestionNear ? CapsuleColors.cyanGlow : CapsuleColors.cardBorder,
+          width: isQuestionNear ? 1.6 : 1.0,
+        ),
+        boxShadow: isQuestionNear
+            ? [
+                BoxShadow(
+                  color: CapsuleColors.cyanGlow.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                ),
+              ]
+            : null,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -348,7 +366,46 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              if (totalQuestions > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isQuestionNear
+                        ? CapsuleColors.cyanGlow
+                        : CapsuleColors.oceanSurface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: CapsuleColors.cyanGlow.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.quiz_rounded,
+                        size: isTight ? 11 : 12,
+                        color: isQuestionNear
+                            ? CapsuleColors.deepOcean
+                            : CapsuleColors.cyanGlow,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isQuestionNear
+                            ? 'QUESTION !'
+                            : 'Q $answeredQuestions/$totalQuestions',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: isQuestionNear
+                              ? CapsuleColors.deepOcean
+                              : Colors.white,
+                          fontSize: isTight ? 9.5 : 10.2,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(width: 6),
               Text(
                 '$percent%',
                 style: GoogleFonts.orbitron(
