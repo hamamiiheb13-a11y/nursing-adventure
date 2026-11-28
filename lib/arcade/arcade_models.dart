@@ -23,12 +23,14 @@ enum ObstacleType {
 }
 
 enum BossAttackPattern {
-  hoverSpread,      // Salve en éventail télégraphiée
-  waveSweep,        // Onde sinusoïdale rythmée
-  chargeTelegraph,  // Ligne de visée prévenant d'une charge
-  chargeDash,       // Charge rapide sur la voie télégraphiée
-  radialBurst,      // Salve radiale tourbillonnante avec couloir d'esquive
-  spawnMinions,     // Invocation d'escorte réactive (Phase 2)
+  hoverSpread,        // Salve en éventail télégraphiée
+  waveSweep,          // Onde sinusoïdale rythmée
+  chargeTelegraph,    // Ligne de visée prévenant d'une charge
+  chargeDash,         // Charge rapide sur la voie télégraphiée
+  radialBurst,        // Salve radiale tourbillonnante avec couloir d'esquive
+  laserBeamTelegraph, // Visée laser clinique avant rayon puissant
+  laserBeamFire,      // Rayon énergétique balayant le couloir
+  spawnMinions,       // Invocation d'escorte réactive (Phase 2)
 }
 
 class DefeatedEnemyEffect {
@@ -38,14 +40,16 @@ class DefeatedEnemyEffect {
   double life;
   final double maxLife;
   final double spinDir;
+  final int seed;
 
   DefeatedEnemyEffect({
     required this.position,
     required this.radius,
     required this.color,
-    this.life = 0.40,
-    this.maxLife = 0.40,
+    this.life = 0.56,
+    this.maxLife = 0.56,
     this.spinDir = 1.0,
+    this.seed = 0,
   });
 
   double get progress => (1.0 - (life / math.max(0.01, maxLife))).clamp(0.0, 1.0);
@@ -368,6 +372,11 @@ class ArcadeBoss {
   int burstHitsTaken = 0;
   double facingTilt = 0.0;
   bool phase2Announced = false;
+  bool phase3Announced = false;
+  double displayedHealthRatio = 1.0;
+  double beamTargetY = 250.0;
+  double beamSweepDelta = 0.0;
+  double beamTimer = 0.0;
 
   ArcadeBoss({
     required this.name,
@@ -393,8 +402,10 @@ class ArcadeBoss {
   }) : homePosition = homePosition ?? position;
 
   bool get isPhase2 => currentHp <= (maxHp * 0.5).ceil();
+  bool get isPhase3 => currentHp <= (maxHp * 0.25).ceil();
   bool get isTelegraphing => telegraphTimer > 0;
   bool get isAttackingAnim => attackAnimTimer > 0;
+  bool get isFiringBeam => currentPattern == BossAttackPattern.laserBeamFire;
   double get healthRatio => (currentHp / math.max(1, maxHp)).clamp(0.0, 1.0);
 
   void takeDamage([int amount = 1]) {

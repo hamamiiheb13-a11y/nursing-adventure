@@ -502,12 +502,45 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              // Top-right subtle Hospital Services / Endoscopy Module access (unchanged & isolated)
+              // Top-right subtle Hospital Services & Audio Mute Pill
               Positioned(
                 top: isCompact ? 10 : 16,
                 right: isPortraitMobile ? 14 : (isCompact ? 22 : 36),
-                child: _HospitalServicesPill(
-                  onTap: _onHospitalServices,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        final nextMute = !_audio.isMuted;
+                        _audio.setMuted(nextMute);
+                        _progress.isMuted = nextMute;
+                        _storageService.saveProgress(_progress);
+                        setState(() {});
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(7.5),
+                        decoration: BoxDecoration(
+                          color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: (_audio.isMuted ? CapsuleColors.coral : CapsuleColors.cyanGlow)
+                                .withValues(alpha: 0.65),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Icon(
+                          _audio.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                          color: _audio.isMuted ? CapsuleColors.coral : CapsuleColors.cyanGlow,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _HospitalServicesPill(
+                      onTap: _onHospitalServices,
+                    ),
+                  ],
                 ),
               ),
 
@@ -856,7 +889,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         // 5. PROGRESSION
         _InteractiveHomeButton(
           title: 'PROGRESSION',
-          subtitle: 'Stages terminés (${_progress.completedCount}/7+) & récompenses',
+          subtitle: 'Stages terminés (${_progress.completedCount.clamp(0, 7)}/7) & récompenses',
           icon: Icons.emoji_events_rounded,
           isPrimary: false,
           accentColor: CapsuleColors.gold,

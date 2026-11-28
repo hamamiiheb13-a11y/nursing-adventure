@@ -134,6 +134,30 @@ class AudioService {
     if (sfxEnabled) _platform.playBossDefeat();
   }
 
+  void playEnemyHit() {
+    if (sfxEnabled) _platform.playEnemyHit();
+  }
+
+  void playEnemyDefeat() {
+    if (sfxEnabled) _platform.playEnemyDefeat();
+  }
+
+  void playEnemyAttack() {
+    if (sfxEnabled) _platform.playEnemyAttack();
+  }
+
+  void playCheckpointOpen() {
+    if (sfxEnabled) _platform.playCheckpointOpen();
+  }
+
+  void playOptionSelect() {
+    if (sfxEnabled) _platform.playOptionSelect();
+  }
+
+  void playBossPhase2() {
+    if (sfxEnabled) _platform.playBossPhase2();
+  }
+
   void playRewardUnlock() {
     if (sfxEnabled) _platform.playWorldUnlock();
   }
@@ -161,6 +185,12 @@ class AudioService {
   void startBgm([int stageId = 1]) {
     if (bgmEnabled) {
       _platform.startBgm(stageId);
+    }
+  }
+
+  void startRevisionBgm() {
+    if (bgmEnabled) {
+      _platform.startRevisionBgm();
     }
   }
 

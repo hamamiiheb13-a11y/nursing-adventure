@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../audio/audio_service.dart';
@@ -11,6 +13,10 @@ class CheckpointQuestionDialog extends StatefulWidget {
   final GastroQuestion question;
   final int checkpointIndex;
   final bool isRevisionMode;
+  final int? totalQuestionsInStage;
+  final int playerHearts;
+  final int playerMaxHearts;
+  final double damageMultiplier;
   final Function(int selectedOptionIndex, bool isCorrect) onAnswerValidated;
 
   const CheckpointQuestionDialog({
@@ -18,6 +24,10 @@ class CheckpointQuestionDialog extends StatefulWidget {
     required this.question,
     required this.checkpointIndex,
     this.isRevisionMode = false,
+    this.totalQuestionsInStage,
+    this.playerHearts = 3,
+    this.playerMaxHearts = 3,
+    this.damageMultiplier = 1.0,
     required this.onAnswerValidated,
   });
 
@@ -51,12 +61,12 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
 
     _enterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 420),
     );
-    _scaleAnim = Tween<double>(begin: 0.94, end: 1.0).animate(
+    _scaleAnim = Tween<double>(begin: 0.90, end: 1.0).animate(
       CurvedAnimation(parent: _enterController, curve: Curves.easeOutBack),
     );
-    _fadeAnim = CurvedAnimation(parent: _enterController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _enterController, curve: Curves.easeOutCubic);
     _enterController.forward();
 
     _celebrationController = AnimationController(
@@ -131,6 +141,12 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     });
   }
 
+  void _selectOptionByKey(int index) {
+    if (_isValidated || index < 0 || index >= widget.question.options.length) return;
+    _audio.playOptionSelect();
+    setState(() => _selectedIndex = index);
+  }
+
   void _onContinue() {
     if (_selectedIndex == null) return;
     _audio.playClick();
@@ -150,55 +166,79 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
 
     final Color frameBorder = _isValidated
         ? (isCorrect ? CapsuleColors.mintGreen : CapsuleColors.coral)
-        : CapsuleColors.cyanGlow;
+        : (widget.isRevisionMode ? CapsuleColors.gold : CapsuleColors.cyanGlow);
 
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: Container(
-          color: CapsuleColors.deepOcean.withValues(alpha: 0.78),
-          child: SafeArea(
-            child: Center(
-              child: Container(
-                width: isLandscape
-                    ? math.min(media.size.width * 0.96, 980)
-                    : math.min(media.size.width * 0.96, 600),
-                constraints: BoxConstraints(
-                  maxHeight: isLandscape
-                      ? math.min(media.size.height * 0.95, 600)
-                      : media.size.height * 0.93,
-                ),
-                margin: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 10 : 18,
-                  vertical: isCompact ? 5 : 12,
-                ),
-                decoration: BoxDecoration(
-                  // Palette océanique bioluminescente intégrée au jeu (aucun fond blanc)
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF10497A),
-                      Color(0xFF155B94),
-                      Color(0xFF0E4170),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: frameBorder, width: 2.4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: frameBorder.withValues(alpha: 0.32),
-                      blurRadius: 28,
-                      spreadRadius: 1,
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFF062542).withValues(alpha: 0.45),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.digit1): () => _selectOptionByKey(0),
+        const SingleActivator(LogicalKeyboardKey.digit2): () => _selectOptionByKey(1),
+        const SingleActivator(LogicalKeyboardKey.digit3): () => _selectOptionByKey(2),
+        const SingleActivator(LogicalKeyboardKey.digit4): () => _selectOptionByKey(3),
+        const SingleActivator(LogicalKeyboardKey.enter): () {
+          if (_isValidated) {
+            _onContinue();
+          } else {
+            _onValidate();
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
+            child: Container(
+              color: CapsuleColors.deepOcean.withValues(alpha: 0.62),
+              child: SafeArea(
+                child: Center(
+                  child: ScaleTransition(
+                    scale: _scaleAnim,
+                    child: Container(
+                      width: isLandscape
+                          ? math.min(media.size.width * 0.96, 980)
+                          : math.min(media.size.width * 0.96, 600),
+                      constraints: BoxConstraints(
+                        maxHeight: isLandscape
+                            ? math.min(media.size.height * 0.94, 590)
+                            : media.size.height * 0.92,
+                      ),
+                      margin: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 10 : 18,
+                        vertical: isCompact ? 5 : 12,
+                      ),
+                      decoration: BoxDecoration(
+                        // Palette océanique bioluminescente intégrée au jeu (aucun fond blanc)
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: widget.isRevisionMode
+                              ? const [
+                                  Color(0xFF103F70),
+                                  Color(0xFF1A578F),
+                                  Color(0xFF113966),
+                                ]
+                              : const [
+                                  Color(0xFF10497A),
+                                  Color(0xFF155B94),
+                                  Color(0xFF0E4170),
+                                ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: frameBorder, width: 2.4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: frameBorder.withValues(alpha: 0.34),
+                            blurRadius: 28,
+                            spreadRadius: 1,
+                          ),
+                          BoxShadow(
+                            color: const Color(0xFF062542).withValues(alpha: 0.45),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(21),
                   child: AnimatedSwitcher(
@@ -231,6 +271,9 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
           ),
         ),
       ),
+    ),
+    ),
+    ),
     );
   }
 
@@ -405,15 +448,18 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: List.generate(
                                   q.options.length,
-                                  (index) => _InteractiveOptionCard(
-                                    letter: String.fromCharCode(65 + index),
-                                    text: q.options[index],
-                                    isSelected: _selectedIndex == index,
-                                    isCompact: isCompact,
-                                    onTap: () {
-                                      _audio.playClick();
-                                      setState(() => _selectedIndex = index);
-                                    },
+                                  (index) => _staggerOption(
+                                    index,
+                                    _InteractiveOptionCard(
+                                      letter: String.fromCharCode(65 + index),
+                                      text: q.options[index],
+                                      isSelected: _selectedIndex == index,
+                                      isCompact: isCompact,
+                                      onTap: () {
+                                        _audio.playOptionSelect();
+                                        setState(() => _selectedIndex = index);
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -452,15 +498,18 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                 const SizedBox(height: 14),
                 ...List.generate(
                   q.options.length,
-                  (index) => _InteractiveOptionCard(
-                    letter: String.fromCharCode(65 + index),
-                    text: q.options[index],
-                    isSelected: _selectedIndex == index,
-                    isCompact: false,
-                    onTap: () {
-                      _audio.playClick();
-                      setState(() => _selectedIndex = index);
-                    },
+                  (index) => _staggerOption(
+                    index,
+                    _InteractiveOptionCard(
+                      letter: String.fromCharCode(65 + index),
+                      text: q.options[index],
+                      isSelected: _selectedIndex == index,
+                      isCompact: false,
+                      onTap: () {
+                        _audio.playOptionSelect();
+                        setState(() => _selectedIndex = index);
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -991,6 +1040,25 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
     );
   }
 
+  Widget _staggerOption(int index, Widget child) {
+    final start = (index * 0.12).clamp(0.0, 0.55);
+    final end = (start + 0.45).clamp(0.0, 1.0);
+    final curve = CurvedAnimation(
+      parent: _enterController,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+    return FadeTransition(
+      opacity: curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.04, 0.0),
+          end: Offset.zero,
+        ).animate(curve),
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildQuestionHeader(GastroQuestion q, bool isCompact) {
     final badgeAccent =
         widget.isRevisionMode ? CapsuleColors.gold : CapsuleColors.cyanGlow;
@@ -1035,10 +1103,46 @@ class _CheckpointQuestionDialogState extends State<CheckpointQuestionDialog>
                         Text(
                           widget.isRevisionMode
                               ? 'RÉVISION #${widget.checkpointIndex}'
-                              : 'CHECKPOINT #${widget.checkpointIndex}',
+                              : (widget.totalQuestionsInStage != null
+                                  ? 'CHECKPOINT ${widget.checkpointIndex}/${widget.totalQuestionsInStage}'
+                                  : 'CHECKPOINT #${widget.checkpointIndex}'),
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: isCompact ? 10.5 : 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Integrated live mission telemetry pills (keeps HUD info visible!)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.deepOcean.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: CapsuleColors.cardBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.favorite_rounded, color: CapsuleColors.coral, size: 12),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${widget.playerHearts}/${widget.playerMaxHearts}',
+                          style: GoogleFonts.orbitron(
+                            color: Colors.white,
+                            fontSize: 9.8,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.bolt_rounded, color: CapsuleColors.gold, size: 12),
+                        Text(
+                          'x${widget.damageMultiplier.toStringAsFixed(1)}',
+                          style: GoogleFonts.orbitron(
+                            color: CapsuleColors.gold,
+                            fontSize: 9.8,
                             fontWeight: FontWeight.w800,
                           ),
                         ),

@@ -10,11 +10,11 @@ import '../models/gastro_question.dart';
 import '../services/storage_service.dart';
 import '../theme/capsule_theme.dart';
 import '../widgets/capsule_parallax_background.dart';
+import 'capsule_warriors_final_screen.dart';
 
-/// Revision Stage automatically introduced after every 7 completed stages:
-/// - After Stage 7 -> Revision Stage 1 (Stages 1-7)
-/// - After Stage 14 -> Revision Stage 2 (Stages 8-14)
-/// - After Stage 21 -> Revision Stage 3 (Stages 15-21)
+/// Special Revision Stage unlocked once all 7 original stages are completed:
+/// Reviews ONLY questions the current player answered incorrectly during Stages 1–7,
+/// or displays a congratulatory completion screen when 0 mistakes occurred.
 class CapsuleWarriorsRevisionStageScreen extends StatefulWidget {
   final int revisionNumber;
   final GameProgress progress;
@@ -22,7 +22,7 @@ class CapsuleWarriorsRevisionStageScreen extends StatefulWidget {
 
   const CapsuleWarriorsRevisionStageScreen({
     super.key,
-    required this.revisionNumber,
+    this.revisionNumber = 1,
     required this.progress,
     this.onCompletedCycle,
   });
@@ -91,10 +91,10 @@ class _CapsuleWarriorsRevisionStageScreenState
     });
   }
 
-  Future<void> _completeCleanSweepAndContinue() async {
+  Future<void> _completeCleanSweepAndFinish() async {
     _audio.playVictory();
     widget.progress.completeRevisionStage(
-      revisionNumber: widget.revisionNumber,
+      revisionNumber: 1,
       score: 600,
       stars: 3,
       correctCount: 0,
@@ -105,7 +105,11 @@ class _CapsuleWarriorsRevisionStageScreenState
     await _storage.saveProgress(widget.progress);
     widget.onCompletedCycle?.call();
     if (mounted) {
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pushReplacement(
+        buildCapsuleRoute(
+          CapsuleWarriorsFinalScreen(progress: widget.progress),
+        ),
+      );
     }
   }
 
@@ -215,7 +219,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                               ),
                             ),
                             child: Text(
-                              'CYCLE ${widget.revisionNumber} • STAGES $_cycleStartStage–$_cycleEndStage',
+                              'STAGE SPÉCIAL • STAGES $_cycleStartStage–$_cycleEndStage',
                               style: GoogleFonts.orbitron(
                                 color: hasMistakes
                                     ? CapsuleColors.gold
@@ -233,7 +237,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                       Icon(
                         hasMistakes
                             ? Icons.auto_stories_rounded
-                            : Icons.verified_rounded,
+                            : Icons.workspace_premium_rounded,
                         color: hasMistakes
                             ? CapsuleColors.gold
                             : CapsuleColors.mintGreen,
@@ -241,7 +245,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'STAGE DE RÉVISION ${widget.revisionNumber}',
+                        'STAGE DE RÉVISION SPÉCIAL',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.orbitron(
                           color: Colors.white,
@@ -254,7 +258,7 @@ class _CapsuleWarriorsRevisionStageScreenState
 
                       if (hasMistakes) ...[
                         Text(
-                          '${widget.progress.playerName}, vous avez ${_mistakeQuestions.length} question(s) à consolider parmi les Stages $_cycleStartStage à $_cycleEndStage.',
+                          '${widget.progress.playerName}, vous avez ${_mistakeQuestions.length} notion(s) manquée(s) parmi les Stages $_cycleStartStage à $_cycleEndStage à consolider avant le diplôme.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             color: const Color(0xFFE2E8F0),
@@ -276,7 +280,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'NOTIONS CIBLÉES EXCLUSIVEMENT (${_mistakeQuestions.length})',
+                                'QUESTIONS CIBLÉES EXCLUSIVEMENT (${_mistakeQuestions.length})',
                                 style: GoogleFonts.plusJakartaSans(
                                   color: CapsuleColors.gold,
                                   fontSize: 10.5,
@@ -325,7 +329,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                             ),
                             icon: const Icon(Icons.play_arrow_rounded, size: 22),
                             label: Text(
-                              'LANCER LE STAGE DE RÉVISION ${widget.revisionNumber}',
+                              'LANCER LE STAGE DE RÉVISION',
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w900,
                                 fontSize: isCompact ? 13 : 14.5,
@@ -336,7 +340,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                           ),
                         ),
                       ] else ...[
-                        // ZERO MISTAKES PATH: Congratulatory message + Bonus Challenge offer
+                        // ZERO MISTAKES PATH: Congratulatory Completion Screen + Diploma
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -358,7 +362,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Vous n\'avez commis aucune erreur durant les Stages $_cycleStartStage à $_cycleEndStage. Vos connaissances sont parfaitement acquises !',
+                                'Vous n\'avez commis aucune erreur durant les 7 stages originaux ! Aucune révision n\'est nécessaire : vos connaissances MICI sont parfaitement maîtrisées.',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
@@ -372,7 +376,7 @@ class _CapsuleWarriorsRevisionStageScreenState
                         if (prevResult != null && prevResult.completed) ...[
                           const SizedBox(height: 10),
                           Text(
-                            'Révision déjà validée • Score : ${prevResult.score} PTS (${prevResult.correctCount}/${prevResult.totalCount})',
+                            'Révision validée • Score : ${prevResult.score} PTS (${prevResult.correctCount}/${prevResult.totalCount})',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               color: CapsuleColors.cyanGlow,
@@ -385,10 +389,29 @@ class _CapsuleWarriorsRevisionStageScreenState
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final narrow = constraints.maxWidth < 460;
-                            final bonusBtn = ElevatedButton.icon(
+                            final diplomaBtn = ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: CapsuleColors.cyanGlow,
+                                backgroundColor: CapsuleColors.mintGreen,
                                 foregroundColor: CapsuleColors.deepOcean,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13)),
+                              ),
+                              icon: const Icon(Icons.workspace_premium_rounded,
+                                  size: 19),
+                              label: Text(
+                                'VOIR MON DIPLÔME FINAL',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w900, fontSize: 12.5),
+                              ),
+                              onPressed: _completeCleanSweepAndFinish,
+                            );
+                            final bonusBtn = OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: CapsuleColors.cyanGlow,
+                                side: const BorderSide(
+                                    color: CapsuleColors.cyanGlow, width: 1.6),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 13),
                                 shape: RoundedRectangleBorder(
@@ -396,48 +419,29 @@ class _CapsuleWarriorsRevisionStageScreenState
                               ),
                               icon: const Icon(Icons.bolt_rounded, size: 19),
                               label: Text(
-                                'DÉFI BONUS DE RÉVISION',
+                                'DÉFI BONUS',
                                 style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w900, fontSize: 12.5),
                               ),
                               onPressed: () =>
                                   _launchArcadeRevision(isBonus: true),
                             );
-                            final nextBtn = OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: CapsuleColors.mintGreen,
-                                side: const BorderSide(
-                                    color: CapsuleColors.mintGreen, width: 1.6),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(13)),
-                              ),
-                              icon: const Icon(Icons.arrow_forward_rounded,
-                                  size: 19),
-                              label: Text(
-                                'CONTINUER AU STAGE ${_cycleEndStage + 1}',
-                                style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w900, fontSize: 12.5),
-                              ),
-                              onPressed: _completeCleanSweepAndContinue,
-                            );
 
                             if (narrow) {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  bonusBtn,
+                                  diplomaBtn,
                                   const SizedBox(height: 10),
-                                  nextBtn,
+                                  bonusBtn,
                                 ],
                               );
                             }
                             return Row(
                               children: [
-                                Expanded(child: bonusBtn),
+                                Expanded(flex: 3, child: diplomaBtn),
                                 const SizedBox(width: 12),
-                                Expanded(child: nextBtn),
+                                Expanded(flex: 2, child: bonusBtn),
                               ],
                             );
                           },

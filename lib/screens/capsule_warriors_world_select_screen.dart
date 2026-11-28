@@ -32,14 +32,12 @@ class _CapsuleWarriorsWorldSelectScreenState
   final AudioService _audio = AudioService();
   final StorageService _storage = StorageService();
   late GameProgress _progress;
-  int _selectedCycle = 1;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _progress = widget.progress;
-    _selectedCycle = _progress.currentCycleIndex;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -58,23 +56,13 @@ class _CapsuleWarriorsWorldSelectScreenState
     if (mounted) {
       setState(() {
         _progress = updated;
-        _selectedCycle = _progress.currentCycleIndex;
       });
     }
   }
 
-  int get _maxAccessibleCycle {
-    int c = 1;
-    while (_progress.isRevisionStageCompleted(c)) {
-      c++;
-    }
-    return math.max(c, _progress.currentCycleIndex);
-  }
-
-  int get _completedInSelectedCycle {
+  int get _completedOriginalCount {
     int count = 0;
-    final start = (_selectedCycle - 1) * 7 + 1;
-    for (int s = start; s < start + 7; s++) {
+    for (int s = 1; s <= 7; s++) {
       if (_progress.isWorldCompleted(s)) {
         count++;
       }
@@ -124,7 +112,7 @@ class _CapsuleWarriorsWorldSelectScreenState
 
   @override
   Widget build(BuildContext context) {
-    final completedCount = _completedInSelectedCycle;
+    final completedCount = _completedOriginalCount;
     final totalStages = GastroWorld.worlds.length;
     final completionRatio =
         totalStages > 0 ? (completedCount / totalStages).clamp(0.0, 1.0) : 0.0;
@@ -150,60 +138,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                     totalQuestionsCount: totalQuestionsCount,
                   ),
 
-                  if (_maxAccessibleCycle > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(_maxAccessibleCycle, (i) {
-                            final cycle = i + 1;
-                            final selected = cycle == _selectedCycle;
-                            final start = (cycle - 1) * 7 + 1;
-                            final end = cycle * 7;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () {
-                                  _audio.playClick();
-                                  setState(() => _selectedCycle = cycle);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 11, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? CapsuleColors.cyanGlow
-                                        : CapsuleColors.oceanSurface
-                                            .withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: selected
-                                          ? CapsuleColors.cyanGlow
-                                          : CapsuleColors.cardBorder,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Cycle $cycle ($start–$end)',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: selected
-                                          ? CapsuleColors.deepOcean
-                                          : Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-
-                  // 2. MISSION CARDS DECK (7 Cycle Stages + Automatic Revision Stage after every 7 stages)
+                  // 2. MISSION CARDS DECK (Exactly 7 Original Stages + 1 Special Revision Stage)
                   Expanded(
                     child: isNarrowPortrait
                         ? ListView.separated(
@@ -213,9 +148,9 @@ class _CapsuleWarriorsWorldSelectScreenState
                             separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               if (index == 7) {
-                                return _buildPortraitRevisionStageCard(_selectedCycle);
+                                return _buildPortraitRevisionStageCard(1);
                               }
-                              final stageNumber = (_selectedCycle - 1) * 7 + index + 1;
+                              final stageNumber = index + 1;
                               final world = GastroWorld.getWorldForLevel(stageNumber);
                               return _buildPortraitStageCard(stageNumber, world);
                             },
@@ -245,11 +180,11 @@ class _CapsuleWarriorsWorldSelectScreenState
                                         itemBuilder: (context, index) {
                                           if (index == 7) {
                                             return _buildHorizontalRevisionStageCard(
-                                              _selectedCycle,
+                                              1,
                                               isShortLandscape,
                                             );
                                           }
-                                          final stageNumber = (_selectedCycle - 1) * 7 + index + 1;
+                                          final stageNumber = index + 1;
                                           final world = GastroWorld.getWorldForLevel(stageNumber);
                                           return _buildHorizontalStageCard(
                                             stageNumber,
@@ -703,14 +638,12 @@ class _CapsuleWarriorsWorldSelectScreenState
     );
   }
 
-  /// Landscape / Desktop Special Revision Card after every 7 stages
+  /// Landscape / Desktop Special Revision Card
   Widget _buildHorizontalRevisionStageCard(int revisionNumber, bool isShortLandscape) {
     final isUnlocked = _progress.isRevisionStageUnlocked(revisionNumber);
     final isCompleted = _progress.isRevisionStageCompleted(revisionNumber);
     final revResult = _progress.revisionStageResults[revisionNumber];
     final mistakesCount = _progress.getMistakesForCycle(revisionNumber).length;
-    final start = (revisionNumber - 1) * 7 + 1;
-    final end = revisionNumber * 7;
 
     return Container(
       width: isShortLandscape ? 210 : 238,
@@ -749,14 +682,19 @@ class _CapsuleWarriorsWorldSelectScreenState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'RÉVISION $revisionNumber',
-                          style: GoogleFonts.orbitron(
-                            fontSize: isShortLandscape ? 12 : 13.5,
-                            fontWeight: FontWeight.w900,
-                            color: isUnlocked ? CapsuleColors.gold : CapsuleColors.textMuted,
+                        Expanded(
+                          child: Text(
+                            'RÉVISION FINALE',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.orbitron(
+                              fontSize: isShortLandscape ? 11.5 : 13.0,
+                              fontWeight: FontWeight.w900,
+                              color: isUnlocked ? CapsuleColors.gold : CapsuleColors.textMuted,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -764,7 +702,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            mistakesCount > 0 ? '$mistakesCount Q' : 'Bonus',
+                            mistakesCount > 0 ? '$mistakesCount Q' : 'Parfait',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 10,
                               color: CapsuleColors.gold,
@@ -787,11 +725,11 @@ class _CapsuleWarriorsWorldSelectScreenState
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'STAGE DE RÉVISION $revisionNumber',
+                            'STAGE DE RÉVISION SPÉCIAL',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: isShortLandscape ? 12 : 13.5,
+                              fontSize: isShortLandscape ? 11.5 : 13.0,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
                             ),
@@ -801,8 +739,8 @@ class _CapsuleWarriorsWorldSelectScreenState
                             isCompleted && revResult != null
                                 ? 'Validée • ${revResult.score} PTS'
                                 : (mistakesCount > 0
-                                    ? 'Stages $start–$end : $mistakesCount erreur(s) ciblée(s)'
-                                    : 'Stages $start–$end : 0 erreur • Défi bonus'),
+                                    ? 'Stages 1–7 : $mistakesCount erreur(s) ciblée(s)'
+                                    : 'Stages 1–7 : aucune erreur • Félicitations'),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
@@ -851,7 +789,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                           Icon(Icons.lock_rounded, color: CapsuleColors.textSubtle, size: isShortLandscape ? 26 : 32),
                           const SizedBox(height: 4),
                           Text(
-                            'STAGE $end REQUIS',
+                            'STAGE 7 REQUIS',
                             style: GoogleFonts.plusJakartaSans(
                               color: CapsuleColors.textSubtle,
                               fontSize: 10.5,
@@ -1057,14 +995,12 @@ class _CapsuleWarriorsWorldSelectScreenState
     );
   }
 
-  /// Portrait Phone Card for Special Revision Stage every 7 stages
+  /// Portrait Phone Card for Special Revision Stage
   Widget _buildPortraitRevisionStageCard(int revisionNumber) {
     final isUnlocked = _progress.isRevisionStageUnlocked(revisionNumber);
     final isCompleted = _progress.isRevisionStageCompleted(revisionNumber);
     final revResult = _progress.revisionStageResults[revisionNumber];
     final mistakesCount = _progress.getMistakesForCycle(revisionNumber).length;
-    final start = (revisionNumber - 1) * 7 + 1;
-    final end = revisionNumber * 7;
 
     return Opacity(
       opacity: isUnlocked ? 1.0 : 0.62,
@@ -1124,7 +1060,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                           children: [
                             Expanded(
                               child: Text(
-                                'RÉVISION $revisionNumber',
+                                'RÉVISION FINALE',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.orbitron(
@@ -1148,7 +1084,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                               child: Text(
                                 mistakesCount > 0
                                     ? '$mistakesCount Q à revoir'
-                                    : 'Défi Bonus',
+                                    : 'Parfait',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10,
                                   color: CapsuleColors.gold,
@@ -1160,7 +1096,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'STAGE DE RÉVISION $revisionNumber',
+                          'STAGE DE RÉVISION SPÉCIAL',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -1171,8 +1107,8 @@ class _CapsuleWarriorsWorldSelectScreenState
                           isCompleted && revResult != null
                               ? 'Validée • ${revResult.score} PTS (${revResult.correctCount}/${revResult.totalCount})'
                               : (mistakesCount > 0
-                                  ? 'Questions manquées des Stages $start à $end'
-                                  : 'Stages $start à $end : aucune erreur • Défi bonus'),
+                                  ? 'Questions manquées des Stages 1 à 7'
+                                  : 'Stages 1 à 7 : aucune erreur • Félicitations'),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(

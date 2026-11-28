@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'gastro_world.dart';
 
 class StageResult {
@@ -209,10 +210,11 @@ class GameProgress {
     );
   }
 
-  static int cycleForStage(int stageId) =>
-      stageId <= 1 ? 1 : (((stageId - 1) ~/ 7) + 1);
+  static const int maxOriginalStages = 7;
 
-  int get currentCycleIndex => cycleForStage(currentStage);
+  static int cycleForStage(int stageId) => 1;
+
+  int get currentCycleIndex => 1;
 
   bool get hasPlayableProgress =>
       totalScore > 0 ||
@@ -274,31 +276,25 @@ class GameProgress {
     return count;
   }
 
-  List<int> getMistakesForCycle(int revisionNumber) {
-    return List<int>.from(cycleMistakeQuestionIds[revisionNumber] ?? const <int>[]);
+  List<int> getMistakesForCycle([int revisionNumber = 1]) {
+    if (revisionNumber != 1) return const <int>[];
+    final ids = cycleMistakeQuestionIds[1] ?? const <int>[];
+    return ids.where((id) => questionsAnswered[id] != true).toList();
   }
 
-  bool isRevisionStageUnlocked(int revisionNumber) {
-    if (revisionNumber <= 0) return false;
-    return isLevelCompleted(revisionNumber * 7);
+  bool isRevisionStageUnlocked([int revisionNumber = 1]) {
+    if (revisionNumber != 1) return false;
+    return isLevelCompleted(maxOriginalStages);
   }
 
-  bool isRevisionStageCompleted(int revisionNumber) {
-    return revisionStageResults[revisionNumber]?.completed ?? false;
+  bool isRevisionStageCompleted([int revisionNumber = 1]) {
+    if (revisionNumber != 1) return false;
+    return revisionStageResults[1]?.completed ?? false;
   }
 
   int? get activePendingRevision {
-    if (pendingRevisionNumber != null &&
-        !isRevisionStageCompleted(pendingRevisionNumber!)) {
-      return pendingRevisionNumber;
-    }
-    // Auto-detect first unlocked yet uncompleted revision stage
-    int rev = 1;
-    while (isRevisionStageUnlocked(rev)) {
-      if (!isRevisionStageCompleted(rev)) {
-        return rev;
-      }
-      rev++;
+    if (isLevelCompleted(maxOriginalStages) && !isRevisionStageCompleted(1)) {
+      return 1;
     }
     return null;
   }
@@ -419,10 +415,8 @@ class GameProgress {
     totalXP += stars * 100 + (isBonusChallenge ? 150 : 100);
     unlockedBadges.add('revision_cycle_$revisionNumber');
 
-    final nextCycleStage = revisionNumber * 7 + 1;
-    if (currentStage < nextCycleStage) {
-      currentStage = nextCycleStage;
-    }
+    // Game keeps strictly 7 original stages (never advance past Stage 7)
+    currentStage = maxOriginalStages;
 
     lastPlayed = DateTime.now();
   }
@@ -469,12 +463,8 @@ class GameProgress {
 
   bool isWorldUnlocked(int stageId) {
     if (stageId <= 1) return true;
-    if (!isLevelCompleted(stageId - 1)) return false;
-    if ((stageId - 1) % 7 == 0) {
-      final prevRevision = (stageId - 1) ~/ 7;
-      return isRevisionStageCompleted(prevRevision);
-    }
-    return true;
+    if (stageId > maxOriginalStages) return false;
+    return isLevelCompleted(stageId - 1);
   }
 
   bool isWorldCompleted(int stageId) {
@@ -509,12 +499,11 @@ class GameProgress {
       questionCorrectCount[questionId] = (questionCorrectCount[questionId] ?? 0) + 1;
       totalXP += 50;
       markMastered(questionId);
+      cycleMistakeQuestionIds[1]?.remove(questionId);
     } else {
       questionIncorrectCount[questionId] = (questionIncorrectCount[questionId] ?? 0) + 1;
-      // In a new 7-stage cycle, allow re-adding even if mastered in an earlier cycle
-      if (stageId != null) {
-        final cycle = cycleForStage(stageId);
-        final list = cycleMistakeQuestionIds.putIfAbsent(cycle, () => <int>[]);
+      if (stageId == null || (stageId >= 1 && stageId <= maxOriginalStages)) {
+        final list = cycleMistakeQuestionIds.putIfAbsent(1, () => <int>[]);
         if (!list.contains(questionId)) {
           list.add(questionId);
         }
@@ -541,15 +530,13 @@ class GameProgress {
     totalScore += score;
     totalXP += stars * 100;
 
-    if (stageId >= currentStage) {
-      currentStage = stageId + 1;
+    final clampedNext = math.min(maxOriginalStages, stageId + 1);
+    if (clampedNext > currentStage) {
+      currentStage = clampedNext;
     }
 
-    if (stageId % 7 == 0) {
-      final revNum = stageId ~/ 7;
-      if (!isRevisionStageCompleted(revNum)) {
-        pendingRevisionNumber = revNum;
-      }
+    if (stageId == maxOriginalStages && !isRevisionStageCompleted(1)) {
+      pendingRevisionNumber = 1;
     }
 
     // Unlock and auto-equip new weapon corresponding to world sector

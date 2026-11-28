@@ -23,11 +23,18 @@ abstract class AudioServiceInterface {
   void playBossEntrance();
   void playBossAttack();
   void playBossDefeat();
+  void playEnemyHit();
+  void playEnemyDefeat();
+  void playEnemyAttack();
+  void playCheckpointOpen();
+  void playOptionSelect();
+  void playBossPhase2();
   void playRevive();
   void playGameStart();
   void playStageSelect();
   void playExplanationOpen();
   void startBgm([int stageId = 1]);
+  void startRevisionBgm();
   void startBossBgm();
   void stopBgm();
   void setBgmEnabled(bool enabled);

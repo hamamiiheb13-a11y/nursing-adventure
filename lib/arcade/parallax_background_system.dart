@@ -106,15 +106,50 @@ class StageBackgroundTheme {
         );
     }
   }
+
+  /// Dedicated Golden-Sapphire palette for the Special Revision Stage after Stage 7
+  factory StageBackgroundTheme.forRevision() {
+    return const StageBackgroundTheme(
+      topSkyBg: Color(0xFF103766),
+      midLumenBg: Color(0xFF1A5A96),
+      vesselColor: Color(0xFFFBBF24),
+      cellColor: Color(0xFF5EEAD4),
+      wallColor: Color(0xFFD97706),
+      villiColor: Color(0xFFFDE047),
+      bubbleColor: Color(0xFFBAE6FD),
+      particleGlow: Color(0xFFFBBF24),
+    );
+  }
 }
 
 /// Clean 3-Layer Biological Parallax Background System
 class ParallaxBackgroundSystem {
   final int stageId;
+  final bool isRevisionStage;
   late final StageBackgroundTheme theme;
 
-  ParallaxBackgroundSystem({required this.stageId}) {
-    theme = StageBackgroundTheme.forStage(stageId);
+  final Paint _vesselPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 22.0
+    ..strokeCap = StrokeCap.round;
+  final Paint _cellFill = Paint()..style = PaintingStyle.fill;
+  final Paint _cellRim = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0;
+  final Paint _foldPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _bubbleFill = Paint()..style = PaintingStyle.fill;
+  final Paint _bubbleStroke = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2;
+  final Paint _shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.55);
+
+  ParallaxBackgroundSystem({
+    required this.stageId,
+    this.isRevisionStage = false,
+  }) {
+    theme = isRevisionStage
+        ? StageBackgroundTheme.forRevision()
+        : StageBackgroundTheme.forStage(stageId);
   }
 
   void render(Canvas canvas, Size size, double scrollX, double time, {double bossMix = 0.0}) {
@@ -124,11 +159,50 @@ class ParallaxBackgroundSystem {
     // Layer 1 (speed x 0.2): Soft Translucent Blood Vessels & Distant Cells
     _renderLayer1DeepVesselsAndCells(canvas, size, scrollX * 0.2, time);
 
+    // Optional celestial academic light shafts in the Special Revision Stage
+    if (isRevisionStage) {
+      _renderRevisionSanctuaryRays(canvas, size, scrollX * 0.35, time);
+    }
+
     // Layer 2 (speed x 0.5): Mucosal Tissue Silhouette Ridges
     _renderLayer2MucosalFolds(canvas, size, scrollX * 0.5, time);
 
     // Layer 3 (speed x 0.9): Light Buoyant Bio-Bubbles (clean, sparse, non-cluttered)
     _renderLayer3BuoyantBubbles(canvas, size, scrollX * 0.9, time);
+  }
+
+  void _renderRevisionSanctuaryRays(Canvas canvas, Size size, double offset, double time) {
+    const step = 340.0;
+    final startIdx = (offset / step).floor() - 1;
+    final endIdx = ((offset + size.width) / step).ceil() + 1;
+    final sparkPaint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = startIdx; i <= endIdx; i++) {
+      final bx = (i * step) - offset + 120.0;
+      final rayRect = Rect.fromLTWH(bx - 36, 0, 72, size.height);
+      final rayPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFFFBBF24).withValues(alpha: 0.14),
+            const Color(0xFF22D3EE).withValues(alpha: 0.05),
+            Colors.transparent,
+          ],
+        ).createShader(rayRect);
+      canvas.drawRect(rayRect, rayPaint);
+
+      final sy = size.height * (0.22 + ((i.abs() * 37) % 55) / 100.0) +
+          math.sin(time * 1.4 + i) * 14.0;
+      sparkPaint.color = const Color(0xFFFDE047).withValues(alpha: 0.48);
+      final d = Path()
+        ..moveTo(bx, sy - 7)
+        ..lineTo(bx + 6, sy)
+        ..lineTo(bx, sy + 7)
+        ..lineTo(bx - 6, sy)
+        ..close();
+      canvas.drawPath(d, sparkPaint);
+    }
   }
 
   void _renderLumenGradient(Canvas canvas, Size size, double bossMix) {
@@ -147,16 +221,10 @@ class ParallaxBackgroundSystem {
   }
 
   void _renderLayer1DeepVesselsAndCells(Canvas canvas, Size size, double offset, double time) {
-    final vesselPaint = Paint()
-      ..color = theme.vesselColor.withValues(alpha: 0.24)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 22.0
-      ..strokeCap = StrokeCap.round;
-
-    final cellFill = Paint()..style = PaintingStyle.fill;
-    final cellRim = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    _vesselPaint.color = theme.vesselColor.withValues(alpha: 0.24);
+    final vesselPaint = _vesselPaint;
+    final cellFill = _cellFill;
+    final cellRim = _cellRim;
 
     const step = 420.0;
     final startIdx = (offset / step).floor() - 1;
@@ -194,9 +262,8 @@ class ParallaxBackgroundSystem {
   }
 
   void _renderLayer2MucosalFolds(Canvas canvas, Size size, double offset, double time) {
-    final foldPaint = Paint()
-      ..color = theme.wallColor.withValues(alpha: 0.20)
-      ..style = PaintingStyle.fill;
+    _foldPaint.color = theme.wallColor.withValues(alpha: 0.20);
+    final foldPaint = _foldPaint;
 
     const step = 280.0;
     final startIdx = (offset / step).floor() - 1;
@@ -224,11 +291,9 @@ class ParallaxBackgroundSystem {
   }
 
   void _renderLayer3BuoyantBubbles(Canvas canvas, Size size, double offset, double time) {
-    final bubbleFill = Paint()..style = PaintingStyle.fill;
-    final bubbleStroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    final shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.55);
+    final bubbleFill = _bubbleFill;
+    final bubbleStroke = _bubbleStroke;
+    final shinePaint = _shinePaint;
 
     const step = 210.0;
     final startIdx = (offset / step).floor() - 1;

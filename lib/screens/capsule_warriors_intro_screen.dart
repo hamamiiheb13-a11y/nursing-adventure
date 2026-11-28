@@ -39,10 +39,10 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Total sequence duration: 4.2 seconds with automatic failsafe transition
+    // Total sequence duration: 3.2 seconds (snappy launch) with automatic failsafe transition
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4200),
+      duration: const Duration(milliseconds: 3200),
     );
 
     _animController.addStatusListener((status) {
@@ -53,7 +53,7 @@ class _CapsuleWarriorsIntroScreenState extends State<CapsuleWarriorsIntroScreen>
 
     _animController.forward();
     // Failsafe guarantees player never remains stuck on intro even if browser throttles ticker
-    _failsafeTimer = Timer(const Duration(milliseconds: 4600), _finishIntro);
+    _failsafeTimer = Timer(const Duration(milliseconds: 3600), _finishIntro);
   }
 
   @override

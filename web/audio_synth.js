@@ -19,6 +19,7 @@
   let sfxVol = 0.85;
 
   let masterGainNode = null;
+  let compressorNode = null;
   let bgmGainNode = null;
   let sfxGainNode = null;
 
@@ -29,11 +30,11 @@
       masterGainNode.gain.setTargetAtTime(effectiveMaster, audioCtx.currentTime, 0.02);
     }
     if (bgmGainNode) {
-      const effectiveBgm = bgmEnabled && !isMuted ? musicVol * 0.28 : 0.0;
+      const effectiveBgm = bgmEnabled && !isMuted ? musicVol * 0.24 : 0.0;
       bgmGainNode.gain.setTargetAtTime(effectiveBgm, audioCtx.currentTime, 0.04);
     }
     if (sfxGainNode) {
-      const effectiveSfx = sfxEnabled && !isMuted ? sfxVol * 0.85 : 0.0;
+      const effectiveSfx = sfxEnabled && !isMuted ? sfxVol * 0.72 : 0.0;
       sfxGainNode.gain.setTargetAtTime(effectiveSfx, audioCtx.currentTime, 0.02);
     }
   }
@@ -43,17 +44,25 @@
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {
         audioCtx = new AudioContext();
+        compressorNode = audioCtx.createDynamicsCompressor();
+        compressorNode.threshold.value = -14;
+        compressorNode.knee.value = 14;
+        compressorNode.ratio.value = 4;
+        compressorNode.attack.value = 0.004;
+        compressorNode.release.value = 0.16;
+
         masterGainNode = audioCtx.createGain();
         masterGainNode.gain.value = isMuted ? 0.0 : masterVol;
+        compressorNode.connect(masterGainNode);
         masterGainNode.connect(audioCtx.destination);
 
         sfxGainNode = audioCtx.createGain();
-        sfxGainNode.gain.value = sfxEnabled ? sfxVol * 0.85 : 0.0;
-        sfxGainNode.connect(masterGainNode);
+        sfxGainNode.gain.value = sfxEnabled ? sfxVol * 0.72 : 0.0;
+        sfxGainNode.connect(compressorNode);
 
         bgmGainNode = audioCtx.createGain();
-        bgmGainNode.gain.value = bgmEnabled ? musicVol * 0.28 : 0.0;
-        bgmGainNode.connect(masterGainNode);
+        bgmGainNode.gain.value = bgmEnabled ? musicVol * 0.24 : 0.0;
+        bgmGainNode.connect(compressorNode);
       }
     }
     if (audioCtx && audioCtx.state === 'suspended') {
@@ -234,22 +243,52 @@
     },
 
     playBossEntrance: function () {
-      playTone(220, 0.00, 0.22, 'triangle', 0.22, 330);
-      playTone(196, 0.24, 0.38, 'triangle', 0.28, 146.83);
-      playTone(587.33, 0.26, 0.36, 'sine', 0.22);
+      playTone(130.81, 0.00, 0.35, 'sawtooth', 0.16, 196.00);
+      playTone(220.00, 0.06, 0.28, 'triangle', 0.24, 330.00);
+      playTone(196.00, 0.30, 0.48, 'triangle', 0.28, 130.81);
+      playTone(587.33, 0.34, 0.42, 'sine', 0.20, 440.00);
     },
 
     playBossAttack: function () {
-      playTone(340, 0.00, 0.14, 'triangle', 0.18, 140);
-      playTone(620, 0.03, 0.12, 'sine', 0.16, 220);
+      playTone(360, 0.00, 0.16, 'sawtooth', 0.14, 150);
+      playTone(640, 0.02, 0.14, 'sine', 0.16, 210);
     },
 
     playBossDefeat: function () {
-      playTone(320, 0.00, 0.35, 'triangle', 0.24, 65);
-      playTone(523.25, 0.20, 0.16, 'triangle', 0.36);
-      playTone(659.25, 0.34, 0.16, 'triangle', 0.38);
-      playTone(783.99, 0.48, 0.20, 'triangle', 0.40);
-      playTone(1046.50, 0.66, 0.65, 'sine', 0.44);
+      playTone(280, 0.00, 0.42, 'sawtooth', 0.16, 58);
+      playTone(180, 0.12, 0.40, 'triangle', 0.24, 50);
+      playTone(523.25, 0.24, 0.18, 'triangle', 0.34);
+      playTone(659.25, 0.38, 0.18, 'triangle', 0.36);
+      playTone(783.99, 0.52, 0.22, 'triangle', 0.38);
+      playTone(1046.50, 0.70, 0.68, 'sine', 0.40);
+    },
+
+    playEnemyHit: function () {
+      playTone(480, 0.00, 0.055, 'triangle', 0.16, 190);
+    },
+
+    playEnemyDefeat: function () {
+      playTone(240, 0.00, 0.14, 'triangle', 0.22, 85);
+      playTone(587.33, 0.03, 0.12, 'sine', 0.20, 987.77);
+    },
+
+    playEnemyAttack: function () {
+      playTone(520, 0.00, 0.09, 'triangle', 0.14, 240);
+    },
+
+    playCheckpointOpen: function () {
+      playTone(523.25, 0.00, 0.14, 'sine', 0.24, 783.99);
+      playTone(783.99, 0.09, 0.20, 'triangle', 0.22, 1174.66);
+    },
+
+    playOptionSelect: function () {
+      playTone(840, 0.00, 0.055, 'sine', 0.22, 1180);
+    },
+
+    playBossPhase2: function () {
+      playTone(164.81, 0.00, 0.35, 'sawtooth', 0.18, 220.00);
+      playTone(329.63, 0.12, 0.35, 'triangle', 0.24, 493.88);
+      playTone(659.25, 0.24, 0.32, 'sine', 0.20, 880.00);
     },
 
     playRevive: function () {
@@ -352,6 +391,17 @@
       { f: 783.99, b: 246.94, d: 0.36 },
       { f: 1046.50, b: 261.63, d: 0.48 }
     ],
+    // Special Revision Sanctuary - Uplifting sapphire-gold harmonic cadence
+    revision: [
+      { f: 523.25, b: 261.63, d: 0.24 },
+      { f: 659.25, b: 261.63, d: 0.24 },
+      { f: 783.99, b: 329.63, d: 0.24 },
+      { f: 987.77, b: 329.63, d: 0.38 },
+      { f: 880.00, b: 293.66, d: 0.24 },
+      { f: 783.99, b: 293.66, d: 0.24 },
+      { f: 659.25, b: 246.94, d: 0.38 },
+      { f: 1046.50, b: 261.63, d: 0.48 }
+    ],
     // Energetic heroic arcade Boss Fight rhythm
     boss: [
       { f: 440.00, b: 110.00, d: 0.18 },
@@ -388,19 +438,33 @@
         const gain = ctx.createGain();
         osc.type = activeTrackMode === 'boss' ? 'triangle' : 'sine';
         osc.frequency.setValueAtTime(note.f, now);
-        gain.gain.setValueAtTime(activeTrackMode === 'boss' ? 0.32 : 0.24, now);
+        gain.gain.setValueAtTime(activeTrackMode === 'boss' ? 0.28 : 0.22, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + note.d * 0.92);
         osc.connect(gain);
         gain.connect(bgmGainNode);
         osc.start(now);
         osc.stop(now + note.d);
 
+        // Soft fifth harmonic shimmer on even notes for fuller atmosphere
+        if (BGM.noteIdx % 2 === 0) {
+          const pad = ctx.createOscillator();
+          const padGain = ctx.createGain();
+          pad.type = 'sine';
+          pad.frequency.setValueAtTime(note.f * 1.5, now);
+          padGain.gain.setValueAtTime(0.065, now);
+          padGain.gain.exponentialRampToValueAtTime(0.001, now + note.d * 0.95);
+          pad.connect(padGain);
+          padGain.connect(bgmGainNode);
+          pad.start(now);
+          pad.stop(now + note.d);
+        }
+
         // Warm Bass Pulse
         const bass = ctx.createOscillator();
         const bassGain = ctx.createGain();
         bass.type = 'triangle';
         bass.frequency.setValueAtTime(note.b, now);
-        bassGain.gain.setValueAtTime(activeTrackMode === 'boss' ? 0.26 : 0.16, now);
+        bassGain.gain.setValueAtTime(activeTrackMode === 'boss' ? 0.24 : 0.15, now);
         bassGain.gain.exponentialRampToValueAtTime(0.001, now + note.d * 0.85);
         bass.connect(bassGain);
         bassGain.connect(bgmGainNode);
@@ -488,6 +552,12 @@
     playBossEntrance: SFX.playBossEntrance,
     playBossAttack: SFX.playBossAttack,
     playBossDefeat: SFX.playBossDefeat,
+    playEnemyHit: SFX.playEnemyHit,
+    playEnemyDefeat: SFX.playEnemyDefeat,
+    playEnemyAttack: SFX.playEnemyAttack,
+    playCheckpointOpen: SFX.playCheckpointOpen,
+    playOptionSelect: SFX.playOptionSelect,
+    playBossPhase2: SFX.playBossPhase2,
     playRevive: SFX.playRevive,
     playGameStart: SFX.playGameStart,
     playStageSelect: SFX.playStageSelect,
@@ -496,6 +566,9 @@
     startBgm: function (stageId) {
       const id = (stageId && stageId >= 1 && stageId <= 7) ? stageId : 1;
       BGM.start('stage' + id);
+    },
+    startRevisionBgm: function () {
+      BGM.start('revision');
     },
     startBossBgm: function () {
       BGM.start('boss');

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -244,19 +242,24 @@ void main() {
       c1.update(0.02);
       expect(virus.isStunned, true);
 
-      // Progressive challenge across stages 1..7..14
+      // Verify generous spacing between questions & higher stage pace across 1..7
+      expect(c1.totalDistance, greaterThanOrEqualTo(5800.0));
+      for (int i = 1; i < c1.checkpoints.length; i++) {
+        final gap = c1.checkpoints[i].worldX - c1.checkpoints[i - 1].worldX;
+        expect(gap, greaterThanOrEqualTo(900.0));
+      }
+
       final c7 = ArcadeGameController(level: 7, progress: GameProgress());
-      final c14 = ArcadeGameController(level: 14, progress: GameProgress());
       expect(c7.stagePaceMultiplier, greaterThan(c1.stagePaceMultiplier));
-      expect(c14.stagePaceMultiplier, greaterThan(c7.stagePaceMultiplier));
+      expect(c7.boss.maxHp, greaterThan(c1.boss.maxHp));
     });
   });
 
-  group('Automatic Revision Stage Every 7 Stages Full Cycle Verification', () {
-    test('Complete Cycle: Stages 1-7 -> Revision Stage 1 -> Stages 8-14 -> Revision Stage 2 -> Zero-Mistake Cycle 3', () {
+  group('7 Original Stages + Single Special Revision Stage Verification', () {
+    test('Stages 1-7 track only mistakes for ONE special Revision Stage & never unlock Stage 8', () {
       final p = GameProgress(playerId: 'cycle_tester', playerName: 'Nadia');
 
-      // Ensure another player's mistake cannot enter Nadia's cycle
+      // Ensure another player's mistake cannot enter Nadia's revision stage
       final otherPlayer = GameProgress(playerId: 'other', playerName: 'Other');
       otherPlayer.recordQuestionAnswer(
         questionId: 17,
@@ -265,7 +268,7 @@ void main() {
         stageId: 4,
       );
 
-      // === CYCLE 1: Complete Stages 1..7 with specific mistakes [2, 11] ===
+      // Complete all 7 original stages with specific mistakes [2, 11]
       for (int s = 1; s <= 7; s++) {
         final ctrl = ArcadeGameController(level: s, progress: p);
         ctrl.start();
@@ -285,104 +288,62 @@ void main() {
         expect(ctrl.state, GameState.victory);
       }
 
-      // Automatically triggers Revision Stage 1, locking Stage 8 until completed
-      expect(p.isRevisionStageUnlocked(1), true);
-      expect(p.activePendingRevision, 1);
+      // Strictly 7 original stages; Stage 8 must NEVER unlock; ONE special Revision Stage unlocks
+      expect(p.currentStage, 7);
       expect(p.isWorldUnlocked(8), false);
+      expect(p.isRevisionStageUnlocked(1), true);
+      expect(p.isRevisionStageUnlocked(2), false);
+      expect(p.activePendingRevision, 1);
       expect(p.getMistakesForCycle(1), unorderedEquals([2, 11]));
 
       final originalStage1Score = p.stageResults[1]!.score;
       final originalStage1Stars = p.stageResults[1]!.stars;
 
-      // Run Revision Stage 1 -> asks ONLY Nadia's missed questions [2, 11] with original text & answers
-      final rev1Ctrl = ArcadeGameController(
+      // Run Special Revision Stage -> asks ONLY Nadia's missed questions [2, 11] with original text & answers
+      final revCtrl = ArcadeGameController(
         level: 7,
         revisionNumber: 1,
         progress: p,
       );
-      expect(rev1Ctrl.isRevisionStage, true);
-      expect(rev1Ctrl.checkpoints.map((c) => c.question.id).toList(), [2, 11]);
-      for (final cp in rev1Ctrl.checkpoints) {
+      expect(revCtrl.isRevisionStage, true);
+      expect(revCtrl.checkpoints.map((c) => c.question.id).toList(), [2, 11]);
+      for (final cp in revCtrl.checkpoints) {
         final original = allGastroQuestions.firstWhere((q) => q.id == cp.question.id);
         expect(cp.question.questionText, original.questionText);
         expect(cp.question.correctOptionIndex, original.correctOptionIndex);
         expect(cp.question.options, original.options);
       }
 
-      // Master both missed questions in Revision Stage 1
-      rev1Ctrl.start();
-      for (final cp in rev1Ctrl.checkpoints) {
-        rev1Ctrl.activeCheckpoint = cp;
-        rev1Ctrl.answerCheckpoint(
+      // Master both missed questions in the Revision Stage
+      revCtrl.start();
+      for (final cp in revCtrl.checkpoints) {
+        revCtrl.activeCheckpoint = cp;
+        revCtrl.answerCheckpoint(
           selectedOptionIndex: cp.question.correctOptionIndex,
           isCorrect: true,
         );
       }
-      rev1Ctrl.answerBossQuestion(
-        questionId: rev1Ctrl.boss.challengeQuestions.first.id,
-        selectedOptionIndex: rev1Ctrl.boss.challengeQuestions.first.correctOptionIndex,
+      revCtrl.answerBossQuestion(
+        questionId: revCtrl.boss.challengeQuestions.first.id,
+        selectedOptionIndex: revCtrl.boss.challengeQuestions.first.correctOptionIndex,
         isCorrect: true,
       );
-      expect(rev1Ctrl.state, GameState.victory);
+      expect(revCtrl.state, GameState.victory);
 
-      // Revision results stored SEPARATELY; original Stage 1..7 untouched; Stage 8 now unlocked!
+      // Revision results stored separately; original Stage 1..7 untouched; still only 7 stages!
       expect(p.isRevisionStageCompleted(1), true);
       expect(p.revisionStageResults[1]!.correctCount, 2);
       expect(p.revisionStageResults[1]!.totalCount, 2);
       expect(p.stageResults[1]!.score, originalStage1Score);
       expect(p.stageResults[1]!.stars, originalStage1Stars);
-      expect(p.isWorldUnlocked(8), true);
+      expect(p.currentStage, 7);
+      expect(p.isWorldUnlocked(8), false);
+      expect(p.getMistakesForCycle(1), isEmpty);
 
-      // === CYCLE 2: Complete Stages 8..14 with mistake [Q6, Q21] -> Revision Stage 2 ===
-      for (int s = 8; s <= 14; s++) {
-        final ctrl = ArcadeGameController(level: s, progress: p);
-        ctrl.start();
-        for (final cp in ctrl.checkpoints) {
-          ctrl.activeCheckpoint = cp;
-          final bool makeMistake =
-              (s == 9 && cp.question.id == 6) || (s == 12 && cp.question.id == 21);
-          final optIdx = makeMistake
-              ? (cp.question.correctOptionIndex + 1) % cp.question.options.length
-              : cp.question.correctOptionIndex;
-          ctrl.answerCheckpoint(selectedOptionIndex: optIdx, isCorrect: !makeMistake);
-        }
-        ctrl.answerBossQuestion(
-          questionId: ctrl.boss.challengeQuestions.first.id,
-          selectedOptionIndex: ctrl.boss.challengeQuestions.first.correctOptionIndex,
-          isCorrect: true,
-        );
-      }
-
-      expect(p.isRevisionStageUnlocked(2), true);
-      expect(p.activePendingRevision, 2);
-      expect(p.isWorldUnlocked(15), false);
-      expect(p.getMistakesForCycle(2), unorderedEquals([6, 21]));
-
-      final rev2Ctrl = ArcadeGameController(
-        level: 14,
-        revisionNumber: 2,
-        progress: p,
-      );
-      expect(rev2Ctrl.checkpoints.map((c) => c.question.id).toList(), [6, 21]);
-      rev2Ctrl.start();
-      for (final cp in rev2Ctrl.checkpoints) {
-        rev2Ctrl.activeCheckpoint = cp;
-        rev2Ctrl.answerCheckpoint(
-          selectedOptionIndex: cp.question.correctOptionIndex,
-          isCorrect: true,
-        );
-      }
-      rev2Ctrl.answerBossQuestion(
-        questionId: rev2Ctrl.boss.challengeQuestions.first.id,
-        selectedOptionIndex: rev2Ctrl.boss.challengeQuestions.first.correctOptionIndex,
-        isCorrect: true,
-      );
-      expect(p.isRevisionStageCompleted(2), true);
-      expect(p.isWorldUnlocked(15), true);
-
-      // === CYCLE 3: Complete Stages 15..21 with 0 mistakes -> Revision Stage 3 clean-sweep ===
-      for (int s = 15; s <= 21; s++) {
-        final ctrl = ArcadeGameController(level: s, progress: p);
+      // Clean-sweep 0-mistake player check
+      final perfectPlayer = GameProgress(playerId: 'perfect', playerName: 'Sami');
+      for (int s = 1; s <= 7; s++) {
+        final ctrl = ArcadeGameController(level: s, progress: perfectPlayer);
         ctrl.start();
         for (final cp in ctrl.checkpoints) {
           ctrl.activeCheckpoint = cp;
@@ -397,36 +358,11 @@ void main() {
           isCorrect: true,
         );
       }
-      expect(p.isRevisionStageUnlocked(3), true);
-      expect(p.getMistakesForCycle(3), isEmpty);
-
-      // Bonus revision challenge produces 3 curated questions when 0 mistakes were made
-      final bonusRev3Ctrl = ArcadeGameController(
-        level: 21,
-        revisionNumber: 3,
-        isBonusRevisionChallenge: true,
-        progress: p,
-      );
-      expect(bonusRev3Ctrl.checkpoints.length, 3);
-      bonusRev3Ctrl.start();
-      for (final cp in bonusRev3Ctrl.checkpoints) {
-        bonusRev3Ctrl.activeCheckpoint = cp;
-        bonusRev3Ctrl.answerCheckpoint(
-          selectedOptionIndex: cp.question.correctOptionIndex,
-          isCorrect: true,
-        );
-      }
-      bonusRev3Ctrl.answerBossQuestion(
-        questionId: bonusRev3Ctrl.boss.challengeQuestions.first.id,
-        selectedOptionIndex: bonusRev3Ctrl.boss.challengeQuestions.first.correctOptionIndex,
-        isCorrect: true,
-      );
-      expect(p.revisionStageResults[3]!.isBonusChallenge, true);
-      expect(p.isRevisionStageCompleted(3), true);
-      expect(p.isWorldUnlocked(22), true);
+      expect(perfectPlayer.isRevisionStageUnlocked(1), true);
+      expect(perfectPlayer.getMistakesForCycle(1), isEmpty);
     });
 
-    testWidgets('Revision Stage Screen displays congratulatory bonus UI on 0 mistakes & WorldSelect renders revision card cleanly', (tester) async {
+    testWidgets('Revision Stage Screen displays congratulatory UI on 0 mistakes & WorldSelect shows 7 stages + 1 revision card', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -446,10 +382,10 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 250));
       expect(tester.takeException(), isNull);
-      expect(find.text('STAGE DE RÉVISION 1'), findsOneWidget);
+      expect(find.text('STAGE DE RÉVISION SPÉCIAL'), findsOneWidget);
       expect(find.textContaining('FÉLICITATIONS'), findsOneWidget);
-      expect(find.text('DÉFI BONUS DE RÉVISION'), findsOneWidget);
-      expect(find.text('CONTINUER AU STAGE 8'), findsOneWidget);
+      expect(find.text('VOIR MON DIPLÔME FINAL'), findsOneWidget);
+      expect(find.textContaining('STAGE 8'), findsNothing);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -458,6 +394,13 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 250));
       expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.text('RÉVISION FINALE'),
+        350.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('RÉVISION FINALE'), findsOneWidget);
+      expect(find.textContaining('Cycle 2'), findsNothing);
     });
   });
 }

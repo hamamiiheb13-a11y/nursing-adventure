@@ -269,6 +269,10 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                     question: _controller.activeCheckpoint!.question,
                                     checkpointIndex: _controller.activeCheckpoint!.index,
                                     isRevisionMode: _controller.activeCheckpoint!.isRevision,
+                                    totalQuestionsInStage: _controller.checkpoints.length,
+                                    playerHearts: _controller.player.hearts,
+                                    playerMaxHearts: _controller.player.maxHearts,
+                                    damageMultiplier: _controller.player.knowledgeDamageMultiplier,
                                     onAnswerValidated: (selectedIdx, isCorrect) {
                                       _controller.answerCheckpoint(
                                         selectedOptionIndex: selectedIdx,
@@ -280,7 +284,7 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                   ),
                                 ),
 
-                              // 4. Stage Victory Overlay (with real Star, Weapon & Cycle Revision Rewards)
+                              // 4. Stage Victory Overlay (with real Star, Weapon & Post-Stage-7 Revision)
                               if (_controller.state == GameState.victory)
                                 Positioned.fill(
                                   child: CapsuleWarriorsStageVictoryScreen(
@@ -302,22 +306,18 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                     onNextStage: () {
                                       StorageService().saveProgress(_controller.progress);
                                       if (_controller.revisionNumber != null) {
-                                        final nextCycleStage =
-                                            _controller.revisionNumber! * 7 + 1;
                                         Navigator.of(context).pushReplacement(
                                           buildCapsuleRoute(
-                                            CapsuleWarriorsBriefingScreen(
-                                              stageId: nextCycleStage,
+                                            CapsuleWarriorsFinalScreen(
                                               progress: _controller.progress,
                                             ),
                                           ),
                                         );
-                                      } else if (_controller.level % 7 == 0) {
-                                        final revNum = _controller.level ~/ 7;
+                                      } else if (_controller.level >= 7) {
                                         Navigator.of(context).pushReplacement(
                                           buildCapsuleRoute(
                                             CapsuleWarriorsRevisionStageScreen(
-                                              revisionNumber: revNum,
+                                              revisionNumber: 1,
                                               progress: _controller.progress,
                                             ),
                                           ),

@@ -50,6 +50,18 @@ class AudioPlatformService implements AudioServiceInterface {
   @override
   void playBossDefeat() {}
   @override
+  void playEnemyHit() {}
+  @override
+  void playEnemyDefeat() {}
+  @override
+  void playEnemyAttack() {}
+  @override
+  void playCheckpointOpen() {}
+  @override
+  void playOptionSelect() {}
+  @override
+  void playBossPhase2() {}
+  @override
   void playRevive() {}
   @override
   void playGameStart() {}
@@ -59,6 +71,8 @@ class AudioPlatformService implements AudioServiceInterface {
   void playExplanationOpen() {}
   @override
   void startBgm([int stageId = 1]) {}
+  @override
+  void startRevisionBgm() {}
   @override
   void startBossBgm() {}
   @override

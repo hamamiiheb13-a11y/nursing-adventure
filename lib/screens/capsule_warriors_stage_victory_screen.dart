@@ -110,13 +110,12 @@ class _CapsuleWarriorsStageVictoryScreenState
   @override
   Widget build(BuildContext context) {
     final bool isRevision = widget.revisionNumber != null;
-    final int revNum = widget.revisionNumber ?? (widget.stageId ~/ 7);
-    final bool triggersRevisionNext = !isRevision && widget.stageId % 7 == 0;
-    final world = GastroWorld.getWorldForLevel(widget.stageId);
-    final nextStageId = isRevision
-        ? (widget.revisionNumber! * 7 + 1)
-        : (widget.stageId + 1);
-    final nextWorld = triggersRevisionNext
+    final bool triggersRevisionNext = !isRevision && widget.stageId >= 7;
+    final world = isRevision
+        ? GastroWorld.revisionWorld
+        : GastroWorld.getWorldForLevel(widget.stageId);
+    final nextStageId = (widget.stageId + 1).clamp(1, 7);
+    final nextWorld = (isRevision || triggersRevisionNext)
         ? null
         : GastroWorld.getWorldForLevel(nextStageId);
     final weaponUnlocked = widget.unlockedWeapon ?? world.unlockedWeaponName;
@@ -190,7 +189,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                       isRevision
                           ? (widget.isBonusRevisionChallenge
                               ? 'DÉFI BONUS VALIDÉ !'
-                              : 'RÉVISION $revNum ACCOMPLIE !')
+                              : 'RÉVISION SPÉCIALE ACCOMPLIE !')
                           : 'MISSION ACCOMPLIE !',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.orbitron(
@@ -209,7 +208,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                     const SizedBox(height: 3),
                     Text(
                       isRevision
-                          ? 'STAGE DE RÉVISION #$revNum • CONSOLIDATION'
+                          ? 'STAGE SPÉCIAL DE RÉVISION • CONSOLIDATION FINALE'
                           : 'STAGE ${widget.stageId} • ${world.organZone.toUpperCase()}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
@@ -439,75 +438,75 @@ class _CapsuleWarriorsStageVictoryScreenState
                             const Icon(Icons.auto_stories_rounded, color: CapsuleColors.gold, size: 17),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                'Étape spéciale débloquée : Stage de Révision $revNum (Stages ${(revNum - 1) * 7 + 1} à ${revNum * 7})',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  color: CapsuleColors.textWhite,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            child: Text(
+                              'Étape spéciale débloquée : Stage de Révision Finale (notions à consolider des Stages 1 à 7)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: CapsuleColors.textWhite,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ] else if (nextWorld != null) ...[
-                      SizedBox(height: isCompact ? 8 : 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: nextWorld.primaryColor.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: nextWorld.primaryColor.withValues(alpha: 0.45)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.explore_rounded, color: nextWorld.primaryColor, size: 17),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Prochain secteur (Stage $nextStageId) : ${nextWorld.organZone} — ${nextWorld.name} (Boss : ${nextWorld.bossName})',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  color: CapsuleColors.textWhite,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    SizedBox(height: isCompact ? 12 : 16),
-
-                    // Buttons: "STAGE SUIVANT" / "RÉVISION N" / "REJOUER" / "CARTE"
-                    Row(
-                      children: [
-                        // Primary Advance Button
-                        Expanded(
-                          flex: 3,
-                          child: _buildActionButton(
-                            label: triggersRevisionNext
-                                ? 'RÉVISION $revNum'
-                                : (isRevision
-                                    ? 'STAGE $nextStageId'
-                                    : 'STAGE SUIVANT'),
-                            icon: triggersRevisionNext
-                                ? Icons.auto_stories_rounded
-                                : Icons.arrow_forward_rounded,
-                            isPrimary: true,
-                            onTap: () {
-                              _audio.playClick();
-                              widget.onNextStage();
-                            },
                           ),
+                        ],
+                      ),
+                    ),
+                  ] else if (nextWorld != null) ...[
+                    SizedBox(height: isCompact ? 8 : 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: nextWorld.primaryColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: nextWorld.primaryColor.withValues(alpha: 0.45)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.explore_rounded, color: nextWorld.primaryColor, size: 17),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Prochain secteur (Stage $nextStageId) : ${nextWorld.organZone} — ${nextWorld.name} (Boss : ${nextWorld.bossName})',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: CapsuleColors.textWhite,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  SizedBox(height: isCompact ? 12 : 16),
+
+                  // Buttons: "STAGE SUIVANT" / "STAGE RÉVISION" / "DIPLÔME" / "REJOUER" / "CARTE"
+                  Row(
+                    children: [
+                      // Primary Advance Button
+                      Expanded(
+                        flex: 3,
+                        child: _buildActionButton(
+                          label: triggersRevisionNext
+                              ? 'STAGE RÉVISION'
+                              : (isRevision ? 'VOIR DIPLÔME' : 'STAGE SUIVANT'),
+                          icon: triggersRevisionNext
+                              ? Icons.auto_stories_rounded
+                              : (isRevision
+                                  ? Icons.workspace_premium_rounded
+                                  : Icons.arrow_forward_rounded),
+                          isPrimary: true,
+                          onTap: () {
+                            _audio.playClick();
+                            widget.onNextStage();
+                          },
                         ),
+                      ),
                         const SizedBox(width: 8),
 
                         // REJOUER

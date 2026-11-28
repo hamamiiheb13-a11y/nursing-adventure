@@ -48,23 +48,20 @@ class ArcadeGameController extends ChangeNotifier {
 
   bool get isRevisionStage => revisionNumber != null;
 
-  /// Smooth progressive level pace from Stage 1 (1.0x) to Stage 7 (1.36x) and gently onward across cycles
+  /// Smooth progressive level pace from Stage 1 (1.0x) to Stage 7 (1.38x)
   double get stagePaceMultiplier {
-    if (level <= 7) {
-      return (1.0 + (level - 1) * 0.06).clamp(1.0, 1.38);
-    }
-    return (1.36 + (level - 7) * 0.025).clamp(1.36, 1.62);
+    return (1.0 + (level.clamp(1, 7) - 1) * 0.063).clamp(1.0, 1.38);
   }
 
-  double get _playerAgilityMultiplier => (1.0 + (level - 1) * 0.045).clamp(1.0, 1.48);
-  double get _obstacleDifficulty => ((level - 1) / 13.0).clamp(0.0, 1.0);
+  double get _playerAgilityMultiplier => (1.0 + (level.clamp(1, 7) - 1) * 0.05).clamp(1.0, 1.35);
+  double get _obstacleDifficulty => ((level.clamp(1, 7) - 1) / 6.0).clamp(0.0, 1.0);
 
   GameState state = GameState.ready;
   double cameraX = 0.0;
   double viewportWidth = 800.0;
   double viewportHeight = 500.0;
 
-  double totalDistance = 5200.0;
+  double totalDistance = 7200.0;
   int score = 0;
   int combo = 0;
   int highestCombo = 0;
@@ -79,6 +76,11 @@ class ArcadeGameController extends ChangeNotifier {
   int revivesCount = 0;
   int lastStarsEarned = 3;
   String? newlyUnlockedWeapon;
+
+  // Smooth Portal Entry Transition (prevents sudden combat interruption)
+  ArcadeCheckpoint? _pendingCheckpoint;
+  double checkpointWarpTimer = 0.0;
+  bool get isEnteringCheckpoint => _pendingCheckpoint != null;
 
   // Boss Battle State Timers
   double bossIntroTimer = 0.0;
@@ -102,16 +104,18 @@ class ArcadeGameController extends ChangeNotifier {
     this.revisionNumber,
     this.isBonusRevisionChallenge = false,
   }) {
-    world = GastroWorld.getWorldForLevel(level);
+    world = revisionNumber != null
+        ? GastroWorld.revisionWorld
+        : GastroWorld.getWorldForLevel(level);
     _initLevel();
   }
 
   void _initLevel() {
     _generateCheckpoints();
 
-    // Scale corridor length cleanly so checkpoints feel well-paced
+    // Generous corridor length so intervals between questions allow dynamic combat & breathing room
     final cpCount = math.max(3, checkpoints.length);
-    totalDistance = 2600.0 + cpCount * 460.0;
+    totalDistance = math.max(5800.0, 2600.0 + cpCount * 1050.0);
 
     tunnel = TunnelGeometry(
       levelLength: totalDistance,
@@ -146,9 +150,9 @@ class ArcadeGameController extends ChangeNotifier {
 
     if (revisionNumber != null) {
       if (!isBonusRevisionChallenge) {
-        // Revision Stage after every 7 stages: ask ONLY the current player's
-        // mistakes from the previous 7-stage cycle with original wording & answers.
-        final mistakeIds = progress.getMistakesForCycle(revisionNumber!);
+        // One special Revision Stage after Stage 7: strictly contains ONLY
+        // the questions missed across Stages 1-7 (never repeating already-right ones).
+        final mistakeIds = progress.getMistakesForCycle(1);
         for (int i = 0; i < mistakeIds.length; i++) {
           final q = allGastroQuestions.firstWhere(
             (item) => item.id == mistakeIds[i],
@@ -158,7 +162,7 @@ class ArcadeGameController extends ChangeNotifier {
             checkpoints.add(
               ArcadeCheckpoint(
                 index: checkpoints.length + 1,
-                worldX: 800.0 + checkpoints.length * 460.0,
+                worldX: 960.0 + checkpoints.length * 1050.0,
                 question: q,
                 isRevision: true,
               ),
@@ -166,18 +170,16 @@ class ArcadeGameController extends ChangeNotifier {
           }
         }
       } else {
-        // Zero mistakes on previous 7 stages -> small bonus revision challenge
-        final offset = ((revisionNumber! - 1) * 3) % allGastroQuestions.length;
         final bonusQuestions = <GastroQuestion>[
-          allGastroQuestions[(3 + offset) % allGastroQuestions.length],
-          allGastroQuestions[(11 + offset) % allGastroQuestions.length],
-          allGastroQuestions[(26 + offset) % allGastroQuestions.length],
+          allGastroQuestions[3],
+          allGastroQuestions[11],
+          allGastroQuestions[26],
         ];
         for (int i = 0; i < bonusQuestions.length; i++) {
           checkpoints.add(
             ArcadeCheckpoint(
               index: i + 1,
-              worldX: 800.0 + i * 520.0,
+              worldX: 960.0 + i * 1100.0,
               question: bonusQuestions[i],
               isRevision: true,
             ),
@@ -187,8 +189,7 @@ class ArcadeGameController extends ChangeNotifier {
       return;
     }
 
-    final int sectorId = ((level - 1) % 7) + 1;
-    final int cycleIdx = ((level - 1) ~/ 7);
+    final int sectorId = level.clamp(1, 7);
     if (sectorId >= 1 && sectorId <= 6) {
       final stageQuestions =
           allGastroQuestions.where((q) => q.worldId == sectorId).toList();
@@ -196,26 +197,30 @@ class ArcadeGameController extends ChangeNotifier {
         checkpoints.add(
           ArcadeCheckpoint(
             index: i + 1,
-            worldX: 800.0 + i * 480.0,
+            worldX: 960.0 + i * 1050.0,
             question: stageQuestions[i],
             isRevision: false,
           ),
         );
       }
     } else {
-      // Every 7th regular stage (Stage 7, 14, 21...): Final Sanctuary Clinical Synthesis
-      // (Mistakes made here also feed the post-stage Revision Stage!)
-      final shift = (cycleIdx * 4) % allGastroQuestions.length;
-      final masterQuestions = <GastroQuestion>[
-        allGastroQuestions[(3 + shift) % allGastroQuestions.length],
-        allGastroQuestions[(11 + shift) % allGastroQuestions.length],
-        allGastroQuestions[(26 + shift) % allGastroQuestions.length],
-      ];
+      // Stage 7: Final Sanctuary Synthesis (prioritizes unanswered/missed cases first before defaults)
+      final unmastered = allGastroQuestions
+          .where((q) => progress.questionsAnswered[q.id] != true)
+          .take(3)
+          .toList();
+      final masterQuestions = unmastered.isNotEmpty
+          ? unmastered
+          : <GastroQuestion>[
+              allGastroQuestions[3],
+              allGastroQuestions[11],
+              allGastroQuestions[26],
+            ];
       for (int i = 0; i < masterQuestions.length; i++) {
         checkpoints.add(
           ArcadeCheckpoint(
             index: i + 1,
-            worldX: 800.0 + i * 520.0,
+            worldX: 960.0 + i * 1100.0,
             question: masterQuestions[i],
             isRevision: false,
           ),
@@ -227,9 +232,9 @@ class ArcadeGameController extends ChangeNotifier {
   void _distributeCheckpointPositions() {
     final count = checkpoints.length;
     if (count == 0) return;
-    final startX = 650.0;
-    final endX = totalDistance - 1150.0;
-    final span = math.max(400.0, endX - startX);
+    const double startX = 980.0;
+    final double endX = math.max(startX + 600.0, totalDistance - 1550.0);
+    final double span = math.max(600.0, endX - startX);
     for (int i = 0; i < count; i++) {
       final t = count == 1 ? 0.5 : (i / (count - 1));
       final updated = ArcadeCheckpoint(
@@ -452,89 +457,118 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateEnemies() {
     enemies.clear();
     defeatedEnemies.clear();
-    final rand = math.Random(level * 555);
+    final rand = math.Random(level * 555 + (revisionNumber ?? 0) * 113);
     int enemyId = 1;
     final pace = stagePaceMultiplier;
+    final int stageTier = revisionNumber != null ? 6 : level.clamp(1, 7);
 
-    void addEnemyAt(double x) {
+    // Weighted enemy squad archetype deck so encounters feel varied & strategic
+    final enemyDeck = <EnemyType>[
+      EnemyType.spikeVirion,
+      EnemyType.helicoGrub,
+      EnemyType.cytokineBlob,
+      EnemyType.acidSentry,
+      EnemyType.toxicSpore,
+    ]..shuffle(rand);
+    int deckPtr = 0;
+
+    void addEnemyAt(double x, {double yOffset = 0.0, EnemyType? forcedType}) {
       final ceilY = tunnel.getCeilingY(x, 0.0);
       final floorY = tunnel.getFloorY(x, 0.0);
       final midY = (ceilY + floorY) / 2;
 
-      final roll = rand.nextDouble();
-      EnemyType eType;
+      final eType = forcedType ?? enemyDeck[deckPtr++ % enemyDeck.length];
       int hp;
       double radius;
       int scoreReward;
       int xpReward;
 
-      if (roll < 0.28) {
-        eType = EnemyType.helicoGrub;
-        hp = 3 + (level / 3).floor();
-        radius = 20.0;
-        scoreReward = 150;
-        xpReward = 35;
-      } else if (roll < 0.54) {
-        eType = EnemyType.spikeVirion;
-        hp = 4 + (level / 3).floor();
-        radius = 19.0;
-        scoreReward = 175;
-        xpReward = 40;
-      } else if (roll < 0.74) {
-        eType = EnemyType.cytokineBlob;
-        hp = 4 + (level / 3).floor();
-        radius = 22.0;
-        scoreReward = 190;
-        xpReward = 45;
-      } else if (roll < 0.89) {
-        eType = EnemyType.acidSentry;
-        hp = 6 + (level / 2).floor();
-        radius = 24.0;
-        scoreReward = 230;
-        xpReward = 50;
-      } else {
-        eType = EnemyType.toxicSpore;
-        hp = 3 + (level / 4).floor();
-        radius = 18.0;
-        scoreReward = 135;
-        xpReward = 30;
+      switch (eType) {
+        case EnemyType.helicoGrub:
+          hp = 3 + (stageTier / 3).floor();
+          radius = 20.0;
+          scoreReward = 160;
+          xpReward = 35;
+          break;
+        case EnemyType.spikeVirion:
+          hp = 4 + (stageTier / 2).floor();
+          radius = 20.0;
+          scoreReward = 190;
+          xpReward = 42;
+          break;
+        case EnemyType.cytokineBlob:
+          hp = 4 + (stageTier / 3).floor();
+          radius = 22.0;
+          scoreReward = 200;
+          xpReward = 45;
+          break;
+        case EnemyType.acidSentry:
+          hp = 6 + (stageTier / 2).floor();
+          radius = 24.0;
+          scoreReward = 245;
+          xpReward = 55;
+          break;
+        case EnemyType.toxicSpore:
+          hp = 3 + (stageTier / 4).floor();
+          radius = 19.0;
+          scoreReward = 150;
+          xpReward = 34;
+          break;
       }
 
-      final enemyY = midY + (rand.nextDouble() - 0.5) * math.max(50.0, (floorY - ceilY) * 0.38);
-      final baseSpeed = (42.0 + rand.nextDouble() * 20.0) * (0.94 + pace * 0.06);
+      final enemyY = (midY + yOffset + (rand.nextDouble() - 0.5) * math.max(40.0, (floorY - ceilY) * 0.28))
+          .clamp(ceilY + 38.0, floorY - 38.0);
+      final baseSpeed = (44.0 + rand.nextDouble() * 22.0) * (0.94 + pace * 0.08);
       enemies.add(
         ArcadeEnemy(
           id: enemyId++,
-          position: Offset(x, enemyY.clamp(ceilY + 36.0, floorY - 36.0)),
+          position: Offset(x, enemyY),
           velocity: Offset(-baseSpeed, 0),
           type: eType,
           maxHp: hp,
           radius: radius,
           scoreReward: scoreReward,
           xpReward: xpReward,
-          shootInterval: (2.5 - (level - 1) * 0.09).clamp(1.65, 2.6) + rand.nextDouble() * 1.1,
+          shootInterval: (2.35 - (stageTier - 1) * 0.11).clamp(1.45, 2.45) + rand.nextDouble() * 0.9,
         ),
       );
     }
 
-    final double stepBase = math.max(220.0, 290.0 - (level - 1) * 9.0);
-    for (double x = 480.0; x < totalDistance - 1080.0; x += stepBase + rand.nextDouble() * 85.0) {
-      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 115.0);
-      bool nearObstacle = obstacles.any((o) => (o.position.dx - x).abs() < 95.0);
+    final double stepBase = math.max(290.0, 410.0 - (stageTier - 1) * 18.0);
+    int waveCounter = 0;
+    for (double x = 560.0; x < totalDistance - 1350.0; x += stepBase + rand.nextDouble() * 90.0) {
+      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 165.0);
+      bool nearObstacle = obstacles.any((o) => (o.position.dx - x).abs() < 90.0);
       if (nearCheckpoint || nearObstacle) continue;
+
       addEnemyAt(x);
+      waveCounter++;
+
+      // Starting Stage 2+, spawn dynamic flanking wingmen/chasers on alternating waves
+      if (stageTier >= 2 && waveCounter % 2 == 0) {
+        final wingOffset = waveCounter % 4 == 0 ? -52.0 : 52.0;
+        addEnemyAt(
+          x + 56.0,
+          yOffset: wingOffset,
+          forcedType: waveCounter % 3 == 0 ? EnemyType.acidSentry : EnemyType.spikeVirion,
+        );
+      }
+      // Stage 5-7 adds a third pincer unit periodically
+      if (stageTier >= 5 && waveCounter % 3 == 0) {
+        addEnemyAt(x + 92.0, yOffset: -48.0, forcedType: EnemyType.cytokineBlob);
+      }
     }
 
-    // Guarantee enemies appear cleanly mid-way between checkpoints if spacing skipped all candidates
-    if (enemies.length < 3) {
+    // Guarantee dynamic enemies between checkpoints if sparse
+    if (enemies.length < 4) {
       for (int i = 0; i < checkpoints.length - 1; i++) {
         final midX = (checkpoints[i].worldX + checkpoints[i + 1].worldX) * 0.5;
-        if (!obstacles.any((o) => (o.position.dx - midX).abs() < 75.0)) {
+        if (!obstacles.any((o) => (o.position.dx - midX).abs() < 70.0)) {
           addEnemyAt(midX);
         }
       }
       if (enemies.isEmpty) {
-        addEnemyAt((totalDistance - 1150.0).clamp(500.0, totalDistance - 1050.0));
+        addEnemyAt((totalDistance - 1350.0).clamp(500.0, totalDistance - 1200.0));
       }
     }
   }
@@ -549,7 +583,7 @@ class ArcadeGameController extends ChangeNotifier {
         challengeQuestions = [allGastroQuestions[3], allGastroQuestions[11], allGastroQuestions[26]];
       }
     } else {
-      final int sectorId = ((level - 1) % 7) + 1;
+      final int sectorId = level.clamp(1, 7);
       if (sectorId >= 1 && sectorId <= 6) {
         final stageQuestions =
             allGastroQuestions.where((q) => q.worldId == sectorId).toList();
@@ -564,13 +598,14 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // Live 2D Arcade Boss HP scales progressively across stages (fair cap on endless cycles)
-    final int bossHp = 44 + math.min(level, 14) * 12;
+    // Progressive Boss HP across Stages 1..7 (Stage 1 = 56 HP for clean test parity & ramp)
+    final int clampedStage = revisionNumber != null ? 6 : level.clamp(1, 7);
+    final int bossHp = 44 + clampedStage * 12;
     final bossStartPos = Offset(totalDistance - 240.0, viewportHeight * 0.5);
 
     boss = ArcadeBoss(
       name: revisionNumber != null
-          ? 'Gardien Révision #$revisionNumber'
+          ? 'Gardien du Savoir • Synthèse'
           : world.boss.name,
       title: revisionNumber != null
           ? 'Gardien des Connaissances Consolidées'
@@ -590,8 +625,28 @@ class ArcadeGameController extends ChangeNotifier {
 
   void start() {
     state = GameState.playing;
-    audio.startBgm(level);
+    if (isRevisionStage) {
+      audio.startRevisionBgm();
+    } else {
+      audio.startBgm(level);
+    }
     audio.playGameStart();
+    notifyListeners();
+  }
+
+  void cycleEquippedWeapon() {
+    final unlocked = progress.unlockedWeapons;
+    if (unlocked.length <= 1) return;
+    final idx = unlocked.indexOf(progress.equippedWeapon);
+    final nextName = unlocked[(idx + 1) % unlocked.length];
+    progress.equipWeapon(nextName);
+    player.weaponType = equippedWeaponConfig.type;
+    audio.playClick();
+    _addFloatingText(
+      equippedWeaponConfig.shortName.toUpperCase(),
+      player.position + const Offset(0, -34),
+      equippedWeaponConfig.glowColor,
+    );
     notifyListeners();
   }
 
@@ -611,6 +666,8 @@ class ArcadeGameController extends ChangeNotifier {
       state = _stateBeforePause;
       if (state == GameState.bossFight || state == GameState.bossIntro) {
         audio.startBossBgm();
+      } else if (isRevisionStage) {
+        audio.startRevisionBgm();
       } else {
         audio.startBgm(level);
       }
@@ -966,8 +1023,29 @@ class ArcadeGameController extends ChangeNotifier {
       return;
     }
 
-    if (player.isShooting && player.shootCooldownTimer <= 0) {
+    if (player.isShooting && player.shootCooldownTimer <= 0 && !isEnteringCheckpoint) {
       shoot();
+    }
+
+    // Smooth Portal Entry Slowdown -> seamless Checkpoint Question Transition
+    if (_pendingCheckpoint != null) {
+      checkpointWarpTimer = math.max(0.0, checkpointWarpTimer - dt);
+      final cp = _pendingCheckpoint!;
+      final ceilY = tunnel.getCeilingY(cp.worldX, gameTime);
+      final floorY = tunnel.getFloorY(cp.worldX, gameTime);
+      final targetPos = Offset(cp.worldX, (ceilY + floorY) * 0.5);
+      player.position = Offset.lerp(player.position, targetPos, math.min(1.0, dt * 8.5))!;
+      player.angle *= 0.82;
+      _updateCamera();
+      _updateParticles(dt);
+      _updateFloatingTexts(dt);
+      if (checkpointWarpTimer <= 0) {
+        _pendingCheckpoint = null;
+        activeCheckpoint = cp;
+        state = GameState.checkpoint;
+      }
+      notifyListeners();
+      return;
     }
 
     _updatePlayerPhysics(dt);
@@ -987,8 +1065,9 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _updateBossIntro(double dt) {
     bossIntroTimer = math.max(0.0, bossIntroTimer - dt);
-    bossArenaMix = (bossArenaMix + dt * 0.7).clamp(0.0, 1.0);
-    boss.entranceProgress = (1.0 - (bossIntroTimer / 2.0)).clamp(0.0, 1.0);
+    bossArenaMix = (bossArenaMix + dt * 0.55).clamp(0.0, 1.0);
+    boss.entranceProgress = (1.0 - (bossIntroTimer / 2.5)).clamp(0.0, 1.0);
+    screenShake = math.max(screenShake, (1.0 - boss.entranceProgress) * 0.25);
 
     // Smoothly frame the Boss Arena
     final targetCam = math.max(0.0, totalDistance - viewportWidth);
@@ -1003,20 +1082,25 @@ class ArcadeGameController extends ChangeNotifier {
     );
     player.angle *= 0.85;
 
-    // Boss glides smoothly in from the right edge
-    final targetBossX = totalDistance - math.max(150.0, viewportWidth * 0.22);
+    // Boss glides dramatically in from the right edge with ambient swirl particles
+    final targetBossX = totalDistance - math.max(165.0, viewportWidth * 0.23);
     final targetBossY = viewportHeight * 0.5;
     boss.homePosition = Offset(targetBossX, targetBossY);
     boss.position = Offset(
-      (totalDistance + 120.0) * (1.0 - Curves.easeOutCubic.transform(boss.entranceProgress)) +
+      (totalDistance + 160.0) * (1.0 - Curves.easeOutCubic.transform(boss.entranceProgress)) +
           targetBossX * Curves.easeOutCubic.transform(boss.entranceProgress),
-      targetBossY,
+      targetBossY + math.sin(boss.entranceProgress * math.pi * 2) * 14.0,
     );
 
-    if (bossIntroTimer <= 0) {
+    if (boss.entranceProgress < 0.85 && math.Random().nextDouble() < 0.35) {
+      _emitHitSparks(boss.position + const Offset(-30, 0), color: boss.auraColor);
+    }
+
+    if (bossIntroTimer <= 1e-6) {
+      bossIntroTimer = 0.0;
       state = GameState.bossFight;
-      boss.attackCooldown = 1.4;
-      _addFloatingText('COMBAT ENGAGÉ !', boss.position + const Offset(-80, -70), const Color(0xFFFBBF24));
+      boss.attackCooldown = 1.35;
+      _addFloatingText('COMBAT ENGAGÉ !', boss.position + const Offset(-80, -82), const Color(0xFFFBBF24));
     }
   }
 
@@ -1323,6 +1407,9 @@ class ArcadeGameController extends ChangeNotifier {
         floorY: floorY,
         speedMultiplier: pace,
       );
+      if (enemy.justAttacked) {
+        audio.playEnemyAttack();
+      }
       if (enemy.isDead) {
         enemies.removeAt(i);
       }
@@ -1353,17 +1440,22 @@ class ArcadeGameController extends ChangeNotifier {
       burstCol = const Color(0xFFEC4899);
     }
 
+    if (defeatedEnemies.length > 20) {
+      defeatedEnemies.removeAt(0);
+    }
     defeatedEnemies.add(
       DefeatedEnemyEffect(
         position: enemy.position,
         radius: enemy.radius,
         color: burstCol,
         spinDir: enemy.id.isEven ? 1.0 : -1.0,
+        seed: enemy.id,
       ),
     );
+    screenShake = math.max(screenShake, 0.18);
     _addFloatingText('+${enemy.xpReward} XP', enemy.position, const Color(0xFF38BDF8));
     _emitExplosion(enemy.position, enemy.type);
-    audio.playCombo();
+    audio.playEnemyDefeat();
 
     if (math.Random().nextDouble() < dropChance) {
       collectibles.add(
@@ -1528,8 +1620,12 @@ class ArcadeGameController extends ChangeNotifier {
   void _updateBoss(double dt) {
     if (boss.isDefeated) return;
 
+    // Smooth health bar ghost-damage trail interpolation
+    boss.displayedHealthRatio +=
+        (boss.healthRatio - boss.displayedHealthRatio) * math.min(1.0, 4.8 * dt);
+
     final double pace = stagePaceMultiplier;
-    boss.animPhase += dt * (boss.isPhase2 ? 3.2 : 2.1) * (0.9 + pace * 0.1);
+    boss.animPhase += dt * (boss.isPhase3 ? 3.8 : (boss.isPhase2 ? 3.1 : 2.1)) * (0.9 + pace * 0.1);
     if (boss.hitTimer > 0) {
       boss.hitTimer = math.max(0.0, boss.hitTimer - dt);
       if (boss.hitTimer <= 0) {
@@ -1555,20 +1651,33 @@ class ArcadeGameController extends ChangeNotifier {
     // Dramatic Phase 2 Awakening shockwave when dropping below 50% HP
     if (!boss.phase2Announced && boss.isPhase2) {
       boss.phase2Announced = true;
-      screenShake = 0.85;
+      screenShake = 0.9;
       _emitHitSparks(boss.position, color: const Color(0xFFFB7185));
       _addFloatingText(
         'PHASE 2 • FURIE DU BOSS !',
-        boss.position + const Offset(-45, -75),
+        boss.position + const Offset(-45, -82),
         const Color(0xFFFB7185),
       );
-      audio.playBossEntrance();
+      audio.playBossPhase2();
+    }
+
+    // Phase 3 overdrive warning at <= 25% HP (Stages 4-7 & Revision)
+    if (!boss.phase3Announced && boss.isPhase3 && level >= 4) {
+      boss.phase3Announced = true;
+      screenShake = 0.85;
+      _emitHitSparks(boss.position, color: const Color(0xFFFBBF24));
+      _addFloatingText(
+        'PHASE CRITIQUE !',
+        boss.position + const Offset(-35, -82),
+        const Color(0xFFFDE047),
+      );
+      audio.playBossPhase2();
     }
 
     // Periodic Support Pickups inside Boss Chamber so player never gets stuck!
     arenaSupportTimer -= dt;
     if (arenaSupportTimer <= 0) {
-      arenaSupportTimer = player.hearts <= 1 ? 6.0 : 10.0;
+      arenaSupportTimer = player.hearts <= 1 ? 5.8 : 9.5;
       final dropType = player.hearts < player.maxHearts
           ? CollectibleType.heartBoost
           : (math.Random().nextBool() ? CollectibleType.shieldBoost : CollectibleType.weaponUpgrade);
@@ -1587,7 +1696,20 @@ class ArcadeGameController extends ChangeNotifier {
       _addFloatingText('SOUTIEN MÉDICAL !', Offset(cameraX + 120, viewportHeight * 0.35), const Color(0xFF34D399));
     }
 
-    // Live Boss Attack State Machine
+    // Sweeping Boss Laser Beam active phase
+    if (boss.currentPattern == BossAttackPattern.laserBeamFire) {
+      boss.beamTimer -= dt;
+      boss.beamTargetY += boss.beamSweepDelta * dt;
+      boss.facingTilt = -0.06;
+      if (boss.beamTimer <= 0) {
+        boss.currentPattern = BossAttackPattern.hoverSpread;
+        boss.beamTimer = 0.0;
+        boss.attackCooldown = boss.isPhase2 ? 1.35 : 1.8;
+      }
+      return;
+    }
+
+    // Live Boss Attack State Machine (Charge Dash)
     if (boss.currentPattern == BossAttackPattern.chargeDash) {
       boss.position += boss.velocity * dt;
       boss.facingTilt = -0.18;
@@ -1611,10 +1733,10 @@ class ArcadeGameController extends ChangeNotifier {
     }
 
     // Reactive player-tracking hover + corridor safety clamping
-    final double bossCeil = tunnel.getCeilingY(boss.position.dx, gameTime) + 74.0;
-    final double bossFloor = tunnel.getFloorY(boss.position.dx, gameTime) - 74.0;
+    final double bossCeil = tunnel.getCeilingY(boss.position.dx, gameTime) + 78.0;
+    final double bossFloor = tunnel.getFloorY(boss.position.dx, gameTime) - 78.0;
     final double dodgeOffset = boss.dodgeTimer > 0 ? boss.verticalDodgeOffset : 0.0;
-    final double trackWeight = boss.isPhase2 ? 0.58 : 0.40;
+    final double trackWeight = boss.isPhase2 ? 0.60 : 0.42;
     final double targetHoverY = (viewportHeight * 0.5 * (1.0 - trackWeight) +
             player.position.dy * trackWeight +
             math.sin(boss.animPhase * 0.95) * (viewportHeight * 0.16) +
@@ -1622,11 +1744,11 @@ class ArcadeGameController extends ChangeNotifier {
         .clamp(math.min(bossCeil, bossFloor), math.max(bossCeil, bossFloor));
 
     final double stalkOffsetX = (player.position.dx - boss.homePosition.dx).abs() > 360
-        ? -26.0
+        ? -28.0
         : (boss.isHit ? 14.0 : 0.0);
     final double targetBossX = boss.homePosition.dx + stalkOffsetX;
 
-    final double moveRateY = (boss.dodgeTimer > 0 ? 6.5 : (boss.isPhase2 ? 4.4 : 3.3)) * dt;
+    final double moveRateY = (boss.dodgeTimer > 0 ? 6.5 : (boss.isPhase2 ? 4.6 : 3.4)) * dt;
     final double prevY = boss.position.dy;
     final newBossX = boss.position.dx + (targetBossX - boss.position.dx) * math.min(1.0, 4.2 * dt);
     final newBossY = boss.position.dy + (targetHoverY - boss.position.dy) * math.min(1.0, moveRateY);
@@ -1651,7 +1773,8 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _chooseNextBossTelegraph() {
     _bossAttackIndex++;
-    final int cycleCount = boss.isPhase2 ? 5 : 4;
+    final bool allowBeam = level >= 3 || isRevisionStage;
+    final int cycleCount = boss.isPhase2 ? (allowBeam ? 6 : 5) : (allowBeam ? 5 : 4);
     final mod = _bossAttackIndex % cycleCount;
     if (mod == 0) {
       boss.currentPattern = BossAttackPattern.hoverSpread;
@@ -1669,6 +1792,14 @@ class ArcadeGameController extends ChangeNotifier {
     } else if (mod == 3) {
       boss.currentPattern = BossAttackPattern.radialBurst;
       boss.telegraphTimer = 0.70;
+    } else if (mod == 4 && allowBeam) {
+      boss.currentPattern = BossAttackPattern.laserBeamTelegraph;
+      boss.beamTargetY = player.position.dy.clamp(
+        tunnel.getCeilingY(boss.position.dx, gameTime) + 56.0,
+        tunnel.getFloorY(boss.position.dx, gameTime) - 56.0,
+      );
+      boss.beamSweepDelta = boss.beamTargetY > viewportHeight * 0.5 ? -48.0 : 48.0;
+      boss.telegraphTimer = 0.85;
     } else {
       boss.currentPattern = BossAttackPattern.spawnMinions;
       boss.telegraphTimer = 0.60;
@@ -1677,12 +1808,13 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _executeBossPattern() {
-    final speedMul = (boss.isPhase2 ? 1.20 : 1.0) * (0.92 + stagePaceMultiplier * 0.08);
-    boss.attackAnimTimer = 0.32;
+    final speedMul = (boss.isPhase3 ? 1.28 : (boss.isPhase2 ? 1.18 : 1.0)) *
+        (0.92 + stagePaceMultiplier * 0.08);
+    boss.attackAnimTimer = 0.34;
 
     switch (boss.currentPattern) {
       case BossAttackPattern.hoverSpread:
-        final count = boss.isPhase2 ? 5 : 3;
+        final count = boss.isPhase3 ? 5 : (boss.isPhase2 ? 5 : 3);
         final baseDir = (player.position - boss.position);
         final baseAngle = baseDir.distance > 0 ? math.atan2(baseDir.dy, baseDir.dx) : math.pi;
         for (int i = 0; i < count; i++) {
@@ -1690,7 +1822,7 @@ class ArcadeGameController extends ChangeNotifier {
           final angle = baseAngle + spreadOffset;
           enemyProjectiles.add(
             CapsuleProjectile(
-              position: boss.position + const Offset(-40, 0),
+              position: boss.position + const Offset(-45, 0),
               velocity: Offset(math.cos(angle), math.sin(angle)) * (255.0 * speedMul),
               damage: 1,
               color: const Color(0xFFFB7185),
@@ -1701,16 +1833,16 @@ class ArcadeGameController extends ChangeNotifier {
           );
         }
         audio.playBossAttack();
-        boss.attackCooldown = boss.isPhase2 ? 1.45 : 1.95;
+        boss.attackCooldown = boss.isPhase2 ? 1.40 : 1.90;
         break;
 
       case BossAttackPattern.waveSweep:
         for (int i = -2; i <= 2; i++) {
-          if (i == 0 && !boss.isPhase2) continue; // Wide central gap for fair dodging
-          if (i == 1 && boss.isPhase2) continue; // Fair dodge corridor in Phase 2 too
+          if (i == 0 && !boss.isPhase2) continue;
+          if (i == 1 && boss.isPhase2) continue;
           enemyProjectiles.add(
             CapsuleProjectile(
-              position: boss.position + Offset(-45, i * 26.0),
+              position: boss.position + Offset(-48, i * 26.0),
               velocity: Offset(-280.0 * speedMul, i * 32.0),
               damage: 1,
               color: const Color(0xFFFB923C),
@@ -1721,7 +1853,7 @@ class ArcadeGameController extends ChangeNotifier {
           );
         }
         audio.playBossAttack();
-        boss.attackCooldown = boss.isPhase2 ? 1.4 : 1.9;
+        boss.attackCooldown = boss.isPhase2 ? 1.38 : 1.85;
         break;
 
       case BossAttackPattern.chargeTelegraph:
@@ -1735,12 +1867,11 @@ class ArcadeGameController extends ChangeNotifier {
       case BossAttackPattern.radialBurst:
         final int spokeCount = boss.isPhase2 ? 7 : 5;
         for (int s = 0; s < spokeCount; s++) {
-          // Fan westward toward player with clean dodging gaps between spokes
           final double frac = s / math.max(1, spokeCount - 1);
           final double ang = math.pi + (frac - 0.5) * 1.45;
           enemyProjectiles.add(
             CapsuleProjectile(
-              position: boss.position + Offset(math.cos(ang), math.sin(ang)) * 34.0,
+              position: boss.position + Offset(math.cos(ang), math.sin(ang)) * 38.0,
               velocity: Offset(math.cos(ang), math.sin(ang)) * (235.0 * speedMul),
               damage: 1,
               color: const Color(0xFFA78BFA),
@@ -1751,7 +1882,14 @@ class ArcadeGameController extends ChangeNotifier {
           );
         }
         audio.playBossAttack();
-        boss.attackCooldown = boss.isPhase2 ? 1.5 : 2.0;
+        boss.attackCooldown = boss.isPhase2 ? 1.45 : 1.95;
+        break;
+
+      case BossAttackPattern.laserBeamTelegraph:
+        boss.currentPattern = BossAttackPattern.laserBeamFire;
+        boss.beamTimer = 0.65;
+        audio.playBossLaser();
+        screenShake = math.max(screenShake, 0.45);
         break;
 
       case BossAttackPattern.spawnMinions:
@@ -1760,20 +1898,21 @@ class ArcadeGameController extends ChangeNotifier {
           enemies.add(
             ArcadeEnemy(
               id: _nextDynamicId++,
-              position: boss.position + Offset(-52.0, s == 0 ? -55.0 : 55.0),
+              position: boss.position + Offset(-55.0, s == 0 ? -55.0 : 55.0),
               velocity: const Offset(-65.0, 0.0),
               type: s == 0 ? EnemyType.spikeVirion : EnemyType.helicoGrub,
-              maxHp: 3 + (level / 4).floor(),
+              maxHp: 3 + (level.clamp(1, 7) / 4).floor(),
               radius: 18.0,
-              scoreReward: 130,
-              xpReward: 30,
+              scoreReward: 140,
+              xpReward: 32,
             ),
           );
         }
-        boss.attackCooldown = 1.75;
+        boss.attackCooldown = 1.7;
         break;
 
       case BossAttackPattern.chargeDash:
+      case BossAttackPattern.laserBeamFire:
         break;
     }
   }
@@ -1886,7 +2025,8 @@ class ArcadeGameController extends ChangeNotifier {
           p.hitEnemyIds.add(enemy.id);
           if (!p.isPiercing) removeBullet = true;
 
-          _emitHitSparks(enemy.position, color: p.color);
+          audio.playEnemyHit();
+          _emitHitSparks(p.position, color: p.color);
 
           if (enemy.isDead) {
             _onEnemyDefeated(enemy, dropChance: 0.30);
@@ -1897,10 +2037,11 @@ class ArcadeGameController extends ChangeNotifier {
 
       if (!removeBullet && state == GameState.bossFight && !boss.isDefeated) {
         final dist = (p.position - boss.position).distance;
-        if (dist < p.radius + 62.0 && !p.hitEnemyIds.contains(-999)) {
+        if (dist < p.radius + 68.0 && !p.hitEnemyIds.contains(-999)) {
           boss.takeDamage(p.damage);
           p.hitEnemyIds.add(-999);
           removeBullet = true;
+          audio.playEnemyHit();
           _emitHitSparks(p.position, color: player.isMaxSynergy ? const Color(0xFFFBBF24) : p.color);
           score += 45 * p.damage;
           earnedXp += 4;
@@ -1954,9 +2095,18 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 5. Boss Physical Collision in Arena
+    // 5. Boss Physical Collision & Sweeping Laser Beam in Arena
     if (state == GameState.bossFight && !boss.isDefeated && !player.isInvulnerable) {
-      if ((player.position - boss.position).distance < player.radius + 54.0) {
+      if (boss.isFiringBeam &&
+          player.position.dx < boss.position.dx - 30.0 &&
+          (player.position.dy - boss.beamTargetY).abs() < player.radius + 16.0) {
+        if (player.isShieldActive) {
+          player.triggerShieldDeflect();
+          _emitShieldDeflect(player.position);
+        } else {
+          _damagePlayer();
+        }
+      } else if ((player.position - boss.position).distance < player.radius + 58.0) {
         if (player.isShieldActive) {
           player.triggerShieldDeflect();
           _emitShieldDeflect(player.position);
@@ -1996,14 +2146,16 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 7. Educational Checkpoints
-    if (state == GameState.playing) {
+    // 7. Educational Checkpoints (smooth portal deceleration + clear nearby projectiles)
+    if (state == GameState.playing && _pendingCheckpoint == null) {
       for (final cp in checkpoints) {
-        if (!cp.isTriggered && player.position.dx >= cp.worldX - 24.0) {
+        if (!cp.isTriggered && player.position.dx >= cp.worldX - 42.0) {
           cp.isTriggered = true;
-          activeCheckpoint = cp;
-          state = GameState.checkpoint;
-          audio.playTargetLock();
+          _pendingCheckpoint = cp;
+          checkpointWarpTimer = 0.34;
+          player.isShooting = false;
+          enemyProjectiles.removeWhere((ep) => (ep.position - player.position).distance < 280.0);
+          audio.playCheckpointOpen();
           break;
         }
       }
@@ -2012,7 +2164,8 @@ class ArcadeGameController extends ChangeNotifier {
     // 8. Entering Boss Chamber!
     if (state == GameState.playing && player.position.dx >= totalDistance - 950.0) {
       state = GameState.bossIntro;
-      bossIntroTimer = 2.0;
+      bossIntroTimer = 2.5;
+      enemyProjectiles.clear();
       audio.playBossEntrance();
       audio.startBossBgm();
       notifyListeners();
@@ -2115,8 +2268,10 @@ class ArcadeGameController extends ChangeNotifier {
     }
 
     // Clear nearby enemy projectiles so student never takes an unfair hit right on resume
-    enemyProjectiles.removeWhere((ep) => (ep.position - player.position).distance < 240.0);
+    enemyProjectiles.removeWhere((ep) => (ep.position - player.position).distance < 260.0);
 
+    _pendingCheckpoint = null;
+    checkpointWarpTimer = 0.0;
     activeCheckpoint = null;
     state = GameState.playing;
     notifyListeners();
@@ -2200,7 +2355,7 @@ class ArcadeGameController extends ChangeNotifier {
     if (revisionNumber != null) {
       // Track revision stage results separately from the original stageResults
       progress.completeRevisionStage(
-        revisionNumber: revisionNumber!,
+        revisionNumber: 1,
         score: score,
         stars: lastStarsEarned,
         correctCount: correctAnswersInStage,
@@ -2215,7 +2370,7 @@ class ArcadeGameController extends ChangeNotifier {
       );
     } else {
       final previousWeapons = List<String>.from(progress.unlockedWeapons);
-      progress.completeLevel(level, lastStarsEarned, score, crystalsCollected);
+      progress.completeLevel(level.clamp(1, 7), lastStarsEarned, score, crystalsCollected);
       progress.updateArcadeStats(
         score: score,
         combo: highestCombo,

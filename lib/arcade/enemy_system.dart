@@ -44,6 +44,8 @@ class ArcadeEnemy {
   double dodgeCooldown = 0.0;
   double dodgeDirY = 1.0;
   double facingTilt = 0.0;
+  double lungeBoostTimer = 0.0;
+  bool justAttacked = false;
   Offset knockbackVel = Offset.zero;
   final double _baseHorizontalSpeed;
 
@@ -71,6 +73,7 @@ class ArcadeEnemy {
   bool get isDodging => dodgeTimer > 0;
   bool get isFleeing => behaviorState == EnemyBehaviorState.flee;
   bool get isChasing => behaviorState == EnemyBehaviorState.chase;
+  bool get isInjured => currentHp <= (maxHp * 0.5).floor();
 
   void takeDamage(int dmg, {Offset hitDirection = const Offset(1, 0)}) {
     currentHp = math.max(0, currentHp - dmg);
@@ -119,6 +122,8 @@ class ArcadeEnemy {
     if (attackRecoilTimer > 0) attackRecoilTimer = math.max(0.0, attackRecoilTimer - dt);
     if (dodgeCooldown > 0) dodgeCooldown = math.max(0.0, dodgeCooldown - dt);
     if (dodgeTimer > 0) dodgeTimer = math.max(0.0, dodgeTimer - dt);
+    if (lungeBoostTimer > 0) lungeBoostTimer = math.max(0.0, lungeBoostTimer - dt);
+    justAttacked = false;
 
     // Exponential decay for smooth impact knockback
     final kbDecay = math.pow(0.03, dt).toDouble();
@@ -171,14 +176,14 @@ class ArcadeEnemy {
         break;
 
       case EnemyType.toxicSpore:
-        // Nervous agile escapist: darts and tries to slip around / evade player!
+        // Aggressive volatile mine: stealth patrols, then actively hunts player & fires spore burst!
         if (dodgeTimer > 0) {
           behaviorState = EnemyBehaviorState.dodge;
           desiredVel = Offset(
             90.0 * speedMultiplier,
             dodgeDirY * 220.0 * speedMultiplier,
           );
-        } else if (distToPlayer < 210.0) {
+        } else if (distToPlayer < 175.0) {
           behaviorState = EnemyBehaviorState.flee;
           final escapeSignX = position.dx >= playerPos.dx ? 1.0 : -1.0;
           final escapeSignY = position.dy >= playerPos.dy ? 1.0 : -1.0;
@@ -186,40 +191,89 @@ class ArcadeEnemy {
             escapeSignX * 118.0 * speedMultiplier,
             escapeSignY * 145.0 * speedMultiplier,
           );
+        } else if (distToPlayer < 410.0) {
+          behaviorState = EnemyBehaviorState.chase;
+          desiredVel = dirToPlayer * (128.0 * speedMultiplier);
+          if (attackAnimTimer > 0) {
+            behaviorState = EnemyBehaviorState.attackWindup;
+            attackAnimTimer = math.max(0.0, attackAnimTimer - dt);
+            if (attackAnimTimer <= 0 && distToPlayer < 460.0) {
+              for (int k = -1; k <= 1; k += 2) {
+                final ang = math.atan2(toPlayer.dy, toPlayer.dx) + k * 0.34;
+                enemyProjectiles.add(
+                  CapsuleProjectile(
+                    position: position,
+                    velocity: Offset(math.cos(ang), math.sin(ang)) * (215.0 * speedMultiplier),
+                    damage: 1,
+                    color: const Color(0xFF34D399),
+                    radius: 5.5,
+                    isEnemy: true,
+                  ),
+                );
+              }
+              justAttacked = true;
+              attackRecoilTimer = 0.20;
+            }
+          } else {
+            shootCooldown -= dt * speedMultiplier;
+            if (shootCooldown <= 0 && speedMultiplier >= 1.08 && distToPlayer < 380.0) {
+              shootCooldown = shootInterval * 1.25;
+              attackAnimTimer = 0.32;
+            }
+          }
         } else {
           behaviorState = EnemyBehaviorState.patrol;
           final targetY = centerCorridorY + math.sin(animPhase * 1.4) * 75.0;
           desiredVel = Offset(
-            _baseHorizontalSpeed * 1.1 * speedMultiplier,
+            _baseHorizontalSpeed * 1.15 * speedMultiplier,
             (targetY - position.dy) * 2.2 * speedMultiplier,
           );
         }
         break;
 
       case EnemyType.spikeVirion:
-        // Active Chaser / Predator: locks on, winds up spines, then chases capsule!
-        if (distToPlayer < 520.0) {
+        // Active Chaser / Predator: locks on, winds up spines, lunges & spits spike pellet!
+        if (distToPlayer < 560.0) {
           if (attackAnimTimer > 0) {
             attackAnimTimer = math.max(0.0, attackAnimTimer - dt);
             behaviorState = EnemyBehaviorState.attackWindup;
-            desiredVel = dirToPlayer * (48.0 * speedMultiplier);
+            desiredVel = dirToPlayer * (62.0 * speedMultiplier);
+            if (attackAnimTimer <= 0) {
+              lungeBoostTimer = 0.48;
+              attackRecoilTimer = 0.22;
+              if (distToPlayer < 480.0 && speedMultiplier >= 1.05) {
+                enemyProjectiles.add(
+                  CapsuleProjectile(
+                    position: position + dirToPlayer * (radius + 4),
+                    velocity: dirToPlayer * (250.0 * speedMultiplier),
+                    damage: 1,
+                    color: const Color(0xFFF43F5E),
+                    radius: 5.8,
+                    isEnemy: true,
+                  ),
+                );
+                justAttacked = true;
+              }
+            }
           } else {
             behaviorState = EnemyBehaviorState.chase;
-            final double chaseSpeed = (distToPlayer < 240.0 ? 195.0 : 148.0) * speedMultiplier;
+            final double lungeMul = lungeBoostTimer > 0 ? 1.48 : 1.0;
+            final double chaseSpeed =
+                (distToPlayer < 260.0 ? 205.0 : 158.0) * speedMultiplier * lungeMul;
             desiredVel = dirToPlayer * chaseSpeed;
             if (shootCooldown > 0) {
               shootCooldown -= dt;
-              if (shootCooldown <= 0 && distToPlayer < 280.0) {
+              if (shootCooldown <= 0 && distToPlayer < 320.0) {
                 attackAnimTimer = 0.28;
-                shootCooldown = 2.4;
+                shootCooldown = 2.2;
               }
             }
           }
         } else {
           behaviorState = EnemyBehaviorState.patrol;
           desiredVel = Offset(
-            _baseHorizontalSpeed * 1.25 * speedMultiplier,
-            math.sin(animPhase * 1.8) * 55.0,
+            _baseHorizontalSpeed * 1.30 * speedMultiplier,
+            math.sin(animPhase * 1.8) * 58.0,
           );
         }
         break;
@@ -252,13 +306,14 @@ class ArcadeEnemy {
             enemyProjectiles.add(
               CapsuleProjectile(
                 position: position + shootDir * (radius + 4),
-                velocity: shootDir * (245.0 * speedMultiplier),
+                velocity: shootDir * (250.0 * speedMultiplier),
                 damage: 1,
                 color: const Color(0xFFFB7185),
                 radius: 6.5,
                 isEnemy: true,
               ),
             );
+            justAttacked = true;
             attackRecoilTimer = 0.22;
           }
         } else {
@@ -272,9 +327,9 @@ class ArcadeEnemy {
 
       case EnemyType.acidSentry:
         // Armored Reactive Striker: tracks player lane & fires aimed twin/triple bursts
-        final double trackVy = (playerPos.dy - position.dy).clamp(-110.0, 110.0) * 1.15;
+        final double trackVy = (playerPos.dy - position.dy).clamp(-115.0, 115.0) * 1.18;
         desiredVel = Offset(
-          distToPlayer > 420.0 ? _baseHorizontalSpeed * speedMultiplier : -18.0 * speedMultiplier,
+          distToPlayer > 430.0 ? _baseHorizontalSpeed * speedMultiplier : -20.0 * speedMultiplier,
           trackVy + math.sin(animPhase * 2.1) * 35.0,
         );
 
@@ -283,13 +338,13 @@ class ArcadeEnemy {
           attackAnimTimer = math.max(0.0, attackAnimTimer - dt);
           if (attackAnimTimer <= 0 && distToPlayer < 640.0) {
             final baseAngle = math.atan2(toPlayer.dy, toPlayer.dx);
-            final spreads = speedMultiplier >= 1.18 ? [-0.22, 0.0, 0.22] : [-0.18, 0.18];
+            final spreads = speedMultiplier >= 1.16 ? [-0.22, 0.0, 0.22] : [-0.18, 0.18];
             for (final sp in spreads) {
               final ang = baseAngle + sp;
               enemyProjectiles.add(
                 CapsuleProjectile(
                   position: position + Offset(math.cos(ang), math.sin(ang)) * (radius + 4),
-                  velocity: Offset(math.cos(ang), math.sin(ang)) * (270.0 * speedMultiplier),
+                  velocity: Offset(math.cos(ang), math.sin(ang)) * (272.0 * speedMultiplier),
                   damage: 1,
                   color: const Color(0xFFFBBF24),
                   radius: 5.8,
@@ -297,6 +352,7 @@ class ArcadeEnemy {
                 ),
               );
             }
+            justAttacked = true;
             attackRecoilTimer = 0.24;
           }
         } else {

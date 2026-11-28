@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/storage_service.dart';
 import '../theme/capsule_theme.dart';
 import '../utils/fullscreen_util.dart';
 import '../widgets/tactile_button.dart';
@@ -131,11 +132,37 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
                 ),
                 const SizedBox(width: 10),
 
-                // 3. TOP RIGHT: Score + XP + Fullscreen + Pause
+                // 3. TOP RIGHT: Score + XP + Audio Mute + Fullscreen + Pause
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildScoreAndXp(isTightHeight),
+                    const SizedBox(width: 6),
+                    _buildIconCircleButton(
+                      icon: controller.audio.isMuted
+                          ? Icons.volume_off_rounded
+                          : Icons.volume_up_rounded,
+                      iconColor: controller.audio.isMuted
+                          ? CapsuleColors.coral
+                          : CapsuleColors.mintGreen,
+                      onTap: () {
+                        final next = !controller.audio.isMuted;
+                        controller.audio.setMuted(next);
+                        if (!next) {
+                          if (controller.state == GameState.bossFight ||
+                              controller.state == GameState.bossIntro) {
+                            controller.audio.startBossBgm();
+                          } else if (controller.isRevisionStage) {
+                            controller.audio.startRevisionBgm();
+                          } else {
+                            controller.audio.startBgm(controller.level);
+                          }
+                        }
+                        controller.progress.isMuted = next;
+                        StorageService().saveProgress(controller.progress);
+                        setState(() {});
+                      },
+                    ),
                     const SizedBox(width: 6),
                     _buildIconCircleButton(
                       icon: FullscreenUtil.isFullscreen
@@ -267,56 +294,112 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     final weapon = controller.equippedWeaponConfig;
     final dmgMult = controller.player.knowledgeDamageMultiplier;
     final hasPowerBonus = dmgMult > 1.05;
+    final canSwitch = controller.progress.unlockedWeapons.length > 1;
+    final cooldownFrac = (1.0 -
+            (controller.player.shootCooldownTimer /
+                math.max(0.05, weapon.cooldownSeconds)))
+        .clamp(0.0, 1.0);
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: isTight ? 8 : 10, vertical: isTight ? 4 : 5),
-      decoration: BoxDecoration(
-        color: CapsuleColors.deepOcean.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: controller.player.isMaxSynergy
-              ? CapsuleColors.gold
-              : weapon.glowColor.withValues(alpha: 0.6),
+    return GestureDetector(
+      onTap: canSwitch ? controller.cycleEquippedWeapon : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isTight ? 8 : 10,
+          vertical: isTight ? 4 : 5,
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            weapon.icon,
-            color: controller.player.isMaxSynergy ? CapsuleColors.gold : weapon.glowColor,
-            size: isTight ? 14 : 16,
+        decoration: BoxDecoration(
+          color: CapsuleColors.deepOcean.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: controller.player.isMaxSynergy
+                ? CapsuleColors.gold
+                : weapon.glowColor.withValues(alpha: 0.72),
+            width: 1.3,
           ),
-          const SizedBox(width: 6),
-          Text(
-            weapon.shortName,
-            style: GoogleFonts.plusJakartaSans(
-              color: CapsuleColors.textWhite,
-              fontSize: isTight ? 10.5 : 11.5,
-              fontWeight: FontWeight.w800,
+          boxShadow: [
+            BoxShadow(
+              color: weapon.glowColor.withValues(alpha: 0.22),
+              blurRadius: 8,
             ),
-          ),
-          if (hasPowerBonus) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: controller.player.isMaxSynergy
-                    ? CapsuleColors.gold
-                    : CapsuleColors.mintGreen,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'x${dmgMult.toStringAsFixed(1)}',
-                style: GoogleFonts.orbitron(
-                  color: CapsuleColors.deepOcean,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  weapon.icon,
+                  color: controller.player.isMaxSynergy
+                      ? CapsuleColors.gold
+                      : weapon.glowColor,
+                  size: isTight ? 14 : 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  weapon.shortName,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.textWhite,
+                    fontSize: isTight ? 10.5 : 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '∞',
+                  style: GoogleFonts.orbitron(
+                    color: weapon.glowColor,
+                    fontSize: isTight ? 10.5 : 11.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (hasPowerBonus) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: controller.player.isMaxSynergy
+                          ? CapsuleColors.gold
+                          : CapsuleColors.mintGreen,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'x${dmgMult.toStringAsFixed(1)}',
+                      style: GoogleFonts.orbitron(
+                        color: CapsuleColors.deepOcean,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+                if (canSwitch) ...[
+                  const SizedBox(width: 5),
+                  Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 13,
+                    color: CapsuleColors.cyanGlow.withValues(alpha: 0.85),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 3),
+            SizedBox(
+              width: isTight ? 96 : 118,
+              height: 2.8,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: cooldownFrac,
+                  backgroundColor: CapsuleColors.oceanSurface,
+                  valueColor: AlwaysStoppedAnimation<Color>(weapon.glowColor),
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -327,7 +410,7 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
     final nextCp = controller.checkpoints.where((c) => !c.isCompleted).firstOrNull;
     final bool isQuestionNear = nextCp != null &&
         (nextCp.worldX - controller.player.position.dx) > 0 &&
-        (nextCp.worldX - controller.player.position.dx) < 280.0;
+        (nextCp.worldX - controller.player.position.dx) < 420.0;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 360),
@@ -336,8 +419,10 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
         color: CapsuleColors.deepOcean.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isQuestionNear ? CapsuleColors.cyanGlow : CapsuleColors.cardBorder,
-          width: isQuestionNear ? 1.6 : 1.0,
+          color: controller.isRevisionStage
+              ? CapsuleColors.gold
+              : (isQuestionNear ? CapsuleColors.cyanGlow : CapsuleColors.cardBorder),
+          width: (controller.isRevisionStage || isQuestionNear) ? 1.6 : 1.0,
         ),
         boxShadow: isQuestionNear
             ? [
@@ -357,10 +442,8 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
               Flexible(
                 child: Text(
                   controller.isRevisionStage
-                      ? 'RÉVISION #${controller.revisionNumber} • ${controller.world.name}'
-                      : (controller.level > 7
-                          ? 'STAGE ${controller.level} • ${controller.world.name}'
-                          : controller.world.name),
+                      ? 'RÉVISION SPÉCIALE • CONSOLIDATION'
+                      : 'STAGE ${controller.level} • ${controller.world.name}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
@@ -439,16 +522,26 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
 
   Widget _buildBossHpHeader(bool isTight) {
     final boss = controller.boss;
+    final String phaseLabel = boss.isPhase3
+        ? 'CRITIQUE'
+        : (boss.isPhase2 ? 'PHASE 2 ENRAGÉE' : 'DANGER ${boss.dangerLevel}');
+    final Color barAccent = boss.isPhase3
+        ? CapsuleColors.dangerRed
+        : (boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.gold);
+
     return Container(
-      constraints: const BoxConstraints(maxWidth: 360),
+      constraints: const BoxConstraints(maxWidth: 390),
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: isTight ? 5 : 7),
       decoration: BoxDecoration(
-        color: CapsuleColors.deepOcean.withValues(alpha: 0.90),
+        color: CapsuleColors.deepOcean.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.dangerOrange,
-          width: 1.5,
-        ),
+        border: Border.all(color: barAccent, width: 1.7),
+        boxShadow: [
+          BoxShadow(
+            color: barAccent.withValues(alpha: 0.30),
+            blurRadius: 12,
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -458,11 +551,11 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
             children: [
               Flexible(
                 child: Text(
-                  '${boss.name.toUpperCase()} • ${boss.isPhase2 ? "PHASE 2" : "DANGER ${boss.dangerLevel}"}',
+                  '${boss.name.toUpperCase()} • $phaseLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.gold,
+                    color: barAccent,
                     fontSize: isTight ? 10 : 11,
                     fontWeight: FontWeight.w900,
                   ),
@@ -481,13 +574,44 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
           ),
           const SizedBox(height: 5),
           ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: LinearProgressIndicator(
-              value: boss.healthRatio,
-              minHeight: 7,
-              backgroundColor: CapsuleColors.oceanSurface,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                boss.isPhase2 ? CapsuleColors.coral : CapsuleColors.dangerOrange,
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 9,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  return Stack(
+                    children: [
+                      Container(color: CapsuleColors.oceanSurface),
+                      // Delayed ghost damage trail bar
+                      Container(
+                        width: w * boss.displayedHealthRatio.clamp(0.0, 1.0),
+                        color: Colors.white.withValues(alpha: 0.45),
+                      ),
+                      // Active HP gradient bar
+                      Container(
+                        width: w * boss.healthRatio,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: boss.isPhase2
+                                ? const [Color(0xFFFB7185), Color(0xFFF43F5E)]
+                                : const [Color(0xFFFBBF24), Color(0xFFF97316)],
+                          ),
+                        ),
+                      ),
+                      // 50% Phase 2 threshold tick marker
+                      Positioned(
+                        left: w * 0.5 - 1,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 2,
+                          color: Colors.white.withValues(alpha: 0.72),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -778,45 +902,59 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
   Widget _buildBossIntroBanner() {
     final boss = controller.boss;
     return IgnorePointer(
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          decoration: BoxDecoration(
-            color: CapsuleColors.deepOcean.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: CapsuleColors.dangerOrange, width: 2),
-            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 18)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'ALERTE PATHOGÈNE • DANGER : ${boss.dangerLevel}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: CapsuleColors.gold,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
-                ),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 66),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  CapsuleColors.deepOcean.withValues(alpha: 0.94),
+                  CapsuleColors.oceanSurface.withValues(alpha: 0.94),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                boss.name.toUpperCase(),
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: CapsuleColors.coral, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: CapsuleColors.coral.withValues(alpha: 0.38),
+                  blurRadius: 22,
                 ),
-              ),
-              Text(
-                'Votre puissance : x${controller.player.knowledgeDamageMultiplier.toStringAsFixed(1)}',
-                style: GoogleFonts.inter(
-                  color: CapsuleColors.mintGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'ALERTE MENACE CRITIQUE • NIVEAU ${boss.dangerLevel}',
+                  style: GoogleFonts.orbitron(
+                    color: CapsuleColors.gold,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  boss.name.toUpperCase(),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '${boss.title} • Synergie x${controller.player.knowledgeDamageMultiplier.toStringAsFixed(1)}',
+                  style: GoogleFonts.inter(
+                    color: CapsuleColors.mintGreen,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

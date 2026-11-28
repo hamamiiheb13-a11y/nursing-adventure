@@ -285,12 +285,42 @@ class GastroWorld {
     ),
   ];
 
+  static final GastroWorld revisionWorld = GastroWorld(
+    id: 7,
+    name: 'RÉVISION FINALE',
+    subtitle: 'Consolidation Ciblée des 7 Stages',
+    theme: 'revision',
+    description:
+        'Stage spécial consacré exclusivement aux questions manquées durant les 7 stages originaux.',
+    primaryColor: const Color(0xFFFBBF24),
+    secondaryColor: const Color(0xFF22D3EE),
+    questionIds: const [],
+    bossName: 'Gardien du Savoir • Synthèse',
+    bossDescription:
+        'Épreuve spéciale de révision consolidant vos connaissances cliniques MICI.',
+    bossDangerLevel: 'SPÉCIAL',
+    environmentDescription:
+        'Sanctuaire saphir et or illuminé de courants thérapeutiques et filaments dorés.',
+    organZone: 'Stage Spécial de Révision (Stages 1–7)',
+    stageMechanicHint: 'Rappel ciblé des notions à consolider sans répétition inutile',
+    acquiredSkills: const [
+      'Consolidation des acquis MICI',
+      'Maîtrise clinique complète',
+    ],
+    isUnlocked: true,
+    icon: Icons.auto_stories_rounded,
+    guideWelcome:
+        'Bienvenue dans le Stage de Révision ! Revenons uniquement sur les notions à renforcer.',
+    tunnelDeepColorCustom: const Color(0xFF103866),
+    tunnelWallColorCustom: const Color(0xFFB45309),
+    tunnelFringeColorCustom: const Color(0xFFFDE047),
+    unlockedWeaponNameCustom: 'Rayon Thérapeutique Ultime',
+  );
+
   static GastroWorld getWorldForLevel(int level) {
     if (level <= 0) return worlds.first;
-    if (level <= worlds.length) {
-      return worlds[level - 1];
-    }
-    return worlds[(level - 1) % worlds.length];
+    final clamped = level.clamp(1, worlds.length);
+    return worlds[clamped - 1];
   }
 
   static GastroWorld getWorldForQuestionId(int questionId) {

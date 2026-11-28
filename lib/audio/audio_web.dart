@@ -73,6 +73,24 @@ external void _nursingAudioPlayBossAttack();
 @JS('NursingAudio.playBossDefeat')
 external void _nursingAudioPlayBossDefeat();
 
+@JS('NursingAudio.playEnemyHit')
+external void _nursingAudioPlayEnemyHit();
+
+@JS('NursingAudio.playEnemyDefeat')
+external void _nursingAudioPlayEnemyDefeat();
+
+@JS('NursingAudio.playEnemyAttack')
+external void _nursingAudioPlayEnemyAttack();
+
+@JS('NursingAudio.playCheckpointOpen')
+external void _nursingAudioPlayCheckpointOpen();
+
+@JS('NursingAudio.playOptionSelect')
+external void _nursingAudioPlayOptionSelect();
+
+@JS('NursingAudio.playBossPhase2')
+external void _nursingAudioPlayBossPhase2();
+
 @JS('NursingAudio.playRevive')
 external void _nursingAudioPlayRevive();
 
@@ -87,6 +105,9 @@ external void _nursingAudioPlayExplanationOpen();
 
 @JS('NursingAudio.startBgm')
 external void _nursingAudioStartBgm(int stageId);
+
+@JS('NursingAudio.startRevisionBgm')
+external void _nursingAudioStartRevisionBgm();
 
 @JS('NursingAudio.startBossBgm')
 external void _nursingAudioStartBossBgm();
@@ -282,6 +303,48 @@ class AudioPlatformService implements AudioServiceInterface {
   }
 
   @override
+  void playEnemyHit() {
+    try {
+      _nursingAudioPlayEnemyHit();
+    } catch (_) {}
+  }
+
+  @override
+  void playEnemyDefeat() {
+    try {
+      _nursingAudioPlayEnemyDefeat();
+    } catch (_) {}
+  }
+
+  @override
+  void playEnemyAttack() {
+    try {
+      _nursingAudioPlayEnemyAttack();
+    } catch (_) {}
+  }
+
+  @override
+  void playCheckpointOpen() {
+    try {
+      _nursingAudioPlayCheckpointOpen();
+    } catch (_) {}
+  }
+
+  @override
+  void playOptionSelect() {
+    try {
+      _nursingAudioPlayOptionSelect();
+    } catch (_) {}
+  }
+
+  @override
+  void playBossPhase2() {
+    try {
+      _nursingAudioPlayBossPhase2();
+    } catch (_) {}
+  }
+
+  @override
   void playRevive() {
     try {
       _nursingAudioPlayRevive();
@@ -313,6 +376,13 @@ class AudioPlatformService implements AudioServiceInterface {
   void startBgm([int stageId = 1]) {
     try {
       _nursingAudioStartBgm(stageId);
+    } catch (_) {}
+  }
+
+  @override
+  void startRevisionBgm() {
+    try {
+      _nursingAudioStartRevisionBgm();
     } catch (_) {}
   }
 

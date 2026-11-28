@@ -422,7 +422,7 @@ void main() {
       controller.update(0.016);
       expect(controller.state, GameState.bossIntro);
 
-      for (int i = 0; i < 50; i++) {
+      for (int i = 0; i < 55; i++) {
         controller.update(0.05);
       }
       expect(controller.state, GameState.bossFight);
@@ -467,6 +467,61 @@ void main() {
       }
       expect(controller.state, GameState.victory);
       expect(controller.crystalsCollected >= 0, true);
+    });
+
+    test('Boss sweeping laser, Phase 3 escalation, smooth HP ratio, and weapon cycling work', () {
+      final progress = GameProgress(playerId: 'boss-laser-tester', playerName: 'Youssef');
+      progress.unlockedWeapons.add('Double Laser Océan');
+      final controller = ArcadeGameController(level: 3, progress: progress);
+      controller.start();
+
+      // Long spacing between questions (>= 5800 totalDistance and >= 950 gap)
+      expect(controller.totalDistance, greaterThanOrEqualTo(5800.0));
+      for (int i = 1; i < controller.checkpoints.length; i++) {
+        final gap = controller.checkpoints[i].worldX - controller.checkpoints[i - 1].worldX;
+        expect(gap, greaterThanOrEqualTo(950.0));
+      }
+
+      // 1-tap weapon swap cycles through unlocked arsenal cleanly
+      final initialWeapon = controller.progress.equippedWeapon;
+      controller.cycleEquippedWeapon();
+      expect(controller.progress.equippedWeapon, isNot(initialWeapon));
+      controller.cycleEquippedWeapon();
+      expect(controller.progress.equippedWeapon, initialWeapon);
+
+      // Enter Boss Fight & verify Phase 3 threshold + smooth displayedHealthRatio
+      for (final cp in controller.checkpoints) {
+        cp.isTriggered = true;
+      }
+      controller.player.position = Offset(controller.totalDistance - 940.0, 250.0);
+      controller.update(0.016);
+      for (int i = 0; i < 55; i++) {
+        controller.update(0.05);
+      }
+      expect(controller.state, GameState.bossFight);
+
+      // Reduce HP to <= 25% -> triggers Phase 3 & smooth displayedHealthRatio easing
+      final targetHp = (controller.boss.maxHp * 0.2).floor();
+      controller.boss.takeDamage(controller.boss.currentHp - targetHp);
+      expect(controller.boss.isPhase2, true);
+      expect(controller.boss.isPhase3, true);
+      controller.update(0.05);
+      expect(controller.boss.displayedHealthRatio, greaterThan(controller.boss.healthRatio));
+      expect(controller.boss.displayedHealthRatio, lessThan(1.0));
+
+      // Trigger Boss Laser Beam Telegraph -> Laser Beam Fire sweep
+      controller.boss.currentPattern = BossAttackPattern.laserBeamTelegraph;
+      controller.boss.telegraphTimer = 0.04;
+      controller.boss.beamTargetY = controller.player.position.dy - 10;
+      controller.boss.beamSweepDelta = 24.0;
+      controller.update(0.05);
+      expect(controller.boss.currentPattern, BossAttackPattern.laserBeamFire);
+      expect(controller.boss.isFiringBeam, true);
+      expect(controller.boss.beamTimer, greaterThan(0.5));
+      for (int i = 0; i < 16; i++) {
+        controller.update(0.05);
+      }
+      expect(controller.boss.isFiringBeam, false);
     });
   });
 }
