@@ -9,6 +9,8 @@ import '../theme/capsule_theme.dart';
 
 class CapsuleWarriorsStageVictoryScreen extends StatefulWidget {
   final int stageId;
+  final int? revisionNumber;
+  final bool isBonusRevisionChallenge;
   final int score;
   final int? starsOverride;
   final int questionsCorrect;
@@ -18,12 +20,15 @@ class CapsuleWarriorsStageVictoryScreen extends StatefulWidget {
   final int secondsElapsed;
   final String? unlockedWeapon;
   final VoidCallback onNextStage;
+  final VoidCallback? onViewDiploma;
   final VoidCallback onReplay;
   final VoidCallback onStageMap;
 
   const CapsuleWarriorsStageVictoryScreen({
     super.key,
     required this.stageId,
+    this.revisionNumber,
+    this.isBonusRevisionChallenge = false,
     required this.score,
     this.starsOverride,
     this.questionsCorrect = 4,
@@ -33,6 +38,7 @@ class CapsuleWarriorsStageVictoryScreen extends StatefulWidget {
     this.secondsElapsed = 65,
     this.unlockedWeapon,
     required this.onNextStage,
+    this.onViewDiploma,
     required this.onReplay,
     required this.onStageMap,
   });
@@ -103,10 +109,16 @@ class _CapsuleWarriorsStageVictoryScreenState
 
   @override
   Widget build(BuildContext context) {
+    final bool isRevision = widget.revisionNumber != null;
+    final int revNum = widget.revisionNumber ?? (widget.stageId ~/ 7);
+    final bool triggersRevisionNext = !isRevision && widget.stageId % 7 == 0;
     final world = GastroWorld.getWorldForLevel(widget.stageId);
-    final nextWorld = widget.stageId < 7
-        ? GastroWorld.getWorldForLevel(widget.stageId + 1)
-        : null;
+    final nextStageId = isRevision
+        ? (widget.revisionNumber! * 7 + 1)
+        : (widget.stageId + 1);
+    final nextWorld = triggersRevisionNext
+        ? null
+        : GastroWorld.getWorldForLevel(nextStageId);
     final weaponUnlocked = widget.unlockedWeapon ?? world.unlockedWeaponName;
     final earnedXp = _starsEarned * 100 + widget.questionsCorrect * 50;
     final incorrectCount = math.max(0, widget.questionsTotal - widget.questionsCorrect);
@@ -175,7 +187,11 @@ class _CapsuleWarriorsStageVictoryScreenState
                     const SizedBox(height: 4),
 
                     Text(
-                      'MISSION ACCOMPLIE !',
+                      isRevision
+                          ? (widget.isBonusRevisionChallenge
+                              ? 'DÉFI BONUS VALIDÉ !'
+                              : 'RÉVISION $revNum ACCOMPLIE !')
+                          : 'MISSION ACCOMPLIE !',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.orbitron(
                         fontSize: isCompact ? 18 : 22,
@@ -192,7 +208,9 @@ class _CapsuleWarriorsStageVictoryScreenState
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'STAGE ${widget.stageId} • ${world.organZone.toUpperCase()}',
+                      isRevision
+                          ? 'STAGE DE RÉVISION #$revNum • CONSOLIDATION'
+                          : 'STAGE ${widget.stageId} • ${world.organZone.toUpperCase()}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         color: world.primaryColor,
@@ -405,8 +423,37 @@ class _CapsuleWarriorsStageVictoryScreenState
                       ),
                     ],
 
-                    // Next Stage Teaser when stageId < 7
-                    if (nextWorld != null) ...[
+                    // Next Stage / Revision Stage Teaser
+                    if (triggersRevisionNext) ...[
+                      SizedBox(height: isCompact ? 8 : 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: CapsuleColors.gold.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: CapsuleColors.gold.withValues(alpha: 0.55)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.auto_stories_rounded, color: CapsuleColors.gold, size: 17),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Étape spéciale débloquée : Stage de Révision $revNum (Stages ${(revNum - 1) * 7 + 1} à ${revNum * 7})',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  color: CapsuleColors.textWhite,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (nextWorld != null) ...[
                       SizedBox(height: isCompact ? 8 : 10),
                       Container(
                         width: double.infinity,
@@ -422,7 +469,7 @@ class _CapsuleWarriorsStageVictoryScreenState
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Prochain secteur : ${nextWorld.organZone} — ${nextWorld.name} (Boss : ${nextWorld.bossName})',
+                                'Prochain secteur (Stage $nextStageId) : ${nextWorld.organZone} — ${nextWorld.name} (Boss : ${nextWorld.bossName})',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
@@ -439,15 +486,21 @@ class _CapsuleWarriorsStageVictoryScreenState
 
                     SizedBox(height: isCompact ? 12 : 16),
 
-                    // Buttons: "STAGE SUIVANT" / "REJOUER" / "CARTE"
+                    // Buttons: "STAGE SUIVANT" / "RÉVISION N" / "REJOUER" / "CARTE"
                     Row(
                       children: [
-                        // STAGE SUIVANT (Primary)
+                        // Primary Advance Button
                         Expanded(
                           flex: 3,
                           child: _buildActionButton(
-                            label: widget.stageId < 7 ? 'STAGE SUIVANT' : 'RÉSULTATS FINAUX',
-                            icon: Icons.arrow_forward_rounded,
+                            label: triggersRevisionNext
+                                ? 'RÉVISION $revNum'
+                                : (isRevision
+                                    ? 'STAGE $nextStageId'
+                                    : 'STAGE SUIVANT'),
+                            icon: triggersRevisionNext
+                                ? Icons.auto_stories_rounded
+                                : Icons.arrow_forward_rounded,
                             isPrimary: true,
                             onTap: () {
                               _audio.playClick();
@@ -472,16 +525,24 @@ class _CapsuleWarriorsStageVictoryScreenState
                         ),
                         const SizedBox(width: 8),
 
-                        // CARTE DES STAGES
+                        // CARTE DES STAGES (or Diplôme when applicable)
                         Expanded(
                           flex: 2,
                           child: _buildActionButton(
-                            label: 'CARTE',
-                            icon: Icons.map_rounded,
+                            label: widget.onViewDiploma != null && isRevision
+                                ? 'DIPLÔME'
+                                : 'CARTE',
+                            icon: widget.onViewDiploma != null && isRevision
+                                ? Icons.workspace_premium_rounded
+                                : Icons.map_rounded,
                             accentColor: CapsuleColors.turquoise,
                             onTap: () {
                               _audio.playClick();
-                              widget.onStageMap();
+                              if (widget.onViewDiploma != null && isRevision) {
+                                widget.onViewDiploma!();
+                              } else {
+                                widget.onStageMap();
+                              }
                             },
                           ),
                         ),

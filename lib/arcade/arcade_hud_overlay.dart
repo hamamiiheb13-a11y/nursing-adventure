@@ -356,11 +356,17 @@ class _ArcadeHudOverlayState extends State<ArcadeHudOverlay> {
             children: [
               Flexible(
                 child: Text(
-                  controller.world.name,
+                  controller.isRevisionStage
+                      ? 'RÉVISION #${controller.revisionNumber} • ${controller.world.name}'
+                      : (controller.level > 7
+                          ? 'STAGE ${controller.level} • ${controller.world.name}'
+                          : controller.world.name),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: CapsuleColors.cyanGlow,
+                    color: controller.isRevisionStage
+                        ? CapsuleColors.gold
+                        : CapsuleColors.cyanGlow,
                     fontSize: isTight ? 10 : 11,
                     fontWeight: FontWeight.w800,
                   ),

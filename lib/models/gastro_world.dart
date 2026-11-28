@@ -286,10 +286,11 @@ class GastroWorld {
   ];
 
   static GastroWorld getWorldForLevel(int level) {
-    if (level >= 1 && level <= worlds.length) {
+    if (level <= 0) return worlds.first;
+    if (level <= worlds.length) {
       return worlds[level - 1];
     }
-    return worlds.first;
+    return worlds[(level - 1) % worlds.length];
   }
 
   static GastroWorld getWorldForQuestionId(int questionId) {

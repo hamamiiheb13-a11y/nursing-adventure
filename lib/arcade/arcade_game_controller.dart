@@ -23,6 +23,8 @@ enum GameState {
 class ArcadeGameController extends ChangeNotifier {
   final int level;
   final GameProgress progress;
+  final int? revisionNumber;
+  final bool isBonusRevisionChallenge;
   final AudioService audio = AudioService();
 
   late final GastroWorld world;
@@ -40,12 +42,22 @@ class ArcadeGameController extends ChangeNotifier {
   final List<CapsuleProjectile> enemyProjectiles = [];
   final List<ArcadeEnemy> enemies = [];
   final List<DefeatedEnemyEffect> defeatedEnemies = [];
+  final Map<int, bool> revisionAnswersInStage = {};
 
   WeaponConfig get equippedWeaponConfig => WeaponConfig.getByName(progress.equippedWeapon);
 
-  /// Smooth progressive level pace from Stage 1 (1.0x) to Stage 7 (1.36x)
-  double get stagePaceMultiplier => (1.0 + (level - 1) * 0.06).clamp(1.0, 1.38);
-  double get _playerAgilityMultiplier => (1.0 + (level - 1) * 0.045).clamp(1.0, 1.30);
+  bool get isRevisionStage => revisionNumber != null;
+
+  /// Smooth progressive level pace from Stage 1 (1.0x) to Stage 7 (1.36x) and gently onward across cycles
+  double get stagePaceMultiplier {
+    if (level <= 7) {
+      return (1.0 + (level - 1) * 0.06).clamp(1.0, 1.38);
+    }
+    return (1.36 + (level - 7) * 0.025).clamp(1.36, 1.62);
+  }
+
+  double get _playerAgilityMultiplier => (1.0 + (level - 1) * 0.045).clamp(1.0, 1.48);
+  double get _obstacleDifficulty => ((level - 1) / 13.0).clamp(0.0, 1.0);
 
   GameState state = GameState.ready;
   double cameraX = 0.0;
@@ -87,6 +99,8 @@ class ArcadeGameController extends ChangeNotifier {
   ArcadeGameController({
     required this.level,
     required this.progress,
+    this.revisionNumber,
+    this.isBonusRevisionChallenge = false,
   }) {
     world = GastroWorld.getWorldForLevel(level);
     _initLevel();
@@ -130,10 +144,54 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateCheckpoints() {
     checkpoints.clear();
 
-    if (level >= 1 && level <= 6) {
-      // ALL official questions of this thematic mission appear along the route
-      // so solving them directly powers up your capsule for the live 2D Boss Battle!
-      final stageQuestions = allGastroQuestions.where((q) => q.worldId == level).toList();
+    if (revisionNumber != null) {
+      if (!isBonusRevisionChallenge) {
+        // Revision Stage after every 7 stages: ask ONLY the current player's
+        // mistakes from the previous 7-stage cycle with original wording & answers.
+        final mistakeIds = progress.getMistakesForCycle(revisionNumber!);
+        for (int i = 0; i < mistakeIds.length; i++) {
+          final q = allGastroQuestions.firstWhere(
+            (item) => item.id == mistakeIds[i],
+            orElse: () => allGastroQuestions.first,
+          );
+          if (!checkpoints.any((cp) => cp.question.id == q.id)) {
+            checkpoints.add(
+              ArcadeCheckpoint(
+                index: checkpoints.length + 1,
+                worldX: 800.0 + checkpoints.length * 460.0,
+                question: q,
+                isRevision: true,
+              ),
+            );
+          }
+        }
+      } else {
+        // Zero mistakes on previous 7 stages -> small bonus revision challenge
+        final offset = ((revisionNumber! - 1) * 3) % allGastroQuestions.length;
+        final bonusQuestions = <GastroQuestion>[
+          allGastroQuestions[(3 + offset) % allGastroQuestions.length],
+          allGastroQuestions[(11 + offset) % allGastroQuestions.length],
+          allGastroQuestions[(26 + offset) % allGastroQuestions.length],
+        ];
+        for (int i = 0; i < bonusQuestions.length; i++) {
+          checkpoints.add(
+            ArcadeCheckpoint(
+              index: i + 1,
+              worldX: 800.0 + i * 520.0,
+              question: bonusQuestions[i],
+              isRevision: true,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    final int sectorId = ((level - 1) % 7) + 1;
+    final int cycleIdx = ((level - 1) ~/ 7);
+    if (sectorId >= 1 && sectorId <= 6) {
+      final stageQuestions =
+          allGastroQuestions.where((q) => q.worldId == sectorId).toList();
       for (int i = 0; i < stageQuestions.length; i++) {
         checkpoints.add(
           ArcadeCheckpoint(
@@ -145,49 +203,23 @@ class ArcadeGameController extends ChangeNotifier {
         );
       }
     } else {
-      // Stage 7: Intelligent Revision Mode or Mastery Showcase
-      final failedIds = progress.revisionQueue.toList();
-      final List<GastroQuestion> revQuestions = [];
-
-      for (final id in failedIds) {
-        final q = allGastroQuestions.firstWhere(
-          (item) => item.id == id,
-          orElse: () => allGastroQuestions.first,
+      // Every 7th regular stage (Stage 7, 14, 21...): Final Sanctuary Clinical Synthesis
+      // (Mistakes made here also feed the post-stage Revision Stage!)
+      final shift = (cycleIdx * 4) % allGastroQuestions.length;
+      final masterQuestions = <GastroQuestion>[
+        allGastroQuestions[(3 + shift) % allGastroQuestions.length],
+        allGastroQuestions[(11 + shift) % allGastroQuestions.length],
+        allGastroQuestions[(26 + shift) % allGastroQuestions.length],
+      ];
+      for (int i = 0; i < masterQuestions.length; i++) {
+        checkpoints.add(
+          ArcadeCheckpoint(
+            index: i + 1,
+            worldX: 800.0 + i * 520.0,
+            question: masterQuestions[i],
+            isRevision: false,
+          ),
         );
-        if (!revQuestions.contains(q)) {
-          revQuestions.add(q);
-        }
-      }
-
-      if (revQuestions.isNotEmpty) {
-        final limited = revQuestions.take(7).toList();
-        for (int i = 0; i < limited.length; i++) {
-          checkpoints.add(
-            ArcadeCheckpoint(
-              index: i + 1,
-              worldX: 800.0 + i * 480.0,
-              question: limited[i],
-              isRevision: true,
-            ),
-          );
-        }
-      } else {
-        // Perfect run: 3 Ultimate Synthesis checkpoints before Alpha-Cure Prime
-        final masterQuestions = [
-          allGastroQuestions[3],
-          allGastroQuestions[11],
-          allGastroQuestions[26],
-        ];
-        for (int i = 0; i < masterQuestions.length; i++) {
-          checkpoints.add(
-            ArcadeCheckpoint(
-              index: i + 1,
-              worldX: 800.0 + i * 520.0,
-              question: masterQuestions[i],
-              isRevision: false,
-            ),
-          );
-        }
       }
     }
   }
@@ -285,79 +317,134 @@ class ArcadeGameController extends ChangeNotifier {
 
   void _generateObstacles() {
     obstacles.clear();
-    final rand = math.Random(level * 444);
+    final rand = math.Random(level * 444 + (revisionNumber ?? 0) * 97);
     int obsId = 1;
+    final double diff = _obstacleDifficulty;
+    final double baseSpacing = (352.0 - math.min(level - 1, 10) * 8.0).clamp(260.0, 360.0);
+    // Shuffled deck ensures every stage exhibits rich obstacle variety before repeating.
+    final deck = <ObstacleType>[
+      ObstacleType.toothyMicrobe,
+      ObstacleType.spikyVirus,
+      ObstacleType.acidDroplet,
+      ObstacleType.inflammatoryZone,
+      ObstacleType.bioFilament,
+      ObstacleType.mucosalSpike,
+    ]..shuffle(rand);
+    int deckIndex = 0;
 
-    for (double x = 460.0; x < totalDistance - 1100.0; x += 360.0 + rand.nextDouble() * 140.0) {
-      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 190.0);
+    for (double x = 450.0; x < totalDistance - 1100.0; x += baseSpacing + rand.nextDouble() * 115.0) {
+      bool nearCheckpoint = checkpoints.any((cp) => (cp.worldX - x).abs() < 195.0);
       if (nearCheckpoint) continue;
 
       final ceilY = tunnel.getCeilingY(x, 0.0);
       final floorY = tunnel.getFloorY(x, 0.0);
+      final lumenH = math.max(120.0, floorY - ceilY);
+      final int obsVariant = obsId % 2;
 
-      final roll = rand.nextDouble();
-      if (roll < 0.25) {
-        obstacles.add(
-          ArcadeObstacle(
-            id: obsId++,
-            position: Offset(x, floorY - 26.0),
-            initialY: floorY - 26.0,
-            type: ObstacleType.toothyMicrobe,
-            radius: 22.0,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
-      } else if (roll < 0.48) {
-        final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * 55.0;
-        obstacles.add(
-          ArcadeObstacle(
-            id: obsId++,
-            position: Offset(x, midY),
-            initialY: midY,
-            type: ObstacleType.spikyVirus,
-            radius: 18.0,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
-      } else if (roll < 0.68) {
-        obstacles.add(
-          ArcadeObstacle(
-            id: obsId++,
-            position: Offset(x, ceilY + 18.0),
-            initialY: ceilY + 18.0,
-            type: ObstacleType.acidDroplet,
-            radius: 14.0,
-            velocityY: 72.0 + rand.nextDouble() * 38.0,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
-      } else if (roll < 0.85) {
-        // Luminous Inflammatory Zone (calmed with Special Anti-Inflammatory Wave!)
-        final zoneY = floorY - 32.0 - rand.nextDouble() * math.max(20.0, (floorY - ceilY) * 0.32);
-        obstacles.add(
-          ArcadeObstacle(
-            id: obsId++,
-            position: Offset(x, zoneY),
-            initialY: zoneY,
-            type: ObstacleType.inflammatoryZone,
-            radius: 26.0,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
-      } else {
-        // Swaying biological mucus filament from ceiling
-        final filHeight = math.min(82.0, (floorY - ceilY) * 0.30);
-        obstacles.add(
-          ArcadeObstacle(
-            id: obsId++,
-            position: Offset(x, ceilY + filHeight * 0.5),
-            initialY: ceilY + filHeight * 0.5,
-            type: ObstacleType.bioFilament,
-            radius: 15.0,
-            height: filHeight,
-            animPhase: rand.nextDouble() * math.pi * 2,
-          ),
-        );
+      final chosenType = deck[deckIndex % deck.length];
+      if (deckIndex % deck.length == deck.length - 1) {
+        deck.shuffle(rand);
+      }
+      deckIndex++;
+
+      switch (chosenType) {
+        case ObstacleType.toothyMicrobe:
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, floorY - 26.0),
+              initialX: x,
+              initialY: floorY - 26.0,
+              type: ObstacleType.toothyMicrobe,
+              radius: 22.0,
+              velocityX: (obsVariant == 0 ? 1.0 : -1.0) * (36.0 + diff * 26.0),
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
+        case ObstacleType.spikyVirus:
+          final midY = (ceilY + floorY) / 2 + (rand.nextDouble() - 0.5) * (lumenH * 0.30);
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, midY),
+              initialX: x,
+              initialY: midY,
+              type: ObstacleType.spikyVirus,
+              radius: 18.0,
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
+        case ObstacleType.acidDroplet:
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, ceilY + 18.0),
+              initialX: x,
+              initialY: ceilY + 18.0,
+              type: ObstacleType.acidDroplet,
+              radius: 14.0,
+              velocityY: 78.0 + rand.nextDouble() * 38.0 + diff * 42.0,
+              triggerTimer: 0.35 + rand.nextDouble() * 0.45,
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
+        case ObstacleType.inflammatoryZone:
+          // Luminous Inflammatory Zone (drifts/pulses; calmed with Special / Electric Wave)
+          final zoneY = floorY - 36.0 - rand.nextDouble() * math.max(24.0, lumenH * 0.36);
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, zoneY),
+              initialX: x,
+              initialY: zoneY,
+              type: ObstacleType.inflammatoryZone,
+              radius: 25.0,
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
+        case ObstacleType.bioFilament:
+          // Swaying biological mucus filament from ceiling
+          final filHeight = math.min(84.0, lumenH * 0.32);
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, ceilY + filHeight * 0.5),
+              initialX: x,
+              initialY: ceilY + filHeight * 0.5,
+              type: ObstacleType.bioFilament,
+              radius: 15.0,
+              height: filHeight,
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
+        case ObstacleType.mucosalSpike:
+          // Mucosal Polyp Spike emerging rhythmically from floor or ceiling (with fair clearance)
+          final spikeH = math.min(72.0, lumenH * 0.28);
+          final bool fromCeiling = obsVariant == 1;
+          obstacles.add(
+            ArcadeObstacle(
+              id: obsId++,
+              position: Offset(x, fromCeiling ? ceilY + spikeH * 0.5 : floorY - spikeH * 0.5),
+              initialX: x,
+              initialY: fromCeiling ? ceilY + spikeH * 0.5 : floorY - spikeH * 0.5,
+              type: ObstacleType.mucosalSpike,
+              radius: 16.0,
+              height: spikeH,
+              variant: obsVariant,
+              animPhase: rand.nextDouble() * math.pi * 2,
+            ),
+          );
+          break;
       }
     }
   }
@@ -455,29 +542,43 @@ class ArcadeGameController extends ChangeNotifier {
   void _generateBoss() {
     List<GastroQuestion> challengeQuestions;
 
-    if (level >= 1 && level <= 6) {
-      final stageQuestions = allGastroQuestions.where((q) => q.worldId == level).toList();
-      challengeQuestions = stageQuestions.isNotEmpty ? [stageQuestions.last] : [allGastroQuestions.first];
-    } else {
-      if (progress.revisionQueue.isNotEmpty) {
-        challengeQuestions = progress.revisionQueue
-            .map((id) => allGastroQuestions.firstWhere((q) => q.id == id, orElse: () => allGastroQuestions.first))
-            .take(3)
-            .toList();
+    if (revisionNumber != null) {
+      if (checkpoints.isNotEmpty) {
+        challengeQuestions = [checkpoints.last.question];
       } else {
         challengeQuestions = [allGastroQuestions[3], allGastroQuestions[11], allGastroQuestions[26]];
       }
+    } else {
+      final int sectorId = ((level - 1) % 7) + 1;
+      if (sectorId >= 1 && sectorId <= 6) {
+        final stageQuestions =
+            allGastroQuestions.where((q) => q.worldId == sectorId).toList();
+        challengeQuestions =
+            stageQuestions.isNotEmpty ? [stageQuestions.last] : [allGastroQuestions.first];
+      } else {
+        challengeQuestions = [
+          allGastroQuestions[3],
+          allGastroQuestions[11],
+          allGastroQuestions[26],
+        ];
+      }
     }
 
-    // Live 2D Arcade Boss HP scales substantially for a true climactic encounter!
-    final int bossHp = 44 + level * 12;
+    // Live 2D Arcade Boss HP scales progressively across stages (fair cap on endless cycles)
+    final int bossHp = 44 + math.min(level, 14) * 12;
     final bossStartPos = Offset(totalDistance - 240.0, viewportHeight * 0.5);
 
     boss = ArcadeBoss(
-      name: world.boss.name,
-      title: world.boss.title,
+      name: revisionNumber != null
+          ? 'Gardien Révision #$revisionNumber'
+          : world.boss.name,
+      title: revisionNumber != null
+          ? 'Gardien des Connaissances Consolidées'
+          : world.boss.title,
       dangerLevel: world.bossDangerLevel,
-      auraColor: world.boss.auraColor,
+      auraColor: revisionNumber != null
+          ? const Color(0xFFFBBF24)
+          : world.boss.auraColor,
       icon: world.boss.icon,
       position: bossStartPos,
       homePosition: bossStartPos,
@@ -1292,24 +1393,134 @@ class ArcadeGameController extends ChangeNotifier {
   }
 
   void _updateObstacles(double dt) {
-    final obsPace = 0.90 + stagePaceMultiplier * 0.12;
+    final double diff = _obstacleDifficulty;
+    final double obsPace = 0.92 + stagePaceMultiplier * 0.16;
+
     for (final obs in obstacles) {
-      obs.animPhase += dt * 2.5 * obsPace;
       if (obs.sootheTimer > 0) {
         obs.sootheTimer = math.max(0.0, obs.sootheTimer - dt);
       }
+      if (obs.stunTimer > 0) {
+        obs.stunTimer = math.max(0.0, obs.stunTimer - dt);
+      }
+      if (obs.triggerTimer > 0) {
+        obs.triggerTimer = math.max(0.0, obs.triggerTimer - dt);
+      }
 
-      if (obs.type == ObstacleType.acidDroplet) {
-        double newY = obs.position.dy + obs.velocityY * obsPace * dt;
-        final floorY = tunnel.getFloorY(obs.position.dx, gameTime);
-        if (newY >= floorY - 10.0) {
-          _emitSplashParticles(obs.position, const Color(0xFFFB923C));
-          newY = tunnel.getCeilingY(obs.position.dx, gameTime) + 14.0;
-        }
-        obs.position = Offset(obs.position.dx, newY);
-      } else if (obs.type == ObstacleType.spikyVirus) {
-        final floatY = obs.initialY + math.sin(obs.animPhase) * 18.0;
-        obs.position = Offset(obs.position.dx, floatY);
+      final double activeMult = obs.isStunned ? 0.32 : 1.0;
+      obs.animPhase += dt * (2.3 + diff * 1.1) * obsPace * activeMult;
+
+      final double ceilY = tunnel.getCeilingY(obs.baseX, gameTime);
+      final double floorY = tunnel.getFloorY(obs.baseX, gameTime);
+      final double safeTop = ceilY + obs.radius + 16.0;
+      final double safeBottom = math.max(safeTop + 20.0, floorY - obs.radius - 16.0);
+      final double distToPlayer = (player.position - obs.position).distance;
+
+      switch (obs.type) {
+        case ObstacleType.acidDroplet:
+          // Swells at ceiling with telegraph, then plunges faster with gravity
+          if (obs.triggerTimer > 0) {
+            obs.pulseScale = 0.72 + (1.0 - (obs.triggerTimer / 0.8).clamp(0.0, 1.0)) * 0.42;
+            obs.position = Offset(obs.baseX, ceilY + 14.0);
+          } else {
+            obs.pulseScale = 1.0;
+            final double fallBoost = obs.velocityY * (1.0 + diff * 0.35) * obsPace * activeMult;
+            double newY = obs.position.dy + fallBoost * dt;
+            if (newY >= floorY - 10.0) {
+              _emitSplashParticles(obs.position, const Color(0xFFA3E635));
+              newY = ceilY + 14.0;
+              obs.triggerTimer = (0.55 - diff * 0.22).clamp(0.22, 0.65);
+            }
+            obs.position = Offset(obs.baseX, newY);
+          }
+          break;
+
+        case ObstacleType.spikyVirus:
+          if (obs.variant % 2 == 0) {
+            // Variant 0: Smooth elliptical orbital patrol inside tunnel
+            final double orbitX = 24.0 + diff * 18.0;
+            final double orbitY = 22.0 + diff * 18.0;
+            final double nextX = obs.baseX + math.cos(obs.animPhase * 0.95) * orbitX;
+            final double nextY = (obs.initialY + math.sin(obs.animPhase * 1.15) * orbitY)
+                .clamp(safeTop, safeBottom);
+            obs.position = Offset(nextX, nextY);
+          } else {
+            // Variant 1: Wave hover + subtle proximity reaction & danger aura
+            if (distToPlayer < 225.0 && !obs.isStunned) {
+              obs.triggerTimer = 0.35;
+              final double reactDir = player.position.dy >= obs.position.dy ? 1.0 : -1.0;
+              final double reactSpeed = (28.0 + diff * 26.0) * activeMult;
+              final double nextY = (obs.position.dy + reactDir * reactSpeed * dt)
+                  .clamp(safeTop, safeBottom);
+              final double nextX = obs.baseX + math.sin(obs.animPhase * 1.4) * 16.0;
+              obs.position = Offset(nextX, nextY);
+            } else {
+              final double waveY = (obs.initialY + math.sin(obs.animPhase) * (20.0 + diff * 10.0))
+                  .clamp(safeTop, safeBottom);
+              obs.position = Offset(obs.baseX, waveY);
+            }
+          }
+          obs.pulseScale = 1.0 + math.sin(obs.animPhase * 1.8) * 0.08;
+          break;
+
+        case ObstacleType.toothyMicrobe:
+          // Patrols floor contour back and forth + snaps/lunges when player closes in
+          final double patrolRange = 36.0 + diff * 22.0;
+          double nextX = obs.position.dx + obs.velocityX * obsPace * activeMult * dt;
+          if (nextX > obs.baseX + patrolRange) {
+            nextX = obs.baseX + patrolRange;
+            obs.velocityX = -obs.velocityX.abs();
+          } else if (nextX < obs.baseX - patrolRange) {
+            nextX = obs.baseX - patrolRange;
+            obs.velocityX = obs.velocityX.abs();
+          }
+          final double localFloor = tunnel.getFloorY(nextX, gameTime) - 24.0;
+          double lungeLift = 0.0;
+          if (distToPlayer < 190.0 && !obs.isStunned) {
+            obs.triggerTimer = 0.40;
+            lungeLift = (16.0 + diff * 14.0) *
+                (0.5 + 0.5 * math.sin(obs.animPhase * 2.8).abs());
+          }
+          obs.position = Offset(nextX, (localFloor - lungeLift).clamp(safeTop, localFloor));
+          obs.pulseScale = 1.0 + math.sin(obs.animPhase * 1.6) * 0.06;
+          break;
+
+        case ObstacleType.bioFilament:
+          final double swayMax = 15.0 + diff * 10.0;
+          obs.swayOffset = math.sin(obs.animPhase * 1.15) * swayMax * activeMult;
+          obs.pulseScale = 0.96 + math.sin(obs.animPhase * 0.9) * (0.12 + diff * 0.08);
+          final double cY = tunnel.getCeilingY(obs.baseX, gameTime);
+          obs.position = Offset(
+            obs.baseX + obs.swayOffset * 0.55,
+            cY + obs.height * obs.pulseScale * 0.5,
+          );
+          break;
+
+        case ObstacleType.inflammatoryZone:
+          final double driftScale = obs.isSoothed ? 0.3 : 1.0;
+          obs.pulseScale = 1.0 + math.sin(obs.animPhase * 1.9) * (0.11 + diff * 0.06);
+          final double driftX = obs.baseX + math.cos(obs.animPhase * 0.65) * 16.0 * driftScale;
+          final double driftY = (obs.initialY +
+                  math.sin(obs.animPhase * 0.85) * (14.0 + diff * 10.0) * driftScale)
+              .clamp(safeTop, safeBottom);
+          obs.position = Offset(driftX, driftY);
+          break;
+
+        case ObstacleType.mucosalSpike:
+          // Rhythmic extension & retraction polyp cycle (always leaves wide fair gap)
+          final double rawCycle = (math.sin(obs.animPhase * 0.95) + 1.0) * 0.5;
+          obs.pulseScale = (0.22 + rawCycle * 0.82).clamp(0.22, 1.04);
+          if (rawCycle > 0.35 && rawCycle < 0.65) {
+            obs.triggerTimer = 0.25;
+          }
+          final bool fromCeiling = obs.variant % 2 == 1;
+          final double anchor = fromCeiling ? ceilY : floorY;
+          final double halfReach = obs.height * obs.pulseScale * 0.5;
+          obs.position = Offset(
+            obs.baseX,
+            fromCeiling ? anchor + halfReach : anchor - halfReach,
+          );
+          break;
       }
     }
   }
@@ -1637,14 +1848,28 @@ class ArcadeGameController extends ChangeNotifier {
       final p = playerProjectiles[pIdx];
       bool removeBullet = false;
 
-      // Also soothe inflammatory zones if shot with Anti-Inflammatory Wave or Therapeutic Orbs
-      if (p.weaponType == WeaponType.electricWave || p.weaponType == WeaponType.therapeuticOrbs) {
-        for (final obs in obstacles) {
-          if (obs.type == ObstacleType.inflammatoryZone && !obs.isSoothed) {
-            if ((p.position - obs.position).distance < p.radius + obs.radius + 8.0) {
-              obs.sootheTimer = 5.0;
-              _emitCollectParticles(obs.position, CollectibleType.heartBoost);
-            }
+      // Player projectiles interact meaningfully with obstacles too:
+      // - Soothe inflammatory zones with Electric Wave or Therapeutic Orbs
+      // - Briefly stagger dynamic biological obstacles (toothyMicrobe, spikyVirus, bioFilament, mucosalSpike)
+      for (final obs in obstacles) {
+        if (obs.type == ObstacleType.inflammatoryZone &&
+            !obs.isSoothed &&
+            (p.weaponType == WeaponType.electricWave || p.weaponType == WeaponType.therapeuticOrbs)) {
+          if ((p.position - obs.position).distance < p.radius + obs.radius + 8.0) {
+            obs.sootheTimer = 5.0;
+            _emitCollectParticles(obs.position, CollectibleType.heartBoost);
+          }
+        } else if ((obs.type == ObstacleType.toothyMicrobe ||
+                obs.type == ObstacleType.spikyVirus ||
+                obs.type == ObstacleType.mucosalSpike) &&
+            !obs.isStunned &&
+            (p.position - obs.position).distance < p.radius + obs.radius + 2.0) {
+          obs.stunTimer = 1.25;
+          _emitHitSparks(obs.position, color: p.color);
+          score += 10;
+          if (!p.isPiercing) {
+            removeBullet = true;
+            break;
           }
         }
       }
@@ -1743,15 +1968,24 @@ class ArcadeGameController extends ChangeNotifier {
       }
     }
 
-    // 6. Obstacles (ignores soothed inflammatory zones!)
+    // 6. Obstacles (ignores soothed inflammatory zones & retracted mucosal spikes!)
     if (!player.isInvulnerable) {
       for (final obs in obstacles) {
         if (obs.isSoothed) continue;
+        if (obs.type == ObstacleType.mucosalSpike && obs.pulseScale < 0.35) {
+          continue;
+        }
         bool hit = false;
         if (obs.type == ObstacleType.bioFilament) {
           final dx = (player.position.dx - obs.position.dx).abs();
           final dy = (player.position.dy - obs.position.dy).abs();
-          hit = dx < (player.radius + 10.0) && dy < (player.radius + obs.height * 0.45);
+          hit = dx < (player.radius + 10.0) &&
+              dy < (player.radius + obs.height * obs.pulseScale * 0.44);
+        } else if (obs.type == ObstacleType.mucosalSpike) {
+          final dx = (player.position.dx - obs.position.dx).abs();
+          final dy = (player.position.dy - obs.position.dy).abs();
+          hit = dx < (player.radius + obs.radius * 0.65) &&
+              dy < (player.radius + obs.height * obs.pulseScale * 0.44);
         } else {
           hit = (player.position - obs.position).distance < (player.radius + obs.radius - 2.0);
         }
@@ -1814,12 +2048,24 @@ class ArcadeGameController extends ChangeNotifier {
     cp.isCompleted = true;
     cp.isAnswerCorrect = isCorrect;
 
-    progress.recordQuestionAnswer(
-      questionId: cp.question.id,
-      selectedOptionIndex: selectedOptionIndex,
-      isCorrect: isCorrect,
-      earnedXp: isCorrect ? 100 : 35,
-    );
+    if (revisionNumber != null) {
+      revisionAnswersInStage[cp.question.id] = isCorrect;
+      progress.recordRevisionAnswer(
+        revisionNumber: revisionNumber!,
+        questionId: cp.question.id,
+        selectedOptionIndex: selectedOptionIndex,
+        isCorrect: isCorrect,
+        earnedXp: isCorrect ? 100 : 35,
+      );
+    } else {
+      progress.recordQuestionAnswer(
+        questionId: cp.question.id,
+        selectedOptionIndex: selectedOptionIndex,
+        isCorrect: isCorrect,
+        earnedXp: isCorrect ? 100 : 35,
+        stageId: level,
+      );
+    }
 
     if (isCorrect) {
       correctAnswersInStage++;
@@ -1878,15 +2124,27 @@ class ArcadeGameController extends ChangeNotifier {
 
   /// Backward-compatible Boss tactical hit helper (if triggered directly in unit tests or finale)
   void answerBossQuestion({required int questionId, required int selectedOptionIndex, required bool isCorrect}) {
-    progress.recordQuestionAnswer(
-      questionId: questionId,
-      selectedOptionIndex: selectedOptionIndex,
-      isCorrect: isCorrect,
-      earnedXp: isCorrect ? 120 : 35,
-    );
+    if (revisionNumber != null) {
+      revisionAnswersInStage[questionId] = isCorrect;
+      progress.recordRevisionAnswer(
+        revisionNumber: revisionNumber!,
+        questionId: questionId,
+        selectedOptionIndex: selectedOptionIndex,
+        isCorrect: isCorrect,
+        earnedXp: isCorrect ? 120 : 35,
+      );
+    } else {
+      progress.recordQuestionAnswer(
+        questionId: questionId,
+        selectedOptionIndex: selectedOptionIndex,
+        isCorrect: isCorrect,
+        earnedXp: isCorrect ? 120 : 35,
+        stageId: level,
+      );
+    }
 
     if (isCorrect) {
-      if (level == 7) {
+      if (revisionNumber != null || level % 7 == 0) {
         progress.revisionQueue.remove(questionId);
         progress.masteredQuestions.add(questionId);
       }
@@ -1939,17 +2197,35 @@ class ArcadeGameController extends ChangeNotifier {
       lastStarsEarned = 1;
     }
 
-    final previousWeapons = List<String>.from(progress.unlockedWeapons);
-    progress.completeLevel(level, lastStarsEarned, score, crystalsCollected);
-    progress.updateArcadeStats(
-      score: score,
-      combo: highestCombo,
-      crystals: crystalsCollected,
-    );
+    if (revisionNumber != null) {
+      // Track revision stage results separately from the original stageResults
+      progress.completeRevisionStage(
+        revisionNumber: revisionNumber!,
+        score: score,
+        stars: lastStarsEarned,
+        correctCount: correctAnswersInStage,
+        totalCount: checkpoints.length,
+        isBonusChallenge: isBonusRevisionChallenge,
+        questionIdsAsked: checkpoints.map((cp) => cp.question.id).toList(),
+      );
+      progress.updateArcadeStats(
+        score: score,
+        combo: highestCombo,
+        crystals: crystalsCollected,
+      );
+    } else {
+      final previousWeapons = List<String>.from(progress.unlockedWeapons);
+      progress.completeLevel(level, lastStarsEarned, score, crystalsCollected);
+      progress.updateArcadeStats(
+        score: score,
+        combo: highestCombo,
+        crystals: crystalsCollected,
+      );
 
-    if (!previousWeapons.contains(world.unlockedWeaponName)) {
-      newlyUnlockedWeapon = world.unlockedWeaponName;
-      audio.playRewardUnlock();
+      if (!previousWeapons.contains(world.unlockedWeaponName)) {
+        newlyUnlockedWeapon = world.unlockedWeaponName;
+        audio.playRewardUnlock();
+      }
     }
 
     _emitVictoryConfetti(burstCount: 45);

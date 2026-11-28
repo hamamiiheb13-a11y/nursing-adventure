@@ -694,7 +694,7 @@ class ArcadeGamePainter extends CustomPainter {
           _drawAcidDroplet(canvas, obs);
           break;
         case ObstacleType.mucosalSpike:
-          _drawSpikyVirus(canvas, obs);
+          _drawMucosalSpike(canvas, obs);
           break;
         case ObstacleType.inflammatoryZone:
           _drawInflammatoryZone(canvas, obs);
@@ -706,11 +706,75 @@ class ArcadeGamePainter extends CustomPainter {
     }
   }
 
+  void _drawMucosalSpike(Canvas canvas, ArcadeObstacle obs) {
+    final bool fromCeiling = obs.variant % 2 == 1;
+    final double anchorY = fromCeiling
+        ? controller.tunnel.getCeilingY(obs.baseX, controller.gameTime) - 4.0
+        : controller.tunnel.getFloorY(obs.baseX, controller.gameTime) + 4.0;
+    final double extendFactor = obs.pulseScale.clamp(0.18, 1.08);
+    final double dirY = fromCeiling ? 1.0 : -1.0;
+    final double tipY = anchorY + dirY * obs.height * extendFactor;
+    final double halfBase = obs.radius * (0.72 + (1.0 - extendFactor) * 0.15);
+
+    if (obs.triggerTimer > 0 && !obs.isStunned) {
+      canvas.drawCircle(
+        Offset(obs.position.dx, tipY),
+        obs.radius * 0.65,
+        Paint()
+          ..color = const Color(0xFFFB7185).withValues(alpha: 0.42)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+    }
+
+    final spikePath = Path()
+      ..moveTo(obs.position.dx - halfBase, anchorY)
+      ..quadraticBezierTo(
+        obs.position.dx - halfBase * 0.35,
+        anchorY + dirY * obs.height * extendFactor * 0.65,
+        obs.position.dx,
+        tipY,
+      )
+      ..quadraticBezierTo(
+        obs.position.dx + halfBase * 0.35,
+        anchorY + dirY * obs.height * extendFactor * 0.65,
+        obs.position.dx + halfBase,
+        anchorY,
+      )
+      ..close();
+
+    final bodyColor = obs.isStunned
+        ? const Color(0xFF64748B)
+        : const Color(0xFFF43F5E);
+    final coreColor = obs.isStunned
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFFFDA4AF);
+
+    canvas.drawPath(
+      spikePath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: fromCeiling ? Alignment.topCenter : Alignment.bottomCenter,
+          end: fromCeiling ? Alignment.bottomCenter : Alignment.topCenter,
+          colors: [const Color(0xFF881337), bodyColor, coreColor],
+        ).createShader(Rect.fromPoints(
+          Offset(obs.position.dx - halfBase, anchorY),
+          Offset(obs.position.dx + halfBase, tipY),
+        )),
+    );
+
+    canvas.drawCircle(
+      Offset(obs.position.dx, tipY - dirY * 4.0),
+      4.2,
+      Paint()..color = const Color(0xFFFDE047),
+    );
+  }
+
   void _drawInflammatoryZone(Canvas canvas, ArcadeObstacle obs) {
     final pos = obs.position;
     final r = obs.radius;
     final bool soothed = obs.isSoothed;
-    final pulse = 1.0 + math.sin(controller.gameTime * 4.5 + obs.animPhase) * 0.10;
+    final pulse = obs.pulseScale.clamp(0.85, 1.24);
 
     final Color outer = soothed ? const Color(0xFF34D399) : const Color(0xFFFB7185);
     final Color inner = soothed ? const Color(0xFFA7F3D0) : const Color(0xFFFBBF24);
@@ -718,45 +782,46 @@ class ArcadeGamePainter extends CustomPainter {
     final glowPaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          inner.withValues(alpha: soothed ? 0.35 : 0.65),
-          outer.withValues(alpha: soothed ? 0.15 : 0.30),
+          inner.withValues(alpha: soothed ? 0.35 : 0.68),
+          outer.withValues(alpha: soothed ? 0.15 : 0.32),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: pos, radius: r * pulse * 1.25));
-    canvas.drawCircle(pos, r * pulse * 1.25, glowPaint);
+      ).createShader(Rect.fromCircle(center: pos, radius: r * pulse * 1.28));
+    canvas.drawCircle(pos, r * pulse * 1.28, glowPaint);
 
     final ringPaint = Paint()
-      ..color = outer.withValues(alpha: soothed ? 0.45 : 0.85)
+      ..color = outer.withValues(alpha: soothed ? 0.45 : 0.88)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = soothed ? 1.8 : 2.6;
+      ..strokeWidth = soothed ? 1.8 : 2.8;
     canvas.drawCircle(pos, r * pulse, ringPaint);
 
     if (!soothed) {
-      // Micro inflammatory vesicles inside patch
       for (int i = 0; i < 3; i++) {
-        final a = obs.animPhase + i * 2.1 + controller.gameTime * 2.0;
-        final off = Offset(math.cos(a) * r * 0.4, math.sin(a) * r * 0.4);
-        canvas.drawCircle(pos + off, 4.0, Paint()..color = const Color(0xFFFDE047));
+        final a = obs.animPhase + i * 2.1 + controller.gameTime * 2.2;
+        final off = Offset(math.cos(a) * r * 0.44, math.sin(a) * r * 0.44);
+        canvas.drawCircle(pos + off, 4.2, Paint()..color = const Color(0xFFFDE047));
       }
     }
   }
 
   void _drawBioFilament(Canvas canvas, ArcadeObstacle obs) {
-    final ceilY = controller.tunnel.getCeilingY(obs.position.dx, controller.gameTime);
-    final sway = math.sin(controller.gameTime * 2.8 + obs.animPhase) * 14.0;
-    final endPt = Offset(obs.position.dx + sway, ceilY + obs.height);
+    final ceilY = controller.tunnel.getCeilingY(obs.baseX, controller.gameTime);
+    final sway = obs.swayOffset;
+    final reachedH = obs.height * obs.pulseScale.clamp(0.75, 1.22);
+    final endPt = Offset(obs.baseX + sway, ceilY + reachedH);
 
     final strandPaint = Paint()
-      ..color = const Color(0xFFFDBA74).withValues(alpha: 0.78)
+      ..color = (obs.isStunned ? const Color(0xFF94A3B8) : const Color(0xFFFDBA74))
+          .withValues(alpha: 0.80)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8.0
       ..strokeCap = StrokeCap.round;
 
     final path = Path()
-      ..moveTo(obs.position.dx, ceilY - 4.0)
+      ..moveTo(obs.baseX, ceilY - 4.0)
       ..quadraticBezierTo(
-        obs.position.dx - sway * 0.5,
-        ceilY + obs.height * 0.5,
+        obs.baseX - sway * 0.45,
+        ceilY + reachedH * 0.5,
         endPt.dx,
         endPt.dy,
       );
@@ -765,25 +830,37 @@ class ArcadeGamePainter extends CustomPainter {
     // Bulbous mucous node at tip
     canvas.drawCircle(
       endPt,
-      10.0,
+      10.5,
       Paint()
         ..shader = const RadialGradient(
           colors: [Color(0xFFFEF3C7), Color(0xFFFB923C)],
-        ).createShader(Rect.fromCircle(center: endPt, radius: 10.0)),
+        ).createShader(Rect.fromCircle(center: endPt, radius: 10.5)),
     );
   }
 
-  // The Green Monster from Reference Image 1 (mouth wide open, teeth, eye stalk!)
+  // The Green Monster from Reference Image 1 (mouth chomping, tracking eye stalk, alert lunge!)
   void _drawToothyMicrobe(Canvas canvas, ArcadeObstacle obs) {
     final pos = obs.position;
     final r = obs.radius;
+    final bool lunging = obs.triggerTimer > 0 && !obs.isStunned;
 
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
 
-    // Subtle breath pulse
-    final pulse = 1.0 + math.sin(controller.gameTime * 3.5 + obs.animPhase) * 0.05;
-    canvas.scale(pulse, pulse);
+    final pulse = (obs.pulseScale + (lunging ? 0.08 : 0.0)).clamp(0.85, 1.22);
+    final dirSign = obs.velocityX >= 0 ? 1.0 : -1.0;
+    canvas.scale(pulse, pulse * (1.0 - (pulse - 1.0) * 0.4));
+
+    if (lunging) {
+      canvas.drawCircle(
+        Offset.zero,
+        r * 1.35,
+        Paint()
+          ..color = const Color(0xFFA3E635).withValues(alpha: 0.28)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+    }
 
     // Green slime body
     final bodyPaint = Paint()
@@ -799,79 +876,96 @@ class ArcadeGamePainter extends CustomPainter {
       ..close();
     canvas.drawPath(bodyPath, bodyPaint);
 
-    // Wide Open Mouth (Crimson Throat)
+    // Animated Chomping Mouth
+    final chompOpen = 0.25 +
+        (lunging ? 0.30 : 0.0) +
+        math.sin(obs.animPhase * 2.2).abs() * 0.25;
     final mouthPath = Path()
-      ..moveTo(-r * 0.7, r * 0.2)
-      ..quadraticBezierTo(0, -r * 0.4, r * 0.7, r * 0.2)
-      ..quadraticBezierTo(0, r * 0.55, -r * 0.7, r * 0.2);
+      ..moveTo(-r * 0.7, r * 0.18)
+      ..quadraticBezierTo(0, -r * (0.25 + chompOpen), r * 0.7, r * 0.18)
+      ..quadraticBezierTo(0, r * (0.45 + chompOpen * 0.6), -r * 0.7, r * 0.18);
 
-    final mouthPaint = Paint()..color = const Color(0xFF7F1D1D);
-    canvas.drawPath(mouthPath, mouthPaint);
+    canvas.drawPath(mouthPath, Paint()..color = const Color(0xFF7F1D1D));
 
-    // Sharp White Teeth (Upper and lower jaws)
+    // Sharp White Teeth
     final toothPaint = Paint()..color = Colors.white;
     for (int i = 0; i < 4; i++) {
       final toothX = -r * 0.5 + i * (r * 0.33);
       final toothPath = Path()
-        ..moveTo(toothX - 3, -r * 0.05)
-        ..lineTo(toothX, r * 0.16)
-        ..lineTo(toothX + 3, -r * 0.05)
+        ..moveTo(toothX - 3, -r * 0.06)
+        ..lineTo(toothX, r * (0.14 + chompOpen * 0.25))
+        ..lineTo(toothX + 3, -r * 0.06)
         ..close();
       canvas.drawPath(toothPath, toothPaint);
     }
 
     // Curved Pink Tongue
-    final tonguePaint = Paint()..color = const Color(0xFFFB7185);
     canvas.drawArc(
       Rect.fromCenter(center: Offset(r * 0.1, r * 0.22), width: r * 0.5, height: r * 0.35),
       0,
       math.pi,
       true,
-      tonguePaint,
+      Paint()..color = const Color(0xFFFB7185),
     );
 
-    // Big Eyeball on Stalk (Looking left towards incoming player!)
-    final stalkPaint = Paint()
-      ..color = const Color(0xFF4D7C0F)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(-r * 0.3, -r * 0.5), Offset(-r * 0.4, -r * 1.05), stalkPaint);
+    // Big Eyeball on Stalk tracking the player
+    final stalkOffset = Offset(-r * 0.38 + dirSign * 2.0, -r * 1.05);
+    canvas.drawLine(
+      Offset(-r * 0.3, -r * 0.5),
+      stalkOffset,
+      Paint()
+        ..color = const Color(0xFF4D7C0F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6.0
+        ..strokeCap = StrokeCap.round,
+    );
 
-    // Eye globe
-    final eyeCenter = Offset(-r * 0.4, -r * 1.05);
-    final eyePaint = Paint()..color = const Color(0xFFFEF08A);
-    canvas.drawCircle(eyeCenter, 9.0, eyePaint);
+    canvas.drawCircle(stalkOffset, 9.0, Paint()..color = const Color(0xFFFEF08A));
 
-    // Pupil watching the player
-    final pupilPaint = Paint()..color = Colors.black;
-    canvas.drawCircle(eyeCenter + const Offset(-3.5, 0), 4.2, pupilPaint);
-    final eyeShine = Paint()..color = Colors.white;
-    canvas.drawCircle(eyeCenter + const Offset(-4.5, -2), 1.5, eyeShine);
+    final toPlayer = controller.player.position - (pos + stalkOffset);
+    final pupilDir = toPlayer.distance > 1.0
+        ? (toPlayer / toPlayer.distance) * 3.4
+        : const Offset(-3.2, 0.0);
+    canvas.drawCircle(stalkOffset + pupilDir, 4.2, Paint()..color = Colors.black);
+    canvas.drawCircle(stalkOffset + pupilDir + const Offset(-1.0, -1.6), 1.5, Paint()..color = Colors.white);
 
     canvas.restore();
   }
 
-  // Spiky Pathogen Sphere
+  // Spiky Pathogen Sphere (orbital or proximity-reactive with danger halo)
   void _drawSpikyVirus(Canvas canvas, ArcadeObstacle obs) {
     final pos = obs.position;
     final r = obs.radius;
+    final bool alerted = obs.triggerTimer > 0 && !obs.isStunned;
 
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
-    canvas.rotate(controller.gameTime * 2.0 + obs.animPhase);
+    canvas.scale(obs.pulseScale.clamp(0.85, 1.22));
+    canvas.rotate(obs.animPhase * (alerted ? 1.5 : 0.9));
+
+    if (alerted) {
+      canvas.drawCircle(
+        Offset.zero,
+        r + 12,
+        Paint()
+          ..color = const Color(0xFFE879F9).withValues(alpha: 0.36)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4,
+      );
+    }
 
     // Spikes radiating
-    final spikePaint = Paint()..color = const Color(0xFF9333EA);
+    final spikePaint = Paint()
+      ..color = obs.isStunned ? const Color(0xFF94A3B8) : const Color(0xFF9333EA);
+    final stemPaint = Paint()
+      ..color = obs.isStunned ? const Color(0xFF64748B) : const Color(0xFF7E22CE)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
     for (int i = 0; i < 8; i++) {
       final angle = (i * math.pi) / 4;
       final tip = Offset(math.cos(angle) * (r + 8), math.sin(angle) * (r + 8));
-      canvas.drawCircle(tip, 3.5, spikePaint);
-      final stemPaint = Paint()
-        ..color = const Color(0xFF7E22CE)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0;
       canvas.drawLine(Offset.zero, tip, stemPaint);
+      canvas.drawCircle(tip, 3.6, spikePaint);
     }
 
     // Core body
@@ -882,7 +976,8 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.drawCircle(Offset.zero, r, bodyPaint);
 
     // Menacing eyes
-    final eyePaint = Paint()..color = const Color(0xFFFDE047);
+    final eyeColor = alerted ? const Color(0xFFFB7185) : const Color(0xFFFDE047);
+    final eyePaint = Paint()..color = eyeColor;
     canvas.drawCircle(const Offset(-6, -2), 3.5, eyePaint);
     canvas.drawCircle(const Offset(6, -2), 3.5, eyePaint);
     final pupilPaint = Paint()..color = Colors.black;
@@ -892,24 +987,25 @@ class ArcadeGamePainter extends CustomPainter {
     canvas.restore();
   }
 
-  // Dripping Acid Droplet (fast radial halo without slow GPU MaskFilter blur)
+  // Dripping Acid Droplet (ceiling swell telegraph -> fast fall streak!)
   void _drawAcidDroplet(Canvas canvas, ArcadeObstacle obs) {
     final pos = obs.position;
-    final r = obs.radius;
+    final r = obs.radius * obs.pulseScale.clamp(0.75, 1.25);
 
     final glowPaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFF84CC16).withValues(alpha: 0.45),
+          const Color(0xFF84CC16).withValues(alpha: obs.triggerTimer > 0 ? 0.65 : 0.45),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: pos, radius: r + 8));
-    canvas.drawCircle(pos, r + 8, glowPaint);
+      ).createShader(Rect.fromCircle(center: pos, radius: r + 9));
+    canvas.drawCircle(pos, r + 9, glowPaint);
 
+    final double tailStretch = obs.triggerTimer > 0 ? 1.1 : 1.55;
     final dropPath = Path()
-      ..moveTo(pos.dx, pos.dy - r * 1.3)
+      ..moveTo(pos.dx, pos.dy - r * tailStretch)
       ..cubicTo(pos.dx - r, pos.dy, pos.dx - r * 0.8, pos.dy + r, pos.dx, pos.dy + r)
-      ..cubicTo(pos.dx + r * 0.8, pos.dy + r, pos.dx + r, pos.dy, pos.dx, pos.dy - r * 1.3);
+      ..cubicTo(pos.dx + r * 0.8, pos.dy + r, pos.dx + r, pos.dy, pos.dx, pos.dy - r * tailStretch);
 
     final dropPaint = Paint()
       ..shader = RadialGradient(

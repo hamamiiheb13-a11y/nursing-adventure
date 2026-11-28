@@ -13,6 +13,7 @@ import 'arcade_game_painter.dart';
 import 'arcade_hud_overlay.dart';
 import 'checkpoint_question_dialog.dart';
 import '../screens/capsule_warriors_pause_screen.dart';
+import '../screens/capsule_warriors_revision_stage_screen.dart';
 import '../screens/capsule_warriors_stage_victory_screen.dart';
 import '../screens/capsule_warriors_briefing_screen.dart';
 import '../screens/capsule_warriors_final_screen.dart';
@@ -20,12 +21,16 @@ import '../screens/capsule_warriors_final_screen.dart';
 class GastroArcadeScreen extends StatefulWidget {
   final int stageId;
   final int? level;
+  final int? revisionNumber;
+  final bool isBonusRevisionChallenge;
   final GameProgress? progress;
 
   const GastroArcadeScreen({
     super.key,
     int? stageId,
     this.level,
+    this.revisionNumber,
+    this.isBonusRevisionChallenge = false,
     this.progress,
   }) : stageId = stageId ?? level ?? 1;
 
@@ -57,6 +62,8 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
     _controller = ArcadeGameController(
       level: widget.stageId,
       progress: progress,
+      revisionNumber: widget.revisionNumber,
+      isBonusRevisionChallenge: widget.isBonusRevisionChallenge,
     );
 
     _ticker = createTicker(_onTick);
@@ -273,11 +280,14 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                   ),
                                 ),
 
-                              // 4. Stage Victory Overlay (with real Star & Weapon Rewards)
+                              // 4. Stage Victory Overlay (with real Star, Weapon & Cycle Revision Rewards)
                               if (_controller.state == GameState.victory)
                                 Positioned.fill(
                                   child: CapsuleWarriorsStageVictoryScreen(
                                     stageId: _controller.level,
+                                    revisionNumber: _controller.revisionNumber,
+                                    isBonusRevisionChallenge:
+                                        _controller.isBonusRevisionChallenge,
                                     score: _controller.score,
                                     starsOverride: _controller.lastStarsEarned,
                                     questionsCorrect: _controller.correctAnswersInStage,
@@ -291,7 +301,28 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                         _controller.world.unlockedWeaponName,
                                     onNextStage: () {
                                       StorageService().saveProgress(_controller.progress);
-                                      if (_controller.level < 7) {
+                                      if (_controller.revisionNumber != null) {
+                                        final nextCycleStage =
+                                            _controller.revisionNumber! * 7 + 1;
+                                        Navigator.of(context).pushReplacement(
+                                          buildCapsuleRoute(
+                                            CapsuleWarriorsBriefingScreen(
+                                              stageId: nextCycleStage,
+                                              progress: _controller.progress,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (_controller.level % 7 == 0) {
+                                        final revNum = _controller.level ~/ 7;
+                                        Navigator.of(context).pushReplacement(
+                                          buildCapsuleRoute(
+                                            CapsuleWarriorsRevisionStageScreen(
+                                              revisionNumber: revNum,
+                                              progress: _controller.progress,
+                                            ),
+                                          ),
+                                        );
+                                      } else {
                                         Navigator.of(context).pushReplacement(
                                           buildCapsuleRoute(
                                             CapsuleWarriorsBriefingScreen(
@@ -300,21 +331,29 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                             ),
                                           ),
                                         );
-                                      } else {
-                                        Navigator.of(context).pushReplacement(
-                                          buildCapsuleRoute(
-                                            CapsuleWarriorsFinalScreen(
-                                              progress: _controller.progress,
-                                            ),
-                                          ),
-                                        );
                                       }
                                     },
+                                    onViewDiploma: _controller.level >= 7
+                                        ? () {
+                                            StorageService()
+                                                .saveProgress(_controller.progress);
+                                            Navigator.of(context).pushReplacement(
+                                              buildCapsuleRoute(
+                                                CapsuleWarriorsFinalScreen(
+                                                  progress: _controller.progress,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        : null,
                                     onReplay: () {
                                       Navigator.of(context).pushReplacement(
                                         buildCapsuleRoute(
                                           GastroArcadeScreen(
                                             stageId: _controller.level,
+                                            revisionNumber: _controller.revisionNumber,
+                                            isBonusRevisionChallenge:
+                                                _controller.isBonusRevisionChallenge,
                                             progress: _controller.progress,
                                           ),
                                         ),
@@ -340,6 +379,9 @@ class _GastroArcadeScreenState extends State<GastroArcadeScreen>
                                         buildCapsuleRoute(
                                           GastroArcadeScreen(
                                             stageId: _controller.level,
+                                            revisionNumber: _controller.revisionNumber,
+                                            isBonusRevisionChallenge:
+                                                _controller.isBonusRevisionChallenge,
                                             progress: _controller.progress,
                                           ),
                                         ),

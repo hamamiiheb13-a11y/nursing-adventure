@@ -12,6 +12,7 @@ import '../theme/capsule_theme.dart';
 import '../widgets/capsule_parallax_background.dart';
 import 'capsule_warriors_briefing_screen.dart';
 import 'capsule_warriors_review_screen.dart';
+import 'capsule_warriors_revision_stage_screen.dart';
 
 class CapsuleWarriorsWorldSelectScreen extends StatefulWidget {
   final GameProgress progress;
@@ -31,12 +32,14 @@ class _CapsuleWarriorsWorldSelectScreenState
   final AudioService _audio = AudioService();
   final StorageService _storage = StorageService();
   late GameProgress _progress;
+  int _selectedCycle = 1;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _progress = widget.progress;
+    _selectedCycle = _progress.currentCycleIndex;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -55,27 +58,52 @@ class _CapsuleWarriorsWorldSelectScreenState
     if (mounted) {
       setState(() {
         _progress = updated;
+        _selectedCycle = _progress.currentCycleIndex;
       });
     }
   }
 
-  int get _completedStagesCount {
+  int get _maxAccessibleCycle {
+    int c = 1;
+    while (_progress.isRevisionStageCompleted(c)) {
+      c++;
+    }
+    return math.max(c, _progress.currentCycleIndex);
+  }
+
+  int get _completedInSelectedCycle {
     int count = 0;
-    for (final world in GastroWorld.worlds) {
-      if (_progress.isWorldCompleted(world.id)) {
+    final start = (_selectedCycle - 1) * 7 + 1;
+    for (int s = start; s < start + 7; s++) {
+      if (_progress.isWorldCompleted(s)) {
         count++;
       }
     }
     return count;
   }
 
-  void _openStage(GastroWorld world) {
+  void _openStage(int stageNumber, GastroWorld world) {
     _audio.playStageSelect();
     Navigator.of(context)
         .push(
           buildCapsuleRoute(
             CapsuleWarriorsBriefingScreen(
               world: world,
+              stageId: stageNumber,
+              progress: _progress,
+            ),
+          ),
+        )
+        .then((_) => _reloadProgress());
+  }
+
+  void _openRevisionStage(int revisionNumber) {
+    _audio.playStageSelect();
+    Navigator.of(context)
+        .push(
+          buildCapsuleRoute(
+            CapsuleWarriorsRevisionStageScreen(
+              revisionNumber: revisionNumber,
               progress: _progress,
             ),
           ),
@@ -96,7 +124,7 @@ class _CapsuleWarriorsWorldSelectScreenState
 
   @override
   Widget build(BuildContext context) {
-    final completedCount = _completedStagesCount;
+    final completedCount = _completedInSelectedCycle;
     final totalStages = GastroWorld.worlds.length;
     final completionRatio =
         totalStages > 0 ? (completedCount / totalStages).clamp(0.0, 1.0) : 0.0;
@@ -122,17 +150,75 @@ class _CapsuleWarriorsWorldSelectScreenState
                     totalQuestionsCount: totalQuestionsCount,
                   ),
 
-                  // 2. MISSION CARDS DECK (Vertical clean list on Portrait, Horizontal Carousel on Landscape/Desktop)
+                  if (_maxAccessibleCycle > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_maxAccessibleCycle, (i) {
+                            final cycle = i + 1;
+                            final selected = cycle == _selectedCycle;
+                            final start = (cycle - 1) * 7 + 1;
+                            final end = cycle * 7;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () {
+                                  _audio.playClick();
+                                  setState(() => _selectedCycle = cycle);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 11, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? CapsuleColors.cyanGlow
+                                        : CapsuleColors.oceanSurface
+                                            .withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: selected
+                                          ? CapsuleColors.cyanGlow
+                                          : CapsuleColors.cardBorder,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cycle $cycle ($start–$end)',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: selected
+                                          ? CapsuleColors.deepOcean
+                                          : Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ),
+
+                  // 2. MISSION CARDS DECK (7 Cycle Stages + Automatic Revision Stage after every 7 stages)
                   Expanded(
                     child: isNarrowPortrait
                         ? ListView.separated(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             physics: const BouncingScrollPhysics(),
-                            itemCount: GastroWorld.worlds.length,
+                            itemCount: 8,
                             separatorBuilder: (_, _) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) => _buildPortraitStageCard(
-                              GastroWorld.worlds[index],
-                            ),
+                            itemBuilder: (context, index) {
+                              if (index == 7) {
+                                return _buildPortraitRevisionStageCard(_selectedCycle);
+                              }
+                              final stageNumber = (_selectedCycle - 1) * 7 + index + 1;
+                              final world = GastroWorld.getWorldForLevel(stageNumber);
+                              return _buildPortraitStageCard(stageNumber, world);
+                            },
                           )
                         : Center(
                             child: ConstrainedBox(
@@ -155,11 +241,22 @@ class _CapsuleWarriorsWorldSelectScreenState
                                         scrollDirection: Axis.horizontal,
                                         physics: const BouncingScrollPhysics(),
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                        itemCount: GastroWorld.worlds.length,
-                                        itemBuilder: (context, index) => _buildHorizontalStageCard(
-                                          GastroWorld.worlds[index],
-                                          isShortLandscape,
-                                        ),
+                                        itemCount: 8,
+                                        itemBuilder: (context, index) {
+                                          if (index == 7) {
+                                            return _buildHorizontalRevisionStageCard(
+                                              _selectedCycle,
+                                              isShortLandscape,
+                                            );
+                                          }
+                                          final stageNumber = (_selectedCycle - 1) * 7 + index + 1;
+                                          final world = GastroWorld.getWorldForLevel(stageNumber);
+                                          return _buildHorizontalStageCard(
+                                            stageNumber,
+                                            world,
+                                            isShortLandscape,
+                                          );
+                                        },
                                       ),
                                     ),
                                   ),
@@ -382,12 +479,15 @@ class _CapsuleWarriorsWorldSelectScreenState
     );
   }
 
+  String _formatStageNum(int n) => n < 10 ? '0$n' : '$n';
+
   /// Landscape / Desktop Card
-  Widget _buildHorizontalStageCard(GastroWorld world, bool isShortLandscape) {
-    final isUnlocked = _progress.isWorldUnlocked(world.id);
-    final isCompleted = _progress.isWorldCompleted(world.id);
-    final stars = _progress.getStars(world.id);
-    final qLabel = world.id == 7 ? 'Révision' : '${world.questionIds.length} Q';
+  Widget _buildHorizontalStageCard(int stageNumber, GastroWorld world, bool isShortLandscape) {
+    final isUnlocked = _progress.isWorldUnlocked(stageNumber);
+    final isCompleted = _progress.isWorldCompleted(stageNumber);
+    final stars = _progress.getStars(stageNumber);
+    final sectorId = ((stageNumber - 1) % 7) + 1;
+    final qLabel = sectorId == 7 ? 'Synthèse' : '${world.questionIds.length} Q';
 
     return Container(
       width: isShortLandscape ? 210 : 238,
@@ -421,7 +521,7 @@ class _CapsuleWarriorsWorldSelectScreenState
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: isUnlocked ? () => _openStage(world) : null,
+          onTap: isUnlocked ? () => _openStage(stageNumber, world) : null,
           child: Stack(
             children: [
               Padding(
@@ -434,7 +534,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'STAGE 0${world.id}',
+                          'STAGE ${_formatStageNum(stageNumber)}',
                           style: GoogleFonts.orbitron(
                             fontSize: isShortLandscape ? 12 : 13.5,
                             fontWeight: FontWeight.w900,
@@ -582,7 +682,176 @@ class _CapsuleWarriorsWorldSelectScreenState
                           Icon(Icons.lock_rounded, color: CapsuleColors.textSubtle, size: isShortLandscape ? 26 : 32),
                           const SizedBox(height: 4),
                           Text(
-                            'STAGE ${world.id - 1} REQUIS',
+                            ((stageNumber - 1) % 7 == 0)
+                                ? 'RÉVISION ${(stageNumber - 1) ~/ 7} REQUISE'
+                                : 'STAGE ${stageNumber - 1} REQUIS',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: CapsuleColors.textSubtle,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Landscape / Desktop Special Revision Card after every 7 stages
+  Widget _buildHorizontalRevisionStageCard(int revisionNumber, bool isShortLandscape) {
+    final isUnlocked = _progress.isRevisionStageUnlocked(revisionNumber);
+    final isCompleted = _progress.isRevisionStageCompleted(revisionNumber);
+    final revResult = _progress.revisionStageResults[revisionNumber];
+    final mistakesCount = _progress.getMistakesForCycle(revisionNumber).length;
+    final start = (revisionNumber - 1) * 7 + 1;
+    final end = revisionNumber * 7;
+
+    return Container(
+      width: isShortLandscape ? 210 : 238,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isUnlocked
+              ? [const Color(0xFF194F7E), const Color(0xFF123F68)]
+              : [
+                  CapsuleColors.deepOcean.withValues(alpha: 0.85),
+                  CapsuleColors.deepOcean.withValues(alpha: 0.70),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isCompleted
+              ? CapsuleColors.mintGreen
+              : (isUnlocked ? CapsuleColors.gold : CapsuleColors.cardBorder),
+          width: isUnlocked ? 2.0 : 1.0,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: isUnlocked ? () => _openRevisionStage(revisionNumber) : null,
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(isShortLandscape ? 10 : 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'RÉVISION $revisionNumber',
+                          style: GoogleFonts.orbitron(
+                            fontSize: isShortLandscape ? 12 : 13.5,
+                            fontWeight: FontWeight.w900,
+                            color: isUnlocked ? CapsuleColors.gold : CapsuleColors.textMuted,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: CapsuleColors.deepOcean.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            mistakesCount > 0 ? '$mistakesCount Q' : 'Bonus',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              color: CapsuleColors.gold,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isCompleted ? Icons.verified_rounded : Icons.auto_stories_rounded,
+                            color: isCompleted ? CapsuleColors.mintGreen : CapsuleColors.gold,
+                            size: isShortLandscape ? 26 : 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'STAGE DE RÉVISION $revisionNumber',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: isShortLandscape ? 12 : 13.5,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            isCompleted && revResult != null
+                                ? 'Validée • ${revResult.score} PTS'
+                                : (mistakesCount > 0
+                                    ? 'Stages $start–$end : $mistakesCount erreur(s) ciblée(s)'
+                                    : 'Stages $start–$end : 0 erreur • Défi bonus'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: CapsuleColors.textSubtle,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isCompleted
+                              ? CapsuleColors.mintGreen.withValues(alpha: 0.22)
+                              : CapsuleColors.gold,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isCompleted ? 'VALIDÉE' : 'RÉVISER',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isCompleted ? CapsuleColors.mintGreen : CapsuleColors.deepOcean,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isUnlocked)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.deepOcean.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_rounded, color: CapsuleColors.textSubtle, size: isShortLandscape ? 26 : 32),
+                          const SizedBox(height: 4),
+                          Text(
+                            'STAGE $end REQUIS',
                             style: GoogleFonts.plusJakartaSans(
                               color: CapsuleColors.textSubtle,
                               fontSize: 10.5,
@@ -602,11 +871,12 @@ class _CapsuleWarriorsWorldSelectScreenState
   }
 
   /// Portrait Phone Full-Width Ergonomic Card (Zero clipped letters!)
-  Widget _buildPortraitStageCard(GastroWorld world) {
-    final isUnlocked = _progress.isWorldUnlocked(world.id);
-    final isCompleted = _progress.isWorldCompleted(world.id);
-    final stars = _progress.getStars(world.id);
-    final qLabel = world.id == 7 ? 'Mode Révision' : '${world.questionIds.length} Questions';
+  Widget _buildPortraitStageCard(int stageNumber, GastroWorld world) {
+    final isUnlocked = _progress.isWorldUnlocked(stageNumber);
+    final isCompleted = _progress.isWorldCompleted(stageNumber);
+    final stars = _progress.getStars(stageNumber);
+    final sectorId = ((stageNumber - 1) % 7) + 1;
+    final qLabel = sectorId == 7 ? 'Synthèse' : '${world.questionIds.length} Questions';
 
     return Opacity(
       opacity: isUnlocked ? 1.0 : 0.62,
@@ -632,7 +902,7 @@ class _CapsuleWarriorsWorldSelectScreenState
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: isUnlocked ? () => _openStage(world) : null,
+            onTap: isUnlocked ? () => _openStage(stageNumber, world) : null,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -679,7 +949,7 @@ class _CapsuleWarriorsWorldSelectScreenState
                           children: [
                             Expanded(
                               child: Text(
-                                'STAGE 0${world.id}',
+                                'STAGE ${_formatStageNum(stageNumber)}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.orbitron(
@@ -774,6 +1044,141 @@ class _CapsuleWarriorsWorldSelectScreenState
                                 ),
                               ),
                           ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Portrait Phone Card for Special Revision Stage every 7 stages
+  Widget _buildPortraitRevisionStageCard(int revisionNumber) {
+    final isUnlocked = _progress.isRevisionStageUnlocked(revisionNumber);
+    final isCompleted = _progress.isRevisionStageCompleted(revisionNumber);
+    final revResult = _progress.revisionStageResults[revisionNumber];
+    final mistakesCount = _progress.getMistakesForCycle(revisionNumber).length;
+    final start = (revisionNumber - 1) * 7 + 1;
+    final end = revisionNumber * 7;
+
+    return Opacity(
+      opacity: isUnlocked ? 1.0 : 0.62,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF194F7E), Color(0xFF123F68)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCompleted
+                ? CapsuleColors.mintGreen
+                : (isUnlocked ? CapsuleColors.gold : CapsuleColors.cardBorder),
+            width: isUnlocked ? 1.8 : 1.0,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isUnlocked ? () => _openRevisionStage(revisionNumber) : null,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 82,
+                    height: 74,
+                    decoration: BoxDecoration(
+                      color: CapsuleColors.deepOcean,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: CapsuleColors.gold.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isUnlocked
+                            ? (isCompleted
+                                ? Icons.verified_rounded
+                                : Icons.auto_stories_rounded)
+                            : Icons.lock_rounded,
+                        color: isUnlocked ? CapsuleColors.gold : Colors.white70,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'RÉVISION $revisionNumber',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: isUnlocked
+                                      ? CapsuleColors.gold
+                                      : CapsuleColors.textMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: CapsuleColors.deepOcean
+                                    .withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                mistakesCount > 0
+                                    ? '$mistakesCount Q à revoir'
+                                    : 'Défi Bonus',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  color: CapsuleColors.gold,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'STAGE DE RÉVISION $revisionNumber',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          isCompleted && revResult != null
+                              ? 'Validée • ${revResult.score} PTS (${revResult.correctCount}/${revResult.totalCount})'
+                              : (mistakesCount > 0
+                                  ? 'Questions manquées des Stages $start à $end'
+                                  : 'Stages $start à $end : aucune erreur • Défi bonus'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: CapsuleColors.textSubtle,
+                          ),
                         ),
                       ],
                     ),

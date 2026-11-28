@@ -34,13 +34,14 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
   GameProgress _progress = GameProgress();
   bool _hasSave = false;
+  List<PlayerProfile> _savedPlayers = [];
 
   @override
   void initState() {
     super.initState();
 
     _progress = _storageService.currentProgress;
-    _hasSave = _progress.totalScore > 0 || _progress.stageResults.isNotEmpty;
+    _hasSave = _progress.hasPlayableProgress;
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -75,14 +76,20 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
   Future<void> _loadSaveData() async {
     final hasSave = await _storageService.hasExistingProgress();
     final progress = await _storageService.loadProgress();
+    final savedPlayers = await _storageService.listSavedPlayers();
     if (mounted) {
       setState(() {
-        _hasSave =
-            hasSave && (progress.totalScore > 0 || progress.stageResults.isNotEmpty);
+        _hasSave = hasSave && progress.hasPlayableProgress;
         _progress = progress;
+        _savedPlayers = savedPlayers;
       });
     }
   }
+
+  List<PlayerProfile> get _returningPlayersWithProgress => _savedPlayers
+      .where((p) =>
+          p.completedStages > 0 || p.totalScore > 0 || p.totalXP > 0)
+      .toList();
 
   void _onPlay() {
     _audio.playClick();
@@ -116,11 +123,300 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
 
   void _onResume() {
     _audio.playClick();
-    Navigator.of(context)
-        .push(
-          buildCapsuleRoute(CapsuleWarriorsWorldSelectScreen(progress: _progress)),
-        )
-        .then((_) => _loadSaveData());
+    if (_hasSave) {
+      Navigator.of(context)
+          .push(
+            buildCapsuleRoute(
+                CapsuleWarriorsWorldSelectScreen(progress: _progress)),
+          )
+          .then((_) => _loadSaveData());
+    } else if (_returningPlayersWithProgress.isNotEmpty) {
+      _openPlayerProfilesDialog();
+    } else {
+      _onPlay();
+    }
+  }
+
+  void _onNewGameConfirm() {
+    _audio.playClick();
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: CapsuleColors.oceanSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: CapsuleColors.amberGold, width: 1.6),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.restart_alt_rounded,
+                color: CapsuleColors.amberGold, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'NOUVELLE PARTIE',
+                style: GoogleFonts.orbitron(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous réinitialiser la progression actuelle de « ${_progress.playerName} » et recommencer au Stage 1 ?\n\nLes sauvegardes des autres joueurs restent indépendantes.',
+          style: GoogleFonts.inter(
+            color: CapsuleColors.textSubtle,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(
+              'ANNULER',
+              style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white70, fontWeight: FontWeight.w700),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: CapsuleColors.amberGold,
+              foregroundColor: CapsuleColors.deepOcean,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              await _storageService.clearProgress();
+              await _loadSaveData();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: CapsuleColors.oceanSurface,
+                    content: Text(
+                      'Progression réinitialisée • Nouveau départ au Stage 1 !',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: CapsuleColors.cyanGlow,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Text(
+              'CONFIRMER',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openPlayerProfilesDialog() {
+    _audio.playClick();
+    final nameController = TextEditingController(text: _progress.playerName);
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: CapsuleColors.oceanSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: CapsuleColors.cyanGlow, width: 1.6),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.person_pin_rounded,
+                color: CapsuleColors.cyanGlow, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'PROFIL & JOUEURS',
+                style: GoogleFonts.orbitron(
+                  color: CapsuleColors.cyanGlow,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Joueur actuel (session isolée) :',
+                  style: GoogleFonts.inter(
+                      color: CapsuleColors.textSubtle, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: nameController,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700),
+                        decoration: InputDecoration(
+                          hintText: 'Votre prénom / pseudo',
+                          hintStyle:
+                              const TextStyle(color: CapsuleColors.textMuted),
+                          filled: true,
+                          fillColor: CapsuleColors.deepOcean,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                                color: CapsuleColors.cardBorder),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: CapsuleColors.cyanGlow,
+                        foregroundColor: CapsuleColors.deepOcean,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () async {
+                        await _storageService
+                            .renameCurrentPlayer(nameController.text);
+                        await _loadSaveData();
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                      },
+                      child: const Text('OK',
+                          style: TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: CapsuleColors.mintGreen,
+                    side: const BorderSide(color: CapsuleColors.mintGreen),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: Text(
+                    'Nouveau joueur indépendant (Stage 1)',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800, fontSize: 12),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(dialogCtx).pop();
+                    await _storageService.startNewPlayerSession();
+                    await _loadSaveData();
+                  },
+                ),
+                if (_returningPlayersWithProgress.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'Joueurs sauvegardés (${_returningPlayersWithProgress.length}) :',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: CapsuleColors.gold,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ..._returningPlayersWithProgress.map((profile) {
+                    final isActive = profile.id == _progress.playerId;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () async {
+                          Navigator.of(dialogCtx).pop();
+                          await _storageService.switchPlayer(profile.id);
+                          await _loadSaveData();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 11, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: CapsuleColors.deepOcean,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isActive
+                                  ? CapsuleColors.cyanGlow
+                                  : CapsuleColors.cardBorder,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isActive
+                                    ? Icons.check_circle_rounded
+                                    : Icons.account_circle_rounded,
+                                color: isActive
+                                    ? CapsuleColors.cyanGlow
+                                    : CapsuleColors.gold,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profile.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Stage ${profile.currentStage} • ${profile.totalXP} XP • ${profile.totalScore} PTS',
+                                      style: const TextStyle(
+                                        color: CapsuleColors.textSubtle,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!isActive)
+                                const Icon(Icons.login_rounded,
+                                    color: CapsuleColors.gold, size: 17),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('FERMER',
+                style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onHowToPlay() {
@@ -240,7 +536,9 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
                               _stagger(0.10, 0.50, _buildGameLogo(isCompact)),
                               const SizedBox(height: 6),
                               _stagger(0.18, 0.60, _buildSubtitle(isCompact)),
-                              SizedBox(height: isCompact ? 16 : 24),
+                              const SizedBox(height: 10),
+                              _stagger(0.22, 0.72, _buildPlayerSessionBar(isCompact)),
+                              SizedBox(height: isCompact ? 12 : 18),
                               _stagger(0.28, 0.95, _buildMenuButtons(isCompact)),
                             ],
                           ),
@@ -390,9 +688,106 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
     );
   }
 
-  Widget _buildMenuButtons(bool isCompact) {
-    final gap = isCompact ? 7.5 : 9.5;
+  Widget _buildPlayerSessionBar(bool isCompact) {
     final buttonWidth = isCompact ? 295.0 : 340.0;
+    final returningCount = _returningPlayersWithProgress.length;
+    return SizedBox(
+      width: buttonWidth,
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 6,
+        alignment: WrapAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(11),
+            onTap: _openPlayerProfilesDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: CapsuleColors.cyanGlow.withValues(alpha: 0.55),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.person_rounded,
+                      color: CapsuleColors.cyanGlow, size: 15),
+                  const SizedBox(width: 5),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 130),
+                    child: Text(
+                      _progress.playerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (returningCount > 0) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      '($returningCount)',
+                      style: GoogleFonts.inter(
+                        color: CapsuleColors.gold,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 3),
+                  const Icon(Icons.swap_horiz_rounded,
+                      color: CapsuleColors.cyanGlow, size: 14),
+                ],
+              ),
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(11),
+            onTap: _onNewGameConfirm,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: CapsuleColors.oceanSurface.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: CapsuleColors.amberGold.withValues(alpha: 0.65),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.restart_alt_rounded,
+                      color: CapsuleColors.amberGold, size: 15),
+                  const SizedBox(width: 5),
+                  Text(
+                    'NOUVELLE PARTIE',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: CapsuleColors.amberGold,
+                      fontSize: 10.8,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuButtons(bool isCompact) {
+    final gap = isCompact ? 7.0 : 9.0;
+    final buttonWidth = isCompact ? 295.0 : 340.0;
+    final returningCount = _returningPlayersWithProgress.length;
+    final bool canResume = _hasSave || returningCount > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +797,9 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
           scale: _pulseAnimation,
           child: _InteractiveHomeButton(
             title: 'JOUER',
-            subtitle: _hasSave ? 'Choisir une mission' : 'Commencer l\'expédition',
+            subtitle: _hasSave
+                ? 'Choisir une mission (Stage ${_progress.currentStage})'
+                : 'Commencer au Stage 1',
             icon: Icons.play_arrow_rounded,
             isPrimary: true,
             accentColor: CapsuleColors.cyanGlow,
@@ -417,14 +814,16 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         _InteractiveHomeButton(
           title: 'REPRENDRE',
           subtitle: _hasSave
-              ? 'Stage ${_progress.currentStage}/7 • ${_progress.totalXP} XP'
-              : 'Aucune mission en cours',
+              ? '${_progress.playerName} • Stage ${_progress.currentStage} • ${_progress.totalXP} XP'
+              : (returningCount > 0
+                  ? 'Reprendre un joueur ($returningCount)'
+                  : 'Aucune mission en cours'),
           icon: Icons.restore_rounded,
           isPrimary: false,
-          accentColor: _hasSave ? CapsuleColors.gold : CapsuleColors.textMuted,
+          accentColor: canResume ? CapsuleColors.gold : CapsuleColors.textMuted,
           width: buttonWidth,
           isCompact: isCompact,
-          onTap: _hasSave ? _onResume : _onPlay,
+          onTap: _onResume,
         ),
         SizedBox(height: gap),
 
@@ -457,7 +856,7 @@ class _CapsuleWarriorsHomeScreenState extends State<CapsuleWarriorsHomeScreen>
         // 5. PROGRESSION
         _InteractiveHomeButton(
           title: 'PROGRESSION',
-          subtitle: 'Stages terminés (${_progress.completedCount}/7) & récompenses',
+          subtitle: 'Stages terminés (${_progress.completedCount}/7+) & récompenses',
           icon: Icons.emoji_events_rounded,
           isPrimary: false,
           accentColor: CapsuleColors.gold,
@@ -784,6 +1183,64 @@ class _ProgressionRewardsDialog extends StatelessWidget {
                   ),
                 );
               }),
+
+              if (progress.revisionStageResults.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'STAGES DE RÉVISION (${progress.revisionStageResults.length})',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: CapsuleColors.gold,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...progress.revisionStageResults.values.map((rev) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: CapsuleColors.deepOcean.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(
+                          color: rev.completed
+                              ? CapsuleColors.gold.withValues(alpha: 0.65)
+                              : CapsuleColors.cardBorder,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.auto_stories_rounded,
+                              color: CapsuleColors.gold, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Révision ${rev.revisionNumber} (Stages ${rev.cycleStartStage}–${rev.cycleEndStage})',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: CapsuleColors.textWhite,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            rev.isBonusChallenge
+                                ? 'Bonus • ${rev.correctCount}/${rev.totalCount}'
+                                : '${rev.correctCount}/${rev.totalCount} • ${rev.score} PTS',
+                            style: GoogleFonts.inter(
+                              color: CapsuleColors.cyanGlow,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
 
               const SizedBox(height: 8),
               Text(

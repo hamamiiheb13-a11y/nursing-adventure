@@ -284,6 +284,13 @@ class ArcadeObstacle {
   double animPhase;
   double velocityY;
   double initialY;
+  double baseX;
+  double velocityX;
+  double swayOffset;
+  double triggerTimer;
+  double pulseScale;
+  double stunTimer;
+  int variant;
   double sootheTimer; // > 0 means calmed by Anti-Inflammatory Special!
   bool hitPlayer;
 
@@ -295,12 +302,20 @@ class ArcadeObstacle {
     this.height = 48.0,
     this.animPhase = 0.0,
     this.velocityY = 0.0,
+    this.velocityX = 0.0,
+    this.swayOffset = 0.0,
+    this.triggerTimer = 0.0,
+    this.pulseScale = 1.0,
+    this.stunTimer = 0.0,
+    this.variant = 0,
     this.sootheTimer = 0.0,
+    double? initialX,
     required this.initialY,
     this.hitPlayer = false,
-  });
+  }) : baseX = initialX ?? position.dx;
 
   bool get isSoothed => sootheTimer > 0;
+  bool get isStunned => stunTimer > 0;
 }
 
 class ArcadeCheckpoint {

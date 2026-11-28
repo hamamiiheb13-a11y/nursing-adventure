@@ -82,6 +82,8 @@ class _CapsuleWarriorsBriefingScreenState
     _storage.saveProgress(_progress);
   }
 
+  int get _effectiveStageId => widget.stageId ?? widget.world?.id ?? 1;
+
   void _startMission() {
     _audio.playClick();
     _storage.saveProgress(_progress);
@@ -89,7 +91,7 @@ class _CapsuleWarriorsBriefingScreenState
         .push(
           buildCapsuleRoute(
             GastroArcadeScreen(
-              stageId: _world.id,
+              stageId: _effectiveStageId,
               progress: _progress,
             ),
           ),
@@ -100,10 +102,9 @@ class _CapsuleWarriorsBriefingScreenState
   }
 
   int get _checkpointCount {
-    if (_world.id == 7) {
-      return _progress.revisionQueue.isNotEmpty
-          ? math.min(7, _progress.revisionQueue.length)
-          : 3;
+    final sectorId = ((_effectiveStageId - 1) % 7) + 1;
+    if (sectorId == 7) {
+      return 3;
     }
     return _world.questionIds.length;
   }
@@ -327,7 +328,7 @@ class _CapsuleWarriorsBriefingScreenState
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'MISSION ${_world.id} • ${_world.name}',
+          'MISSION $_effectiveStageId • ${_world.name}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.plusJakartaSans(

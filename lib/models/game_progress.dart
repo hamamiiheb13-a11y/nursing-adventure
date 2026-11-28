@@ -37,10 +37,92 @@ class StageResult {
   }
 }
 
+class RevisionStageResult {
+  final int revisionNumber; // 1 after Stage 7, 2 after Stage 14, ...
+  final int cycleStartStage;
+  final int cycleEndStage;
+  final List<int> questionIdsAsked;
+  final Map<int, bool> answersCorrectMap;
+  final int correctCount;
+  final int totalCount;
+  final int score;
+  final int stars;
+  final bool isBonusChallenge;
+  final bool completed;
+  final DateTime? completedAt;
+
+  const RevisionStageResult({
+    required this.revisionNumber,
+    required this.cycleStartStage,
+    required this.cycleEndStage,
+    this.questionIdsAsked = const [],
+    this.answersCorrectMap = const {},
+    this.correctCount = 0,
+    this.totalCount = 0,
+    this.score = 0,
+    this.stars = 3,
+    this.isBonusChallenge = false,
+    this.completed = true,
+    this.completedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'revisionNumber': revisionNumber,
+        'cycleStartStage': cycleStartStage,
+        'cycleEndStage': cycleEndStage,
+        'questionIdsAsked': questionIdsAsked,
+        'answersCorrectMap':
+            answersCorrectMap.map((k, v) => MapEntry(k.toString(), v)),
+        'correctCount': correctCount,
+        'totalCount': totalCount,
+        'score': score,
+        'stars': stars,
+        'isBonusChallenge': isBonusChallenge,
+        'completed': completed,
+        'completedAt': completedAt?.toIso8601String(),
+      };
+
+  factory RevisionStageResult.fromJson(Map<String, dynamic> json) {
+    final answers = <int, bool>{};
+    if (json['answersCorrectMap'] is Map) {
+      (json['answersCorrectMap'] as Map).forEach((k, v) {
+        final id = int.tryParse(k.toString());
+        if (id != null && v is bool) {
+          answers[id] = v;
+        }
+      });
+    }
+    return RevisionStageResult(
+      revisionNumber: json['revisionNumber'] as int? ?? 1,
+      cycleStartStage: json['cycleStartStage'] as int? ?? 1,
+      cycleEndStage: json['cycleEndStage'] as int? ?? 7,
+      questionIdsAsked: (json['questionIdsAsked'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      answersCorrectMap: answers,
+      correctCount: json['correctCount'] as int? ?? 0,
+      totalCount: json['totalCount'] as int? ?? 0,
+      score: json['score'] as int? ?? 0,
+      stars: json['stars'] as int? ?? 3,
+      isBonusChallenge: json['isBonusChallenge'] as bool? ?? false,
+      completed: json['completed'] as bool? ?? false,
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'] as String)
+          : null,
+    );
+  }
+}
+
 class GameProgress {
-  int currentStage; // 1-7
+  String playerId;
+  String playerName;
+  int currentStage; // 1+ across cycles (1-7 Cycle 1, 8-14 Cycle 2, ...)
   Map<int, bool> questionsAnswered; // questionId -> isCorrect
   Map<int, StageResult> stageResults; // stageId -> StageResult
+  Map<int, List<int>> cycleMistakeQuestionIds; // cycleIndex (1,2,3...) -> missed questionIds
+  Map<int, RevisionStageResult> revisionStageResults; // revisionNumber -> RevisionStageResult
+  int? pendingRevisionNumber;
   int totalScore;
   int totalXP;
   List<String> unlockedWeapons;
@@ -66,9 +148,14 @@ class GameProgress {
   bool hasSeenTutorial;
 
   GameProgress({
+    this.playerId = '',
+    this.playerName = 'Explorateur',
     this.currentStage = 1,
     Map<int, bool>? questionsAnswered,
     Map<int, StageResult>? stageResults,
+    Map<int, List<int>>? cycleMistakeQuestionIds,
+    Map<int, RevisionStageResult>? revisionStageResults,
+    this.pendingRevisionNumber,
     this.totalScore = 0,
     this.totalXP = 0,
     List<String>? unlockedWeapons,
@@ -92,6 +179,10 @@ class GameProgress {
     this.hasSeenTutorial = false,
   })  : questionsAnswered = questionsAnswered ?? <int, bool>{},
         stageResults = stageResults ?? <int, StageResult>{},
+        cycleMistakeQuestionIds =
+            cycleMistakeQuestionIds ?? <int, List<int>>{},
+        revisionStageResults =
+            revisionStageResults ?? <int, RevisionStageResult>{},
         unlockedWeapons = unlockedWeapons ?? <String>['Laser Médical MK-I'],
         revisionQueue = revisionQueue ?? <int>[],
         masteredQuestions = masteredQuestions ?? <int>{},
@@ -101,10 +192,39 @@ class GameProgress {
         questionCorrectCount = questionCorrectCount ?? <int, int>{},
         questionIncorrectCount = questionIncorrectCount ?? <int, int>{};
 
+  static GameProgress freshForPlayer({
+    required String playerId,
+    required String playerName,
+    GameProgress? preserveAudioFrom,
+  }) {
+    return GameProgress(
+      playerId: playerId,
+      playerName: playerName,
+      masterVolume: preserveAudioFrom?.masterVolume ?? 1.0,
+      musicVolume: preserveAudioFrom?.musicVolume ?? 0.75,
+      sfxVolume: preserveAudioFrom?.sfxVolume ?? 0.85,
+      musicEnabled: preserveAudioFrom?.musicEnabled ?? true,
+      sfxEnabled: preserveAudioFrom?.sfxEnabled ?? true,
+      isMuted: preserveAudioFrom?.isMuted ?? false,
+    );
+  }
+
+  static int cycleForStage(int stageId) =>
+      stageId <= 1 ? 1 : (((stageId - 1) ~/ 7) + 1);
+
+  int get currentCycleIndex => cycleForStage(currentStage);
+
+  bool get hasPlayableProgress =>
+      totalScore > 0 ||
+      totalXP > 0 ||
+      stageResults.isNotEmpty ||
+      revisionStageResults.isNotEmpty ||
+      questionsAnswered.isNotEmpty;
+
   // Backward compatibility getters & setters
   int get currentUnlockedLevel => currentStage;
   set currentUnlockedLevel(int val) {
-    currentStage = val.clamp(1, 7);
+    currentStage = val < 1 ? 1 : val;
   }
 
   int get totalXp => totalXP;
@@ -139,9 +259,7 @@ class GameProgress {
   }
 
   bool isLevelUnlocked(int level) {
-    if (level <= 1) return true;
-    final world = GastroWorld.getWorldForLevel(level);
-    return isWorldUnlocked(world.id);
+    return isWorldUnlocked(level);
   }
 
   int getCompletedCountInWorld(int worldId) {
@@ -156,14 +274,157 @@ class GameProgress {
     return count;
   }
 
+  List<int> getMistakesForCycle(int revisionNumber) {
+    return List<int>.from(cycleMistakeQuestionIds[revisionNumber] ?? const <int>[]);
+  }
+
+  bool isRevisionStageUnlocked(int revisionNumber) {
+    if (revisionNumber <= 0) return false;
+    return isLevelCompleted(revisionNumber * 7);
+  }
+
+  bool isRevisionStageCompleted(int revisionNumber) {
+    return revisionStageResults[revisionNumber]?.completed ?? false;
+  }
+
+  int? get activePendingRevision {
+    if (pendingRevisionNumber != null &&
+        !isRevisionStageCompleted(pendingRevisionNumber!)) {
+      return pendingRevisionNumber;
+    }
+    // Auto-detect first unlocked yet uncompleted revision stage
+    int rev = 1;
+    while (isRevisionStageUnlocked(rev)) {
+      if (!isRevisionStageCompleted(rev)) {
+        return rev;
+      }
+      rev++;
+    }
+    return null;
+  }
+
   void recordQuestionAnswer({
     required int questionId,
     required int selectedOptionIndex,
     required bool isCorrect,
     int earnedXp = 0,
+    int? stageId,
   }) {
-    answerQuestion(questionId, isCorrect, selectedOptionIndex: selectedOptionIndex);
+    answerQuestion(
+      questionId,
+      isCorrect,
+      selectedOptionIndex: selectedOptionIndex,
+      stageId: stageId,
+    );
     if (earnedXp > 0) totalXP += earnedXp;
+  }
+
+  void recordRevisionAnswer({
+    required int revisionNumber,
+    required int questionId,
+    required int selectedOptionIndex,
+    required bool isCorrect,
+    int earnedXp = 0,
+  }) {
+    questionsAnswered[questionId] = isCorrect;
+    userAnswers[questionId] = selectedOptionIndex;
+    questionAttempts[questionId] = (questionAttempts[questionId] ?? 0) + 1;
+
+    if (isCorrect) {
+      questionCorrectCount[questionId] =
+          (questionCorrectCount[questionId] ?? 0) + 1;
+      totalXP += 50 + earnedXp;
+      markMastered(questionId);
+      cycleMistakeQuestionIds[revisionNumber]?.remove(questionId);
+    } else {
+      questionIncorrectCount[questionId] =
+          (questionIncorrectCount[questionId] ?? 0) + 1;
+      if (earnedXp > 0) totalXP += earnedXp;
+      if (!revisionQueue.contains(questionId)) {
+        revisionQueue.add(questionId);
+      }
+    }
+
+    final existing = revisionStageResults[revisionNumber];
+    final cycleStart = (revisionNumber - 1) * 7 + 1;
+    final cycleEnd = revisionNumber * 7;
+    final updatedAnswers = Map<int, bool>.from(existing?.answersCorrectMap ?? {});
+    updatedAnswers[questionId] = isCorrect;
+    final askedIds = List<int>.from(existing?.questionIdsAsked ?? []);
+    if (!askedIds.contains(questionId)) {
+      askedIds.add(questionId);
+    }
+
+    revisionStageResults[revisionNumber] = RevisionStageResult(
+      revisionNumber: revisionNumber,
+      cycleStartStage: cycleStart,
+      cycleEndStage: cycleEnd,
+      questionIdsAsked: askedIds,
+      answersCorrectMap: updatedAnswers,
+      correctCount: updatedAnswers.values.where((v) => v).length,
+      totalCount: askedIds.length,
+      score: existing?.score ?? 0,
+      stars: existing?.stars ?? 0,
+      isBonusChallenge: existing?.isBonusChallenge ?? false,
+      completed: existing?.completed ?? false,
+      completedAt: existing?.completedAt,
+    );
+
+    lastPlayed = DateTime.now();
+  }
+
+  void completeRevisionStage({
+    required int revisionNumber,
+    required int score,
+    required int stars,
+    required int correctCount,
+    required int totalCount,
+    required bool isBonusChallenge,
+    List<int> questionIdsAsked = const [],
+  }) {
+    final existing = revisionStageResults[revisionNumber];
+    final cycleStart = (revisionNumber - 1) * 7 + 1;
+    final cycleEnd = revisionNumber * 7;
+    final bestScore =
+        existing != null && existing.score > score ? existing.score : score;
+    final bestStars =
+        existing != null && existing.stars > stars ? existing.stars : stars;
+    final mergedAsked = List<int>.from(
+      questionIdsAsked.isNotEmpty
+          ? questionIdsAsked
+          : (existing?.questionIdsAsked ?? const []),
+    );
+    final mergedAnswers = Map<int, bool>.from(existing?.answersCorrectMap ?? {});
+
+    revisionStageResults[revisionNumber] = RevisionStageResult(
+      revisionNumber: revisionNumber,
+      cycleStartStage: cycleStart,
+      cycleEndStage: cycleEnd,
+      questionIdsAsked: mergedAsked,
+      answersCorrectMap: mergedAnswers,
+      correctCount: correctCount,
+      totalCount: totalCount,
+      score: bestScore,
+      stars: bestStars,
+      isBonusChallenge: isBonusChallenge,
+      completed: true,
+      completedAt: DateTime.now(),
+    );
+
+    if (pendingRevisionNumber == revisionNumber) {
+      pendingRevisionNumber = null;
+    }
+
+    totalScore += score;
+    totalXP += stars * 100 + (isBonusChallenge ? 150 : 100);
+    unlockedBadges.add('revision_cycle_$revisionNumber');
+
+    final nextCycleStage = revisionNumber * 7 + 1;
+    if (currentStage < nextCycleStage) {
+      currentStage = nextCycleStage;
+    }
+
+    lastPlayed = DateTime.now();
   }
 
   void completeLevel(int level, [dynamic p1, dynamic p2, dynamic p3]) {
@@ -182,8 +443,7 @@ class GameProgress {
     }
 
     totalCrystals += crystals;
-    final world = GastroWorld.getWorldForLevel(level);
-    completeStage(world.id, stars, score);
+    completeStage(level, stars, score);
   }
 
   void updateArcadeStats({
@@ -207,20 +467,22 @@ class GameProgress {
     return stageResults[stageId]?.stars ?? 0;
   }
 
-  bool isWorldUnlocked(int worldId) {
-    if (worldId == 1) return true;
-    return isLevelCompleted(worldId - 1);
+  bool isWorldUnlocked(int stageId) {
+    if (stageId <= 1) return true;
+    if (!isLevelCompleted(stageId - 1)) return false;
+    if ((stageId - 1) % 7 == 0) {
+      final prevRevision = (stageId - 1) ~/ 7;
+      return isRevisionStageCompleted(prevRevision);
+    }
+    return true;
   }
 
-  bool isWorldCompleted(int worldId) {
-    return isLevelCompleted(worldId);
+  bool isWorldCompleted(int stageId) {
+    return isLevelCompleted(stageId);
   }
 
   double calculateWorldCompletion(int worldId) {
-    final world = GastroWorld.worlds.firstWhere(
-      (w) => w.id == worldId,
-      orElse: () => GastroWorld.worlds.first,
-    );
+    final world = GastroWorld.getWorldForLevel(worldId);
     if (world.questionIds.isEmpty) return 0.0;
     int answered = 0;
     for (final qId in world.questionIds) {
@@ -231,7 +493,12 @@ class GameProgress {
 
   // Core API Methods
 
-  void answerQuestion(int questionId, bool isCorrect, {int? selectedOptionIndex}) {
+  void answerQuestion(
+    int questionId,
+    bool isCorrect, {
+    int? selectedOptionIndex,
+    int? stageId,
+  }) {
     questionsAnswered[questionId] = isCorrect;
     if (selectedOptionIndex != null) {
       userAnswers[questionId] = selectedOptionIndex;
@@ -244,6 +511,15 @@ class GameProgress {
       markMastered(questionId);
     } else {
       questionIncorrectCount[questionId] = (questionIncorrectCount[questionId] ?? 0) + 1;
+      // In a new 7-stage cycle, allow re-adding even if mastered in an earlier cycle
+      if (stageId != null) {
+        final cycle = cycleForStage(stageId);
+        final list = cycleMistakeQuestionIds.putIfAbsent(cycle, () => <int>[]);
+        if (!list.contains(questionId)) {
+          list.add(questionId);
+        }
+        masteredQuestions.remove(questionId);
+      }
       addToRevision(questionId);
     }
     lastPlayed = DateTime.now();
@@ -265,15 +541,19 @@ class GameProgress {
     totalScore += score;
     totalXP += stars * 100;
 
-    if (stageId >= currentStage && currentStage < 7) {
+    if (stageId >= currentStage) {
       currentStage = stageId + 1;
     }
 
-    // Unlock and auto-equip new weapon corresponding to world
-    final world = GastroWorld.worlds.firstWhere(
-      (w) => w.id == stageId,
-      orElse: () => GastroWorld.worlds.first,
-    );
+    if (stageId % 7 == 0) {
+      final revNum = stageId ~/ 7;
+      if (!isRevisionStageCompleted(revNum)) {
+        pendingRevisionNumber = revNum;
+      }
+    }
+
+    // Unlock and auto-equip new weapon corresponding to world sector
+    final world = GastroWorld.getWorldForLevel(stageId);
     if (!unlockedWeapons.contains(world.unlockedWeaponName)) {
       unlockedWeapons.add(world.unlockedWeaponName);
       equippedWeapon = world.unlockedWeaponName;
@@ -302,9 +582,18 @@ class GameProgress {
   // Serialization
 
   Map<String, dynamic> toJson() => {
+        'playerId': playerId,
+        'playerName': playerName,
         'currentStage': currentStage,
         'questionsAnswered': questionsAnswered.map((k, v) => MapEntry(k.toString(), v)),
         'stageResults': stageResults.map((k, v) => MapEntry(k.toString(), v.toJson())),
+        'cycleMistakeQuestionIds': cycleMistakeQuestionIds.map(
+          (k, v) => MapEntry(k.toString(), v),
+        ),
+        'revisionStageResults': revisionStageResults.map(
+          (k, v) => MapEntry(k.toString(), v.toJson()),
+        ),
+        'pendingRevisionNumber': pendingRevisionNumber,
         'totalScore': totalScore,
         'totalXP': totalXP,
         'unlockedWeapons': unlockedWeapons,
@@ -330,7 +619,10 @@ class GameProgress {
 
   factory GameProgress.fromJson(Map<String, dynamic> json) {
     final progress = GameProgress(
+      playerId: json['playerId'] as String? ?? '',
+      playerName: json['playerName'] as String? ?? 'Explorateur',
       currentStage: json['currentStage'] as int? ?? 1,
+      pendingRevisionNumber: json['pendingRevisionNumber'] as int?,
       totalScore: json['totalScore'] as int? ?? (json['arcadeHighScore'] as int? ?? 0),
       totalXP: json['totalXP'] as int? ?? (json['totalXp'] as int? ?? 0),
       unlockedWeapons: (json['unlockedWeapons'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
@@ -349,6 +641,26 @@ class GameProgress {
       isMuted: json['isMuted'] as bool? ?? false,
       hasSeenTutorial: json['hasSeenTutorial'] as bool? ?? false,
     );
+
+    if (json['cycleMistakeQuestionIds'] is Map) {
+      (json['cycleMistakeQuestionIds'] as Map).forEach((k, v) {
+        final cycleId = int.tryParse(k.toString());
+        if (cycleId != null && v is List) {
+          progress.cycleMistakeQuestionIds[cycleId] =
+              v.map((e) => (e as num).toInt()).toList();
+        }
+      });
+    }
+
+    if (json['revisionStageResults'] is Map) {
+      (json['revisionStageResults'] as Map).forEach((k, v) {
+        final revId = int.tryParse(k.toString());
+        if (revId != null && v is Map<String, dynamic>) {
+          progress.revisionStageResults[revId] =
+              RevisionStageResult.fromJson(v);
+        }
+      });
+    }
 
     if (json['questionsAnswered'] is Map) {
       final map = json['questionsAnswered'] as Map;
